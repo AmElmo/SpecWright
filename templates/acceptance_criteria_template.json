@@ -1,0 +1,22 @@
+{
+  "project_id": "[PROJECT_ID_PLACEHOLDER]",
+  "project_name": "[PROJECT_NAME_PLACEHOLDER]",
+  "job_stories": [
+    {
+      "job_story_id": "js_001",
+      "title": "[JOB_STORY_TITLE_PLACEHOLDER]",
+      "situation": "[SITUATION_PLACEHOLDER]",
+      "motivation": "[MOTIVATION_PLACEHOLDER]",
+      "outcome": "[OUTCOME_PLACEHOLDER]",
+      "acceptance_criteria": [
+        {
+          "id": "ac_001_01",
+          "given": "[GIVEN_PLACEHOLDER]",
+          "when": "[WHEN_PLACEHOLDER]",
+          "then": "[THEN_PLACEHOLDER]"
+        }
+      ]
+    }
+  ]
+}
+

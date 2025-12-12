@@ -1,0 +1,33 @@
+{
+  "project_id": "[PROJECT_ID_PLACEHOLDER]",
+  "project_name": "[PROJECT_NAME_PLACEHOLDER]",
+  "screens": [
+    {
+      "id": "[SCREEN_ID_PLACEHOLDER]",
+      "name": "[SCREEN_NAME_PLACEHOLDER]",
+      "route": "[ROUTE_PLACEHOLDER]",
+      "description": "[DESCRIPTION_PLACEHOLDER]",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": []
+      },
+      "notes": "[NOTES_PLACEHOLDER]",
+      "components_to_reuse": [],
+      "components_to_create": []
+    }
+  ],
+  "user_flows": [
+    {
+      "id": "[FLOW_ID_PLACEHOLDER]",
+      "name": "[FLOW_NAME_PLACEHOLDER]",
+      "steps": [
+        {
+          "step": 1,
+          "screen": "[SCREEN_ID_PLACEHOLDER]",
+          "action": "[ACTION_PLACEHOLDER]"
+        }
+      ]
+    }
+  ]
+}

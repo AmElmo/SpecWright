@@ -1,0 +1,310 @@
+{
+  "project_name": "[Project Name]",
+  "project_name": "[Project Name]",
+  "version": "1.0",
+  "last_updated": "YYYY-MM-DD",
+  "analysis_scope": "[What dependencies are being analyzed]",
+  "dependency_categories": [
+    {
+      "category": "Frontend Frameworks",
+      "purpose": "[Why this category is needed]",
+      "options": [
+        {
+          "name": "React",
+          "version": "18.x",
+          "description": "[What this dependency does]",
+          "pros": [
+            "Large ecosystem and community",
+            "Component-based architecture",
+            "Strong TypeScript support",
+            "Excellent developer tools",
+            "Mature and battle-tested"
+          ],
+          "cons": [
+            "Steep learning curve for beginners",
+            "Requires additional libraries for full functionality",
+            "Large bundle size",
+            "Frequent updates can cause breaking changes"
+          ],
+          "metrics": {
+            "bundle_size": "[e.g., 42.2kb gzipped]",
+            "performance_score": "[1-10]",
+            "learning_curve": "[Easy, Medium, Hard]",
+            "community_size": "[Small, Medium, Large]",
+            "github_stars": "[Number]",
+            "npm_downloads": "[Weekly downloads]",
+            "last_updated": "[Date]"
+          },
+          "licensing": {
+            "license": "[License type]",
+            "commercial_friendly": true,
+            "restrictions": "[Any restrictions]"
+          },
+          "security": {
+            "vulnerability_score": "[Low, Medium, High risk]",
+            "last_security_audit": "[Date]",
+            "known_issues": "[Number of known vulnerabilities]"
+          },
+          "team_fit": {
+            "existing_knowledge": "[Team's current knowledge level]",
+            "training_required": "[Training needs]",
+            "hiring_availability": "[Availability of developers]"
+          },
+          "cost_analysis": {
+            "license_cost": "[Cost if any]",
+            "development_cost": "[Estimated development cost impact]",
+            "maintenance_cost": "[Ongoing maintenance cost]",
+            "total_cost_of_ownership": "[Overall cost assessment]"
+          }
+        }
+      ],
+      "recommendation": {
+        "selected_option": "[Selected dependency name]",
+        "rationale": "[Why this option was chosen]",
+        "confidence_level": "[High, Medium, Low]",
+        "decision_factors": [
+          "[Factor 1 that influenced decision]",
+          "[Factor 2 that influenced decision]"
+        ]
+      }
+    },
+    {
+      "category": "State Management",
+      "purpose": "[Why state management is needed]",
+      "options": [
+        {
+          "name": "Redux Toolkit",
+          "version": "1.x",
+          "description": "[What this dependency does]",
+          "pros": [
+            "Predictable state updates",
+            "Excellent debugging tools",
+            "Large community and ecosystem",
+            "Works well with React"
+          ],
+          "cons": [
+            "Boilerplate code",
+            "Learning curve",
+            "Overkill for simple applications"
+          ],
+          "metrics": {
+            "bundle_size": "[Size]",
+            "performance_score": "[Score]",
+            "learning_curve": "[Difficulty]",
+            "community_size": "[Size]"
+          }
+        }
+      ]
+    },
+    {
+      "category": "Backend Framework",
+      "purpose": "[Why a backend framework is needed]",
+      "options": [
+        {
+          "name": "Express.js",
+          "version": "4.x",
+          "description": "[What this dependency does]",
+          "pros": [
+            "Minimal and flexible",
+            "Large ecosystem",
+            "Easy to learn",
+            "Good performance"
+          ],
+          "cons": [
+            "Requires many additional packages",
+            "No built-in structure",
+            "Manual security configuration"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Database",
+      "purpose": "[Data storage requirements]",
+      "options": [
+        {
+          "name": "PostgreSQL",
+          "version": "15.x",
+          "description": "[What this dependency does]",
+          "pros": [
+            "ACID compliance",
+            "Advanced features",
+            "Strong consistency",
+            "Excellent performance"
+          ],
+          "cons": [
+            "More complex than NoSQL",
+            "Vertical scaling limitations",
+            "Requires more maintenance"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Authentication",
+      "purpose": "[Authentication and authorization needs]",
+      "options": [
+        {
+          "name": "Auth0",
+          "version": "SaaS",
+          "description": "[What this service provides]",
+          "pros": [
+            "Full-featured authentication",
+            "Multiple identity providers",
+            "Security best practices built-in",
+            "Scalable"
+          ],
+          "cons": [
+            "Vendor lock-in",
+            "Ongoing costs",
+            "Less control over auth flow"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Testing",
+      "purpose": "[Testing requirements]",
+      "options": [
+        {
+          "name": "Jest",
+          "version": "29.x",
+          "description": "[What this testing framework provides]",
+          "pros": [
+            "Zero configuration",
+            "Snapshot testing",
+            "Built-in mocking",
+            "Good React integration"
+          ],
+          "cons": [
+            "Can be slow on large codebases",
+            "Limited browser testing",
+            "Memory usage issues"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Deployment & DevOps",
+      "purpose": "[Deployment and operations needs]",
+      "options": [
+        {
+          "name": "Docker",
+          "version": "24.x",
+          "description": "[What this tool provides]",
+          "pros": [
+            "Consistent environments",
+            "Easy deployment",
+            "Resource isolation",
+            "Microservices friendly"
+          ],
+          "cons": [
+            "Learning curve",
+            "Resource overhead",
+            "Complexity for simple apps"
+          ]
+        }
+      ]
+    }
+  ],
+  "dependency_matrix": {
+    "compatibility_matrix": [
+      {
+        "dependency_1": "[Dependency name]",
+        "dependency_2": "[Another dependency name]",
+        "compatibility": "[Compatible, Incompatible, Requires configuration]",
+        "notes": "[Any compatibility notes]"
+      }
+    ],
+    "version_constraints": [
+      {
+        "dependency": "[Dependency name]",
+        "min_version": "[Minimum version]",
+        "max_version": "[Maximum version]",
+        "reason": "[Why these constraints exist]"
+      }
+    ]
+  },
+  "final_recommendations": [
+    {
+      "category": "[Category name]",
+      "selected": "[Selected dependency]",
+      "version": "[Specific version or range]",
+      "justification": "[Why this was chosen over alternatives]",
+      "implementation_notes": "[Special considerations for implementation]",
+      "migration_strategy": "[If replacing existing dependency]"
+    }
+  ],
+  "implementation_plan": {
+    "phases": [
+      {
+        "phase": 1,
+        "name": "[Phase name]",
+        "dependencies_to_add": [
+          {
+            "name": "[Dependency name]",
+            "installation_command": "[npm install command]",
+            "configuration_required": true,
+            "configuration_notes": "[Configuration steps]"
+          }
+        ],
+        "estimated_effort": "[Time estimate]",
+        "risks": [
+          {
+            "risk": "[Implementation risk]",
+            "mitigation": "[How to mitigate]"
+          }
+        ]
+      }
+    ],
+    "testing_strategy": [
+      {
+        "dependency": "[Dependency name]",
+        "testing_approach": "[How to test this dependency]",
+        "success_criteria": "[What indicates successful integration]"
+      }
+    ]
+  },
+  "ongoing_maintenance": {
+    "update_strategy": "[How to handle dependency updates]",
+    "monitoring": [
+      {
+        "dependency": "[Dependency name]",
+        "monitoring_approach": "[How to monitor this dependency]",
+        "alerts": "[What to alert on]"
+      }
+    ],
+    "security_considerations": [
+      {
+        "dependency": "[Dependency name]",
+        "security_practices": "[Security practices for this dependency]",
+        "audit_frequency": "[How often to audit]"
+      }
+    ]
+  },
+  "alternatives_considered": [
+    {
+      "category": "[Category]",
+      "alternative": "[Alternative not chosen]",
+      "reason_not_selected": "[Why it wasn't chosen]",
+      "reconsider_conditions": "[Under what conditions to reconsider]"
+    }
+  ],
+  "total_cost_analysis": {
+    "license_costs": {
+      "one_time": "[One-time license costs]",
+      "recurring": "[Recurring costs]"
+    },
+    "development_costs": {
+      "initial_setup": "[Setup cost estimate]",
+      "ongoing_development": "[Development efficiency impact]"
+    },
+    "operational_costs": {
+      "hosting": "[Additional hosting costs]",
+      "monitoring": "[Monitoring costs]",
+      "maintenance": "[Maintenance costs]"
+    },
+    "total_first_year": "[Total cost for first year]",
+    "total_ongoing_annual": "[Annual ongoing costs]"
+  }
+}

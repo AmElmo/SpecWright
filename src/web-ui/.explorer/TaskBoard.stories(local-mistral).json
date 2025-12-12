@@ -1,0 +1,123 @@
+{
+  "$schema": "https://explorer.dev/schemas/component-story.json",
+  "componentName": "TaskBoard",
+  "componentPath": "src/components/TaskBoard.tsx",
+  "type": "server-component",
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default",
+      "description": "The component with typical data",
+      "props": {},
+      "mockApi": {
+        "/api/projects": [
+          {
+            "id": "123",
+            "name": "Project 1"
+          },
+          {
+            "id": "456",
+            "name": "Project 2"
+          }
+        ],
+        "/api/issues": [
+          {
+            "issueId": "1",
+            "title": "Issue 1",
+            "description": "Description for Issue 1",
+            "status": "pending",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "filePath": "/path/to/issue1.md",
+            "projectId": "123",
+            "projectName": "Project 1"
+          },
+          {
+            "issueId": "2",
+            "title": "Issue 2",
+            "description": "Description for Issue 2",
+            "status": "in-review",
+            "estimatedHours": 3,
+            "dependencies": [
+              "1"
+            ],
+            "filePath": "/path/to/issue2.md",
+            "projectId": "456",
+            "projectName": "Project 2"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Component while data is being fetched",
+      "props": {},
+      "mockApi": {
+        "/api/projects": {
+          "__delay": 999999
+        },
+        "/api/issues": {
+          "__delay": 999999
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "error",
+      "name": "Error State",
+      "description": "Component when API returns an error",
+      "props": {},
+      "mockApi": {
+        "/api/projects": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        },
+        "/api/issues": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Component when there is no data",
+      "props": {},
+      "mockApi": {
+        "/api/projects": [],
+        "/api/issues": []
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

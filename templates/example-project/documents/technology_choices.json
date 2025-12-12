@@ -1,0 +1,241 @@
+{
+  "project_name": "AI Code Review Assistant",
+  "technology_decisions": [
+    {
+      "category": "AI Provider",
+      "description": "Which AI service to use for analyzing code and generating suggestions",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "Anthropic Claude",
+          "description": "Claude 3.5 Sonnet - Anthropic's flagship model with excellent code understanding",
+          "version": "claude-3-5-sonnet-20241022",
+          "documentation_url": "https://docs.anthropic.com/",
+          "github_url": "https://github.com/anthropics/anthropic-sdk-python",
+          "pros": [
+            "Excellent at code analysis and reasoning",
+            "Large context window (200K tokens)",
+            "Strong at explaining issues clearly",
+            "Good balance of speed and quality"
+          ],
+          "cons": [
+            "Requires API key management",
+            "Per-token pricing can add up"
+          ],
+          "trade_offs": [
+            "Slightly slower than GPT-4 Turbo but more thorough",
+            "Less ecosystem tooling than OpenAI"
+          ],
+          "maturity": "Production-ready",
+          "community_size": "Large",
+          "last_updated": "2024-10",
+          "implementation_complexity": "Low",
+          "estimated_time": "2 hours",
+          "recommended": true,
+          "recommendation_reason": "Best-in-class for code understanding and clear explanations"
+        },
+        {
+          "name": "OpenAI GPT-4",
+          "description": "OpenAI's GPT-4 Turbo model for code analysis",
+          "version": "gpt-4-turbo",
+          "documentation_url": "https://platform.openai.com/docs",
+          "github_url": "https://github.com/openai/openai-node",
+          "pros": [
+            "Fast response times",
+            "Large ecosystem and tooling",
+            "Well-documented API"
+          ],
+          "cons": [
+            "Can be verbose in explanations",
+            "Higher pricing for similar quality"
+          ],
+          "trade_offs": [
+            "Faster but sometimes less thorough than Claude",
+            "Better tooling but higher cost"
+          ],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-09",
+          "implementation_complexity": "Low",
+          "estimated_time": "2 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        },
+        {
+          "name": "Self-hosted CodeLlama",
+          "description": "Meta's open-source code-specialized LLM running on own infrastructure",
+          "version": "34B",
+          "documentation_url": "https://ai.meta.com/llama/",
+          "github_url": "https://github.com/facebookresearch/codellama",
+          "pros": [
+            "No per-request costs after setup",
+            "Full control over model and data",
+            "No rate limits"
+          ],
+          "cons": [
+            "Requires significant infrastructure",
+            "Lower quality than Claude/GPT-4",
+            "Maintenance overhead"
+          ],
+          "trade_offs": [
+            "Lower cost at scale but higher upfront investment",
+            "More control but more responsibility"
+          ],
+          "maturity": "Stable",
+          "community_size": "Medium",
+          "last_updated": "2024-06",
+          "implementation_complexity": "High",
+          "estimated_time": "2-3 weeks",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "Anthropic Claude",
+      "user_choice_description": "Claude 3.5 Sonnet - Anthropic's flagship model with excellent code understanding",
+      "user_choice_version": "claude-3-5-sonnet-20241022",
+      "user_reason": "Best quality for code analysis and clear, educational explanations",
+      "final_decision": "anthropic-claude"
+    },
+    {
+      "category": "Code Editor Component",
+      "description": "Which code editor to embed for syntax highlighting and code input",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "Monaco Editor",
+          "description": "The editor that powers VS Code, available as a standalone component",
+          "version": "0.45.0",
+          "documentation_url": "https://microsoft.github.io/monaco-editor/",
+          "github_url": "https://github.com/microsoft/monaco-editor",
+          "pros": [
+            "Industry standard - same editor as VS Code",
+            "Excellent syntax highlighting for all major languages",
+            "Built-in language detection",
+            "Familiar to developers"
+          ],
+          "cons": [
+            "Large bundle size (~2MB)",
+            "Complex API for advanced features"
+          ],
+          "trade_offs": [
+            "Better features but larger bundle",
+            "More complex but more powerful"
+          ],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-10",
+          "implementation_complexity": "Medium",
+          "estimated_time": "4 hours",
+          "recommended": true,
+          "recommendation_reason": "Industry standard, familiar UX, excellent language support"
+        },
+        {
+          "name": "CodeMirror 6",
+          "description": "Modern, modular code editor for the browser",
+          "version": "6.0",
+          "documentation_url": "https://codemirror.net/",
+          "github_url": "https://github.com/codemirror/dev",
+          "pros": [
+            "Smaller bundle size than Monaco",
+            "Highly modular - include only what you need",
+            "Good mobile support"
+          ],
+          "cons": [
+            "Less familiar to VS Code users",
+            "Steeper learning curve for customization"
+          ],
+          "trade_offs": [
+            "Smaller bundle but less out-of-box features",
+            "More flexible but requires more setup"
+          ],
+          "maturity": "Production-ready",
+          "community_size": "Large",
+          "last_updated": "2024-09",
+          "implementation_complexity": "Medium",
+          "estimated_time": "5 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "Monaco Editor",
+      "user_choice_description": "The editor that powers VS Code, available as a standalone component",
+      "user_choice_version": "0.45.0",
+      "user_reason": "Developers are already familiar with VS Code, reduces learning curve",
+      "final_decision": "monaco-editor"
+    },
+    {
+      "category": "Diff Viewer",
+      "description": "Component for displaying before/after code comparisons when previewing fixes",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "react-diff-viewer-continued",
+          "description": "Clean React component for displaying diffs with split or unified views",
+          "version": "3.3.0",
+          "documentation_url": "https://github.com/praneshr/react-diff-viewer",
+          "github_url": "https://github.com/aeolun/react-diff-viewer-continued",
+          "pros": [
+            "Simple React component API",
+            "Supports split and unified views",
+            "Easy to style with CSS",
+            "Lightweight"
+          ],
+          "cons": [
+            "Limited customization options",
+            "No built-in syntax highlighting"
+          ],
+          "trade_offs": [
+            "Simple but limited",
+            "Easy to use but fewer features"
+          ],
+          "maturity": "Stable",
+          "community_size": "Medium",
+          "last_updated": "2024-08",
+          "implementation_complexity": "Low",
+          "estimated_time": "2 hours",
+          "recommended": true,
+          "recommendation_reason": "Simple API, good enough for our use case, easy to style"
+        },
+        {
+          "name": "Monaco Diff Editor",
+          "description": "Built-in diff capability in Monaco Editor",
+          "version": "0.45.0",
+          "documentation_url": "https://microsoft.github.io/monaco-editor/",
+          "github_url": "https://github.com/microsoft/monaco-editor",
+          "pros": [
+            "Syntax highlighting in diffs",
+            "Consistent with main editor",
+            "No additional dependency"
+          ],
+          "cons": [
+            "More complex to set up for modal use",
+            "Adds to Monaco bundle complexity"
+          ],
+          "trade_offs": [
+            "Better features but more complex",
+            "No new dependency but harder to implement"
+          ],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-10",
+          "implementation_complexity": "Medium",
+          "estimated_time": "4 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "react-diff-viewer-continued",
+      "user_choice_description": "Clean React component for displaying diffs with split or unified views",
+      "user_choice_version": "3.3.0",
+      "user_reason": "Simpler implementation, good enough for fix previews",
+      "final_decision": "react-diff-viewer"
+    }
+  ],
+  "summary": {
+    "total_decisions": 3,
+    "decisions_made": 3,
+    "estimated_setup_time": "8 hours",
+    "estimated_learning_curve": "Low - all chosen technologies are well-documented",
+    "overall_complexity": "Medium"
+  }
+}

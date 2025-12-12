@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Output directories - all generated outputs should not be committed
+outputs/
+specwright/outputs/
+
+# System files
+.DS_Store
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+.cache/
+
+# Build output
+dist/
+
+# LLM logs and explorer cache
+src/web-ui/.explorer/llm-logs/
+
+# Internal TODO (use GitHub Issues for public tracking)
+TODO.md
+
+# Test artifacts
+invalid-location-test/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+TODO.md

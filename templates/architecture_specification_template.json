@@ -1,0 +1,270 @@
+{
+  "project_name": "[Project Name]",
+  "project_name": "[Project Name]",
+  "version": "1.0",
+  "last_updated": "YYYY-MM-DD",
+  "architect": "[Architect Name]",
+  "architecture_overview": {
+    "pattern": "[Architectural pattern: MVC, MVP, MVVM, Clean Architecture, etc.]",
+    "style": "[Architectural style: Monolith, Microservices, Serverless, etc.]",
+    "summary": "[High-level description of the architecture]",
+    "key_principles": [
+      "[Principle 1: e.g., Separation of Concerns]",
+      "[Principle 2: e.g., Single Responsibility]",
+      "[Principle 3: e.g., Dependency Inversion]"
+    ]
+  },
+  "system_context": {
+    "business_requirements": [
+      "[Business requirement 1]",
+      "[Business requirement 2]"
+    ],
+    "non_functional_requirements": {
+      "performance": {
+        "response_time": "[e.g., < 200ms for API calls]",
+        "throughput": "[e.g., 1000 requests/second]",
+        "concurrent_users": "[e.g., 10,000 concurrent users]"
+      },
+      "scalability": {
+        "user_growth": "[Expected user growth]",
+        "data_growth": "[Expected data growth]",
+        "geographic_distribution": "[Global, regional, local]"
+      },
+      "reliability": {
+        "uptime": "[e.g., 99.9%]",
+        "recovery_time": "[e.g., < 5 minutes]",
+        "backup_frequency": "[e.g., daily]"
+      },
+      "security": {
+        "authentication": "[Authentication requirements]",
+        "authorization": "[Authorization model]",
+        "data_protection": "[Data protection requirements]",
+        "compliance": "[Regulatory compliance needs]"
+      }
+    },
+    "constraints": {
+      "technical": [
+        "[Technical constraint 1]",
+        "[Technical constraint 2]"
+      ],
+      "business": [
+        "[Business constraint 1]",
+        "[Business constraint 2]"
+      ],
+      "resource": [
+        "[Resource constraint 1]",
+        "[Resource constraint 2]"
+      ]
+    }
+  },
+  "architecture_options": [
+    {
+      "option_id": "ARCH001",
+      "name": "[Architecture Option 1 Name]",
+      "description": "[Detailed description of this approach]",
+      "components": [
+        {
+          "name": "[Component Name]",
+          "responsibility": "[What this component does]",
+          "technology": "[Proposed technology]",
+          "interfaces": [
+            {
+              "type": "[API, Event, Database, etc.]",
+              "with": "[Connected component]",
+              "protocol": "[HTTP, gRPC, Message Queue, etc.]"
+            }
+          ]
+        }
+      ],
+      "data_flow": [
+        {
+          "step": 1,
+          "from": "[Source component]",
+          "to": "[Destination component]",
+          "data": "[Type of data]",
+          "method": "[How data flows]"
+        }
+      ],
+      "pros": [
+        "[Advantage 1]",
+        "[Advantage 2]",
+        "[Advantage 3]"
+      ],
+      "cons": [
+        "[Disadvantage 1]",
+        "[Disadvantage 2]",
+        "[Disadvantage 3]"
+      ],
+      "complexity_score": "[1-10, where 10 is most complex]",
+      "risk_level": "[Low, Medium, High]",
+      "estimated_effort": "[Development time estimate]",
+      "operational_complexity": "[How difficult to operate and maintain]"
+    }
+  ],
+  "recommended_architecture": {
+    "option_id": "[Selected option ID]",
+    "rationale": "[Why this option was chosen]",
+    "implementation_phases": [
+      {
+        "phase": 1,
+        "name": "[Phase name]",
+        "components": ["[Component 1]", "[Component 2]"],
+        "duration": "[Estimated duration]",
+        "deliverables": ["[Deliverable 1]", "[Deliverable 2]"]
+      }
+    ]
+  },
+  "system_components": [
+    {
+      "component_id": "COMP001",
+      "name": "[Component Name]",
+      "type": "[Frontend, Backend, Database, Service, etc.]",
+      "responsibility": "[Primary responsibility]",
+      "technology_stack": {
+        "language": "[Programming language]",
+        "framework": "[Framework/library]",
+        "runtime": "[Runtime environment]",
+        "database": "[Database if applicable]"
+      },
+      "interfaces": [
+        {
+          "type": "[REST API, GraphQL, Event, etc.]",
+          "endpoint": "[Endpoint or connection details]",
+          "data_format": "[JSON, XML, Protobuf, etc.]",
+          "authentication": "[Auth method if applicable]"
+        }
+      ],
+      "deployment": {
+        "environment": "[Container, VM, Serverless, etc.]",
+        "scaling": "[Horizontal, Vertical, Auto]",
+        "monitoring": "[Monitoring approach]"
+      },
+      "dependencies": [
+        {
+          "component": "[Dependent component]",
+          "type": "[Sync, Async, Database, etc.]",
+          "criticality": "[High, Medium, Low]"
+        }
+      ]
+    }
+  ],
+  "data_architecture": {
+    "storage_strategy": "[Approach to data storage]",
+    "data_models": [
+      {
+        "entity": "[Entity name]",
+        "storage_type": "[Relational, Document, Key-Value, etc.]",
+        "access_patterns": ["[Pattern 1]", "[Pattern 2]"],
+        "consistency_requirements": "[Strong, Eventual, etc.]",
+        "relationships": [
+          {
+            "with": "[Related entity]",
+            "type": "[One-to-One, One-to-Many, etc.]",
+            "cardinality": "[Relationship details]"
+          }
+        ]
+      }
+    ],
+    "data_flow": {
+      "ingestion": "[How data enters the system]",
+      "processing": "[How data is processed]",
+      "storage": "[How data is stored]",
+      "retrieval": "[How data is accessed]"
+    }
+  },
+  "security_architecture": {
+    "authentication": {
+      "method": "[JWT, OAuth, SAML, etc.]",
+      "providers": ["[Provider 1]", "[Provider 2]"],
+      "token_management": "[How tokens are managed]"
+    },
+    "authorization": {
+      "model": "[RBAC, ABAC, etc.]",
+      "implementation": "[How permissions are enforced]",
+      "granularity": "[Resource-level, Operation-level, etc.]"
+    },
+    "data_protection": {
+      "encryption_at_rest": "[Encryption approach]",
+      "encryption_in_transit": "[Transport security]",
+      "key_management": "[How keys are managed]"
+    },
+    "security_controls": [
+      {
+        "control": "[Security control name]",
+        "implementation": "[How it's implemented]",
+        "monitoring": "[How it's monitored]"
+      }
+    ]
+  },
+  "performance_architecture": {
+    "caching_strategy": {
+      "levels": ["[Level 1: Browser]", "[Level 2: CDN]", "[Level 3: Application]"],
+      "technologies": ["[Redis]", "[Memcached]", "[CDN provider]"],
+      "invalidation": "[Cache invalidation strategy]"
+    },
+    "optimization_techniques": [
+      {
+        "technique": "[Optimization technique]",
+        "implementation": "[How it's implemented]",
+        "expected_impact": "[Performance improvement expected]"
+      }
+    ],
+    "monitoring": {
+      "metrics": ["[Metric 1]", "[Metric 2]"],
+      "tools": ["[Tool 1]", "[Tool 2]"],
+      "alerts": ["[Alert condition 1]", "[Alert condition 2]"]
+    }
+  },
+  "deployment_architecture": {
+    "environments": [
+      {
+        "name": "[Environment name: dev, staging, prod]",
+        "purpose": "[Purpose of this environment]",
+        "infrastructure": "[Infrastructure details]",
+        "deployment_method": "[How deployments happen]"
+      }
+    ],
+    "ci_cd_pipeline": {
+      "source_control": "[Git, SVN, etc.]",
+      "build_system": "[Build tools and process]",
+      "testing_stages": ["[Unit tests]", "[Integration tests]", "[E2E tests]"],
+      "deployment_stages": ["[Dev]", "[Staging]", "[Production]"],
+      "rollback_strategy": "[How to rollback if needed]"
+    },
+    "infrastructure": {
+      "hosting": "[Cloud provider, On-premise, Hybrid]",
+      "containerization": "[Docker, Kubernetes, etc.]",
+      "orchestration": "[How containers are managed]",
+      "networking": "[Network architecture]",
+      "storage": "[Storage solutions]"
+    }
+  },
+  "risks_and_mitigations": [
+    {
+      "risk_id": "RISK001",
+      "category": "[Technical, Business, Operational]",
+      "description": "[Description of the risk]",
+      "probability": "[Low, Medium, High]",
+      "impact": "[Low, Medium, High]",
+      "mitigation_strategies": [
+        "[Mitigation strategy 1]",
+        "[Mitigation strategy 2]"
+      ],
+      "contingency_plan": "[What to do if risk materializes]"
+    }
+  ],
+  "success_criteria": [
+    {
+      "criterion": "[Success criterion]",
+      "measurement": "[How to measure success]",
+      "target": "[Target value or outcome]"
+    }
+  ],
+  "future_considerations": [
+    {
+      "consideration": "[Future consideration]",
+      "timeline": "[When this might be relevant]",
+      "preparation": "[How to prepare for this]"
+    }
+  ]
+}

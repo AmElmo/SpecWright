@@ -1,0 +1,94 @@
+# SpecWright - AI-Powered Specification Engine
+
+You are an AI assistant helping with Specification-Driven Development using SpecWright.
+
+## Available Commands
+
+Use these commands to initiate SpecWright workflows:
+
+- `/specwright.scope` - Analyze and determine if work needs a project spec
+- `/specwright.constitution` - Generate project constitution (standards and principles)
+- `/specwright.view` - Browse all projects
+
+## Workflow
+
+### Two Approaches
+
+1. **Work Directly** - Small changes that don't need a spec
+   - No specification or tracking needed
+   - SpecWright tells you to implement directly in Cursor
+   - Examples: validation changes, styling tweaks, bug fixes, refactoring
+   
+2. **Create Project** - New capability needing full specification
+   - Requires PM → Designer → Engineer → Tech Lead workflow
+   - Examples: Google Sign-in, Video upload system
+   - Can be: Single Project or Multiple Projects (large initiatives)
+   - Issues created during Tech Lead phase for implementation tracking
+
+### How to Work with SpecWright
+
+1. **Start**: Use `/specwright.scope` to analyze and classify work
+   - AI analyzes request and classifies as "Work Directly" vs "Project"
+   - AI creates `specwright/outputs/scoping_plan.json` with the plan
+   - AI asks for approval before finalizing
+   - Once approved, AI runs `specwright finalize-scope` to create folders/files (projects only)
+   
+2. **For "Work Directly"**: No tracking - just implement the change directly in Cursor
+
+3. **For Projects**: After scoping, run the spec workflow through 4 agents:
+   - **Product Manager**: Create PRD, user stories, acceptance criteria
+   - **Designer**: Design screens and wireframes
+   - **Engineer**: Define technical architecture
+   - **Tech Lead**: Break down into implementation tasks with ENG- prefixed issues
+   
+4. **Use `/specwright.view`** to see all projects and their issues
+
+## Important Notes
+
+- `specwright/outputs/scoping_plan.json` - **Temporary working file** for discussion/iteration
+- `specwright/outputs/project_plan.json` - **Canonical plan** saved after approval (reference for later workflows)
+- Each project has its own directory under `specwright/outputs/projects/{project-id}/`
+- Project structure:
+  - `project_request.md` - Original request
+  - `pm/` - Product Manager outputs
+  - `ux/` - Designer outputs
+  - `architect/` - Engineer outputs
+  - `tech_lead/` - Task breakdown with ENG- prefixed issues
+- Issues only exist within projects (in `tech_lead/issue_breakdown.json`)
+- **DRY Principle**: Never manually create folders/files - use `specwright finalize-scope`
+- The CLI handles all folder creation logic to maintain consistency
+- Be concise and actionable in all outputs
+
+## Logging
+
+**IMPORTANT**: Use the `logger` utility instead of raw `console.log()`.
+
+```typescript
+// For CLI/Server code (src/*.ts, src/commands/*.ts, src/services/*.ts, etc.)
+import { logger } from '../utils/logger.js';
+
+// For Web UI code (src/web-ui/src/**/*.tsx)
+import { logger } from '../utils/logger';
+```
+
+**Two types of output:**
+
+1. **Debug logs** (hidden in production):
+   - `logger.debug()` - Development/debugging logs
+   - `logger.info()` - Informational messages
+   - `logger.warn()` - Warnings
+   - `logger.error()` - Errors
+   - `logger.success()` - Success messages
+
+2. **User-facing output** (always visible):
+   - `logger.print()` - CLI output users need to see (logo, menus, status)
+
+**When to use which:**
+- `logger.debug()` → AI debugging, internal state, tracing
+- `logger.print()` → Logo, menus, prompts, user confirmations
+
+**Why?** Debug logs are hidden in production (only visible when `SPECWRIGHT_DEBUG=true`).
+User-facing output via `logger.print()` always shows.
+
+**Never use raw `console.log()`, `console.error()`, etc.** - they will show to end users.
+

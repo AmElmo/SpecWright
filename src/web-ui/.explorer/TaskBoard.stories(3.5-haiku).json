@@ -1,0 +1,230 @@
+{
+  "$schema": "https://explorer.dev/schemas/component-story.json",
+  "componentName": "TaskBoard",
+  "componentPath": "src/components/TaskBoard.tsx",
+  "type": "component",
+  "generatedAt": "2024-02-16T12:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default View with Multiple Projects",
+      "description": "Task board with issues across multiple projects in board view",
+      "props": {
+        "viewMode": "board"
+      },
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj-1",
+            "name": "Web Platform",
+            "description": "Main web application"
+          },
+          {
+            "id": "proj-2",
+            "name": "Mobile App",
+            "description": "Cross-platform mobile app"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-001",
+            "title": "Implement User Authentication",
+            "description": "Create login and registration flow",
+            "status": "pending",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "projectId": "proj-1",
+            "projectName": "Web Platform"
+          },
+          {
+            "issueId": "issue-002",
+            "title": "Design Dashboard Layout",
+            "description": "Create responsive dashboard design",
+            "status": "in-review",
+            "estimatedHours": 5,
+            "dependencies": [
+              "issue-001"
+            ],
+            "projectId": "proj-1",
+            "projectName": "Web Platform"
+          },
+          {
+            "issueId": "issue-003",
+            "title": "Implement Push Notifications",
+            "description": "Add cross-platform push notification support",
+            "status": "pending",
+            "estimatedHours": 6,
+            "dependencies": [],
+            "projectId": "proj-2",
+            "projectName": "Mobile App"
+          }
+        ]
+      },
+      "mockServerActions": {
+        "/api/tasks/trigger-cursor": {
+          "returns": {
+            "success": true
+          }
+        }
+      }
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Task board while data is being fetched",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": {
+          "__delay": 10000
+        },
+        "GET /api/issues": {
+          "__delay": 10000
+        }
+      }
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Task board with no issues",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj-1",
+            "name": "Web Platform",
+            "description": "Main web application"
+          }
+        ],
+        "GET /api/issues": []
+      }
+    },
+    {
+      "id": "error",
+      "name": "Error State",
+      "description": "Task board with API fetch error",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": {
+          "__error": {
+            "status": 500,
+            "message": "Failed to load projects"
+          }
+        },
+        "GET /api/issues": {
+          "__error": {
+            "status": 500,
+            "message": "Failed to load issues"
+          }
+        }
+      }
+    },
+    {
+      "id": "project-filter",
+      "name": "Single Project View",
+      "description": "Task board filtered to a single project",
+      "props": {
+        "selectedProject": "proj-2"
+      },
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj-1",
+            "name": "Web Platform",
+            "description": "Main web application"
+          },
+          {
+            "id": "proj-2",
+            "name": "Mobile App",
+            "description": "Cross-platform mobile app"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-003",
+            "title": "Implement Push Notifications",
+            "description": "Add cross-platform push notification support",
+            "status": "pending",
+            "estimatedHours": 6,
+            "dependencies": [],
+            "projectId": "proj-2",
+            "projectName": "Mobile App"
+          },
+          {
+            "issueId": "issue-004",
+            "title": "Implement App Analytics",
+            "description": "Integrate mobile app analytics",
+            "status": "in-review",
+            "estimatedHours": 4,
+            "dependencies": [
+              "issue-003"
+            ],
+            "projectId": "proj-2",
+            "projectName": "Mobile App"
+          }
+        ]
+      }
+    },
+    {
+      "id": "list-view",
+      "name": "List View Mode",
+      "description": "Task board displayed in list view",
+      "props": {
+        "viewMode": "list"
+      },
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj-1",
+            "name": "Web Platform",
+            "description": "Main web application"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-001",
+            "title": "Implement User Authentication",
+            "description": "Create login and registration flow",
+            "status": "pending",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "projectId": "proj-1",
+            "projectName": "Web Platform"
+          },
+          {
+            "issueId": "issue-002",
+            "title": "Design Dashboard Layout",
+            "description": "Create responsive dashboard design",
+            "status": "in-review",
+            "estimatedHours": 5,
+            "dependencies": [
+              "issue-001"
+            ],
+            "projectId": "proj-1",
+            "projectName": "Web Platform"
+          }
+        ]
+      }
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

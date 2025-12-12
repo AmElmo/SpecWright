@@ -1,0 +1,314 @@
+{
+  "$schema": "https://explorer.dev/schemas/component-story.json",
+  "componentName": "TaskBoard",
+  "componentPath": "src/components/TaskBoard.tsx",
+  "type": "component",
+  "generatedAt": "2024-10-09T14:30:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default",
+      "description": "The default state of the component with typical data",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          },
+          {
+            "id": "proj2",
+            "name": "Project Beta"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing.",
+            "status": "pending",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          },
+          {
+            "issueId": "issue2",
+            "title": "Improve UI",
+            "description": "The UI needs to be more user-friendly.",
+            "status": "in-review",
+            "estimatedHours": 5,
+            "dependencies": [],
+            "projectId": "proj2",
+            "projectName": "Project Beta"
+          }
+        ],
+        "GET /api/tasks/proj1/issue1/prompt": {
+          "prompt": "Start working on the login bug fix."
+        },
+        "GET /api/tasks/proj1/issue1/details": {
+          "markdown": "# Detailed Issue Information\n\nThis is the detailed information about the issue."
+        },
+        "POST /api/tasks/proj1/issue1/approve": {
+          "success": true
+        }
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Component while data is being fetched",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": {
+          "__delay": 999999
+        },
+        "GET /api/issues": {
+          "__delay": 999999
+        }
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "error",
+      "name": "Error State",
+      "description": "Component when API returns an error",
+      "props": {},
+      "mockApi": {
+        "GET /api/issues": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        }
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Component when there is no data",
+      "props": {},
+      "mockApi": {
+        "GET /api/issues": []
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "blocked-issues",
+      "name": "Blocked Issues",
+      "description": "Component with blocked issues",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing.",
+            "status": "pending",
+            "estimatedHours": 2,
+            "dependencies": [
+              "issue2"
+            ],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          },
+          {
+            "issueId": "issue2",
+            "title": "Improve UI",
+            "description": "The UI needs to be more user-friendly.",
+            "status": "pending",
+            "estimatedHours": 5,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "ready-issues",
+      "name": "Ready Issues",
+      "description": "Component with ready issues",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing.",
+            "status": "pending",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "in-review-issues",
+      "name": "In Review Issues",
+      "description": "Component with issues in review",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing.",
+            "status": "in-review",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "approved-issues",
+      "name": "Approved Issues",
+      "description": "Component with approved issues",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing.",
+            "status": "approved",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "long-text",
+      "name": "Long Text",
+      "description": "Component with long text in issue descriptions",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing. This is a very long description to test how the component handles long text. It should wrap properly and not break the layout.",
+            "status": "pending",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "missing-optional-data",
+      "name": "Missing Optional Data",
+      "description": "Component with missing optional data",
+      "props": {},
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "proj1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue1",
+            "title": "Fix login bug",
+            "description": "The login page has a bug that needs fixing.",
+            "status": "pending",
+            "estimatedHours": 2,
+            "dependencies": [],
+            "projectId": "proj1",
+            "projectName": "Project Alpha"
+          },
+          {
+            "issueId": "issue2",
+            "title": "Improve UI",
+            "description": "The UI needs to be more user-friendly.",
+            "status": "in-review",
+            "estimatedHours": 5,
+            "dependencies": [],
+            "projectId": "proj2",
+            "projectName": "Project Beta"
+          }
+        ]
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

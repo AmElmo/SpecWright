@@ -1,0 +1,600 @@
+{
+  "$schema": "https://explorer.dev/schemas/page-story.json",
+  "pageName": "Specification",
+  "pagePath": "src/components/Specification.tsx",
+  "pageRoute": "/specification/:projectId",
+  "type": "page",
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "pm-questions-ready",
+      "name": "PM Questions Ready",
+      "description": "Product Manager questions are generated and ready to be answered",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-questions-answer",
+          "nextPhase": "pm-prd-generate",
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        }
+      }
+    },
+    {
+      "id": "pm-prd-review",
+      "name": "PM PRD Review",
+      "description": "Product Requirements Document generated and needs review",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-prd-review",
+          "nextPhase": "ux-questions-generate",
+          "needsReview": true,
+          "reviewDocument": "documents/product_requirements_document.md",
+          "isComplete": false
+        },
+        "GET /api/specification/document/my-app/documents/product_requirements_document.md": {
+          "content": "# Product Requirements Document\n\n## Overview\nThis is a comprehensive PRD for the mobile app project...\n\n## User Stories\n- As a user, I want to...\n- As a user, I need to...\n\n## Acceptance Criteria\n- Feature must load within 2 seconds\n- Must work on iOS and Android"
+        },
+        "POST /api/specification/approve/my-app/pm-prd-review": {
+          "success": true,
+          "message": "PRD approved"
+        }
+      }
+    },
+    {
+      "id": "ux-questions-ready",
+      "name": "UX Questions Ready",
+      "description": "UX Designer questions are generated and ready to be answered",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "ux-questions-answer",
+          "nextPhase": "ux-design-brief-generate",
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        }
+      }
+    },
+    {
+      "id": "ux-wireframes-review",
+      "name": "UX Wireframes Review",
+      "description": "Design brief and wireframes generated and need review",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "ux-wireframes-review",
+          "nextPhase": "engineer-questions-generate",
+          "needsReview": true,
+          "reviewDocument": "documents/design_brief.md",
+          "isComplete": false
+        },
+        "GET /api/specification/document/my-app/documents/design_brief.md": {
+          "content": "# Design Brief\n\n## Visual Design\nThe app should follow Material Design principles...\n\n## Screen Flow\n1. Login Screen\n2. Dashboard\n3. Profile\n\n## Wireframes\n- Login: Simple form with email/password\n- Dashboard: Grid layout with cards\n- Profile: User info and settings"
+        },
+        "POST /api/specification/approve/my-app/ux-wireframes-review": {
+          "success": true,
+          "message": "Design brief approved"
+        }
+      }
+    },
+    {
+      "id": "engineer-questions-ready",
+      "name": "Engineer Questions Ready",
+      "description": "Engineering questions are generated and ready to be answered",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "engineer-questions-answer",
+          "nextPhase": "engineer-spec-generate",
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        }
+      }
+    },
+    {
+      "id": "engineer-spec-review",
+      "name": "Technical Spec Review",
+      "description": "Technical specification generated and needs review",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "engineer-spec-review",
+          "nextPhase": null,
+          "needsReview": true,
+          "reviewDocument": "documents/technical_specification.md",
+          "isComplete": false
+        },
+        "GET /api/specification/document/my-app/documents/technical_specification.md": {
+          "content": "# Technical Specification\n\n## Architecture\nReact Native app with Node.js backend...\n\n## Technology Stack\n- Frontend: React Native, TypeScript\n- Backend: Node.js, Express, PostgreSQL\n- Authentication: JWT\n- Deployment: AWS\n\n## Database Schema\n- Users table\n- Projects table\n- Tasks table\n\n## API Endpoints\n- POST /api/auth/login\n- GET /api/projects\n- POST /api/projects"
+        },
+        "POST /api/specification/approve/my-app/engineer-spec-review": {
+          "success": true,
+          "message": "Technical specification approved"
+        }
+      }
+    },
+    {
+      "id": "ready-to-generate-pm-questions",
+      "name": "Ready to Generate PM Questions",
+      "description": "Initial state ready to generate PM questions",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-questions-generate",
+          "nextPhase": "pm-questions-generate",
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        },
+        "POST /api/specification/continue/my-app/pm-questions-generate": {
+          "success": true,
+          "message": "PM questions generation started",
+          "prompt": "Generate strategic questions for the Product Manager to understand project requirements..."
+        }
+      }
+    },
+    {
+      "id": "ready-to-generate-ux-questions",
+      "name": "Ready to Generate UX Questions",
+      "description": "PM phase complete, ready to generate UX questions",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "ux-questions-generate",
+          "nextPhase": "ux-questions-generate",
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        },
+        "POST /api/specification/continue/my-app/ux-questions-generate": {
+          "success": true,
+          "message": "UX questions generation started",
+          "prompt": "Generate UX design questions based on the approved PRD..."
+        }
+      }
+    },
+    {
+      "id": "ai-working-pm-questions",
+      "name": "AI Working - PM Questions",
+      "description": "AI is generating PM questions",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-questions-generate",
+          "nextPhase": null,
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        }
+      },
+      "initialState": {
+        "triggeringPhase": "pm-questions-generate",
+        "lastPrompt": "Generate strategic questions for the Product Manager to understand project requirements..."
+      }
+    },
+    {
+      "id": "ai-working-prd-generation",
+      "name": "AI Working - PRD Generation",
+      "description": "AI is generating the Product Requirements Document",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-prd-generate",
+          "nextPhase": null,
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        }
+      },
+      "initialState": {
+        "triggeringPhase": "pm-prd-generate",
+        "lastPrompt": "Generate a comprehensive Product Requirements Document based on the answered questions..."
+      }
+    },
+    {
+      "id": "ai-working-tech-spec",
+      "name": "AI Working - Technical Spec",
+      "description": "AI is generating the technical specification",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "engineer-spec-generate",
+          "nextPhase": null,
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        }
+      },
+      "initialState": {
+        "triggeringPhase": "engineer-spec-generate",
+        "lastPrompt": "Generate a detailed technical specification and architecture design..."
+      }
+    },
+    {
+      "id": "complete-ready-for-breakdown",
+      "name": "Complete - Ready for Breakdown",
+      "description": "All phases complete, ready to generate implementation tasks",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": true
+            }
+          },
+          "currentPhase": "complete",
+          "nextPhase": null,
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": true
+        },
+        "GET /api/specification/breakdown-status/my-app": {
+          "isComplete": false,
+          "issueCount": 0
+        },
+        "POST /api/specification/breakdown/my-app": {
+          "success": true,
+          "message": "Issue breakdown started",
+          "prompt": "Break down the technical specification into implementation tasks..."
+        }
+      }
+    },
+    {
+      "id": "breakdown-in-progress",
+      "name": "Breakdown In Progress",
+      "description": "AI is breaking down spec into implementation tasks",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": true
+            }
+          },
+          "currentPhase": "complete",
+          "nextPhase": null,
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": true
+        },
+        "GET /api/specification/breakdown-status/my-app": {
+          "isComplete": false,
+          "issueCount": 0
+        }
+      },
+      "initialState": {
+        "breakingDown": true
+      }
+    },
+    {
+      "id": "complete-with-tasks",
+      "name": "Complete with Tasks",
+      "description": "All phases complete and implementation tasks generated",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": true
+            }
+          },
+          "currentPhase": "complete",
+          "nextPhase": null,
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": true
+        },
+        "GET /api/specification/breakdown-status/my-app": {
+          "isComplete": true,
+          "issueCount": 12
+        }
+      },
+      "initialState": {
+        "hasTasks": true,
+        "taskCount": 12
+      }
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Page while status is being fetched",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "__delay": 999999
+        }
+      }
+    },
+    {
+      "id": "error-state",
+      "name": "Error State",
+      "description": "Error loading specification status",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "__error": {
+            "status": 404,
+            "message": "Project not found"
+          }
+        }
+      }
+    },
+    {
+      "id": "document-loading",
+      "name": "Document Loading",
+      "description": "Document review with loading document content",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-prd-review",
+          "nextPhase": "ux-questions-generate",
+          "needsReview": true,
+          "reviewDocument": "documents/product_requirements_document.md",
+          "isComplete": false
+        },
+        "GET /api/specification/document/my-app/documents/product_requirements_document.md": {
+          "__delay": 999999
+        }
+      }
+    },
+    {
+      "id": "api-error",
+      "name": "API Error",
+      "description": "Error during phase continuation",
+      "routeParams": {
+        "projectId": "my-app"
+      },
+      "mockApi": {
+        "GET /api/specification/status/my-app": {
+          "projectId": "my-app",
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-questions-generate",
+          "nextPhase": "pm-questions-generate",
+          "needsReview": false,
+          "reviewDocument": null,
+          "isComplete": false
+        },
+        "POST /api/specification/continue/my-app/pm-questions-generate": {
+          "__error": {
+            "status": 500,
+            "message": "Failed to trigger phase"
+          }
+        }
+      }
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

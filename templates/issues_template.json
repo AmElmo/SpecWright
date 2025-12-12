@@ -1,0 +1,57 @@
+{
+  "project_name": "[PROJECT_NAME_PLACEHOLDER]",
+  "project_id": "[PROJECT_ID_PLACEHOLDER]",
+  "total_estimated_hours": "[TOTAL_HOURS_PLACEHOLDER]",
+  "total_issues": "[TOTAL_ISSUES_PLACEHOLDER]",
+  "generated_at": "[TIMESTAMP_PLACEHOLDER]",
+  
+  "issues_by_complexity": {
+    "low": "[LOW_COMPLEXITY_COUNT_PLACEHOLDER]",
+    "medium": "[MEDIUM_COMPLEXITY_COUNT_PLACEHOLDER]",
+    "high": "[HIGH_COMPLEXITY_COUNT_PLACEHOLDER]"
+  },
+  
+  "coverage_summary": {
+    "all_acceptance_criteria_covered": true,
+    "all_screens_covered": true,
+    "uncovered_acceptance_criteria": [],
+    "uncovered_screens": []
+  },
+  
+  "issues": [
+    {
+      "issue_id": "ENG-[NUMBER_PLACEHOLDER]",
+      "title": "[ISSUE_TITLE_PLACEHOLDER]",
+      "status": "pending",
+      "estimated_hours": "[HOURS_PLACEHOLDER]",
+      "dependencies": [],
+      
+      "screens_affected": ["[SCREEN_ID_PLACEHOLDER - e.g., screen_login]"],
+      
+      "description": "[DESCRIPTION_PLACEHOLDER - What user capability is being delivered]",
+      
+      "key_decisions": [
+        "[KEY_DECISION_1 - e.g., API route path, database table name, specific library to use]"
+      ],
+      
+      "acceptance_criteria": [
+        { "id": "[AC_ID_PLACEHOLDER - e.g., ac_001_01]", "description": "[FULL_AC_TEXT - the complete acceptance criterion]" }
+      ],
+      
+      "technical_details": "[OPTIONAL - Schema hints, architecture notes, specific patterns to follow]",
+      
+      "testing_strategy": {
+        "automated_tests": "[TESTS_PLACEHOLDER - or 'none' if non-critical]",
+        "manual_verification": "[MANUAL_STEPS_PLACEHOLDER]"
+      },
+      
+      "human_in_the_loop": [
+        "[STEP_1 - What the human should do to verify this issue is complete]"
+      ]
+    }
+  ],
+  
+  "definition_of_done": [
+    "[DOD_CRITERIA_PLACEHOLDER]"
+  ]
+}

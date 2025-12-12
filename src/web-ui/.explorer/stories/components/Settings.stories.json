@@ -1,0 +1,142 @@
+{
+  "$schema": "https://explorer.dev/schemas/component-story.json",
+  "componentName": "Settings",
+  "componentPath": "src/components/Settings.tsx",
+  "type": "component",
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default",
+      "description": "The default state of the component with typical data",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": {
+          "enabled": true,
+          "strategy": "branch-per-issue"
+        },
+        "GET /api/settings/ai-tool": {
+          "tool": "cursor"
+        }
+      },
+      "mockServerActions": {},
+      "mockContext": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Component while data is being fetched",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": {
+          "__delay": 999999
+        },
+        "GET /api/settings/ai-tool": {
+          "__delay": 999999
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "error",
+      "name": "Error State",
+      "description": "Component when API returns an error",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        },
+        "GET /api/settings/ai-tool": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Component when there is no data",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": null,
+        "GET /api/settings/ai-tool": null
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "no-git",
+      "name": "No Git Instructions",
+      "description": "Component with 'none' git strategy",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": {
+          "enabled": false,
+          "strategy": "none"
+        },
+        "GET /api/settings/ai-tool": {
+          "tool": "cursor"
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "branch-per-project",
+      "name": "Branch Per Project",
+      "description": "Component with 'branch-per-project' git strategy",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": {
+          "enabled": true,
+          "strategy": "branch-per-project"
+        },
+        "GET /api/settings/ai-tool": {
+          "tool": "cursor"
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code Tool",
+      "description": "Component with 'claude-code' AI tool",
+      "props": {},
+      "mockApi": {
+        "GET /api/settings/git-preferences": {
+          "enabled": true,
+          "strategy": "branch-per-issue"
+        },
+        "GET /api/settings/ai-tool": {
+          "tool": "claude-code"
+        }
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

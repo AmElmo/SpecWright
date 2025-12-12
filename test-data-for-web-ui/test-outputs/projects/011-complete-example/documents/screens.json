@@ -1,0 +1,328 @@
+{
+  "project_id": "011-complete-example",
+  "project_name": "User Profile Settings",
+  "screens": [
+    {
+      "id": "profile-overview",
+      "name": "Profile Overview",
+      "route": "/settings/profile",
+      "description": "Main profile settings page showing user information with tabs for different settings sections",
+      "wireframe": {
+        "type": "stack",
+        "gap": "lg",
+        "children": [
+          {
+            "type": "nav",
+            "text": "Settings",
+            "children": [
+              { "type": "avatar", "size": "sm" }
+            ]
+          },
+          {
+            "type": "row",
+            "padding": "lg",
+            "gap": "xl",
+            "children": [
+              {
+                "type": "sidebar",
+                "children": [
+                  { "type": "button", "text": "Profile", "variant": "secondary", "fullWidth": true },
+                  { "type": "button", "text": "Account", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Privacy", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Notifications", "variant": "ghost", "fullWidth": true },
+                  { "type": "divider" },
+                  { "type": "button", "text": "Sign Out", "variant": "ghost", "fullWidth": true }
+                ]
+              },
+              {
+                "type": "stack",
+                "gap": "lg",
+                "width": "full",
+                "children": [
+                  { "type": "heading", "text": "Profile Settings", "size": "xl" },
+                  { "type": "text", "text": "Manage your public profile information", "color": "muted" },
+                  {
+                    "type": "card",
+                    "padding": "lg",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "lg",
+                        "children": [
+                          {
+                            "type": "row",
+                            "align": "center",
+                            "gap": "lg",
+                            "children": [
+                              { "type": "avatar", "size": "lg" },
+                              {
+                                "type": "stack",
+                                "gap": "sm",
+                                "children": [
+                                  { "type": "heading", "text": "Profile Photo", "size": "md" },
+                                  { "type": "text", "text": "JPG, PNG or GIF. Max 2MB.", "size": "sm", "color": "muted" },
+                                  {
+                                    "type": "row",
+                                    "gap": "sm",
+                                    "children": [
+                                      { "type": "button", "text": "Upload", "variant": "outline" },
+                                      { "type": "button", "text": "Remove", "variant": "ghost" }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          { "type": "divider" },
+                          {
+                            "type": "grid",
+                            "columns": 2,
+                            "gap": "md",
+                            "children": [
+                              { "type": "input", "label": "First Name", "placeholder": "John", "fullWidth": true },
+                              { "type": "input", "label": "Last Name", "placeholder": "Doe", "fullWidth": true }
+                            ]
+                          },
+                          { "type": "input", "label": "Display Name", "placeholder": "@johndoe", "fullWidth": true },
+                          { "type": "textarea", "label": "Bio", "placeholder": "Tell us about yourself...", "fullWidth": true },
+                          { "type": "input", "label": "Website", "placeholder": "https://example.com", "fullWidth": true }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "end",
+                    "gap": "sm",
+                    "children": [
+                      { "type": "button", "text": "Cancel", "variant": "ghost" },
+                      { "type": "button", "text": "Save Changes", "variant": "primary" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "The sidebar should remain fixed on scroll. Consider adding unsaved changes warning.",
+      "components_to_reuse": [
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Input", "path": "components/ui/Input.tsx" },
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Avatar", "path": "components/ui/Avatar.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "SettingsSidebar", "path": "components/settings/SettingsSidebar.tsx" },
+        { "name": "PhotoUploader", "path": "components/settings/PhotoUploader.tsx" }
+      ]
+    },
+    {
+      "id": "privacy-settings",
+      "name": "Privacy Settings",
+      "route": "/settings/privacy",
+      "description": "Privacy controls for profile visibility and data sharing",
+      "wireframe": {
+        "type": "stack",
+        "gap": "lg",
+        "children": [
+          {
+            "type": "nav",
+            "text": "Settings",
+            "children": [
+              { "type": "avatar", "size": "sm" }
+            ]
+          },
+          {
+            "type": "row",
+            "padding": "lg",
+            "gap": "xl",
+            "children": [
+              {
+                "type": "sidebar",
+                "children": [
+                  { "type": "button", "text": "Profile", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Account", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Privacy", "variant": "secondary", "fullWidth": true },
+                  { "type": "button", "text": "Notifications", "variant": "ghost", "fullWidth": true }
+                ]
+              },
+              {
+                "type": "stack",
+                "gap": "lg",
+                "width": "full",
+                "children": [
+                  { "type": "heading", "text": "Privacy Settings", "size": "xl" },
+                  { "type": "text", "text": "Control who can see your information", "color": "muted" },
+                  {
+                    "type": "card",
+                    "padding": "lg",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "lg",
+                        "children": [
+                          { "type": "heading", "text": "Profile Visibility", "size": "md" },
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "align": "center",
+                            "children": [
+                              {
+                                "type": "stack",
+                                "gap": "xs",
+                                "children": [
+                                  { "type": "text", "text": "Public Profile" },
+                                  { "type": "text", "text": "Allow anyone to view your profile", "size": "sm", "color": "muted" }
+                                ]
+                              },
+                              { "type": "toggle", "label": "" }
+                            ]
+                          },
+                          { "type": "divider" },
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "align": "center",
+                            "children": [
+                              {
+                                "type": "stack",
+                                "gap": "xs",
+                                "children": [
+                                  { "type": "text", "text": "Show Email" },
+                                  { "type": "text", "text": "Display email on your public profile", "size": "sm", "color": "muted" }
+                                ]
+                              },
+                              { "type": "toggle", "label": "" }
+                            ]
+                          },
+                          { "type": "divider" },
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "align": "center",
+                            "children": [
+                              {
+                                "type": "stack",
+                                "gap": "xs",
+                                "children": [
+                                  { "type": "text", "text": "Activity Status" },
+                                  { "type": "text", "text": "Show when you're online", "size": "sm", "color": "muted" }
+                                ]
+                              },
+                              { "type": "toggle", "label": "" }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "lg",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "md",
+                        "children": [
+                          { "type": "heading", "text": "Data & Analytics", "size": "md" },
+                          { "type": "checkbox", "label": "Allow usage analytics to improve the product" },
+                          { "type": "checkbox", "label": "Receive personalized recommendations" },
+                          { "type": "checkbox", "label": "Share anonymous usage data" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "alert",
+                    "text": "Changes to privacy settings take effect immediately.",
+                    "variant": "default"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Toggle states should persist immediately without needing a save button",
+      "components_to_reuse": [
+        { "name": "Toggle", "path": "components/ui/Toggle.tsx" },
+        { "name": "Checkbox", "path": "components/ui/Checkbox.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "PrivacyToggleRow", "path": "components/settings/PrivacyToggleRow.tsx" }
+      ]
+    },
+    {
+      "id": "delete-account-modal",
+      "name": "Delete Account Modal",
+      "route": "/settings/account",
+      "description": "Confirmation modal for account deletion with safety checks",
+      "wireframe": {
+        "type": "card",
+        "padding": "lg",
+        "children": [
+          {
+            "type": "stack",
+            "align": "center",
+            "gap": "md",
+            "children": [
+              { "type": "icon", "icon": "⚠️" },
+              { "type": "heading", "text": "Delete Account?", "size": "lg" },
+              { "type": "text", "text": "This action cannot be undone. All your data will be permanently deleted.", "color": "muted" },
+              { "type": "spacer", "size": "md" },
+              {
+                "type": "alert",
+                "text": "You will lose access to all your projects and settings.",
+                "variant": "destructive"
+              },
+              { "type": "spacer", "size": "sm" },
+              { "type": "input", "label": "Type DELETE to confirm", "placeholder": "DELETE", "fullWidth": true },
+              { "type": "spacer", "size": "md" },
+              {
+                "type": "row",
+                "gap": "sm",
+                "justify": "center",
+                "children": [
+                  { "type": "button", "text": "Cancel", "variant": "outline" },
+                  { "type": "button", "text": "Delete Account", "variant": "destructive" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Delete button should be disabled until user types DELETE correctly",
+      "components_to_reuse": [
+        { "name": "Modal", "path": "components/ui/Modal.tsx" },
+        { "name": "Alert", "path": "components/ui/Alert.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "ConfirmationInput", "path": "components/ui/ConfirmationInput.tsx" }
+      ]
+    }
+  ],
+  "user_flows": [
+    {
+      "id": "edit-profile-flow",
+      "name": "Edit Profile Information",
+      "steps": [
+        { "step": 1, "screen": "profile-overview", "action": "User navigates to profile settings" },
+        { "step": 2, "screen": "profile-overview", "action": "User updates profile fields" },
+        { "step": 3, "screen": "profile-overview", "action": "User clicks Save Changes" },
+        { "step": 4, "screen": "profile-overview", "action": "Success toast shown, changes persisted" }
+      ]
+    },
+    {
+      "id": "delete-account-flow",
+      "name": "Account Deletion",
+      "steps": [
+        { "step": 1, "screen": "privacy-settings", "action": "User navigates to account settings" },
+        { "step": 2, "screen": "privacy-settings", "action": "User clicks Delete Account button" },
+        { "step": 3, "screen": "delete-account-modal", "action": "Modal appears with confirmation" },
+        { "step": 4, "screen": "delete-account-modal", "action": "User types DELETE to confirm" },
+        { "step": 5, "screen": "delete-account-modal", "action": "User clicks Delete Account button" }
+      ]
+    }
+  ]
+}

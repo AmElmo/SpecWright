@@ -1,0 +1,25 @@
+{
+  "project_request": "AI-powered code review that analyzes code and suggests improvements with one-click apply.",
+  "questions": [
+    {
+      "question": "What types of issues should the AI detect?",
+      "options": ["Bugs only", "Security + Bugs", "Security + Bugs + Performance + Style"],
+      "answer": "Security + Bugs + Performance + Style"
+    },
+    {
+      "question": "Should suggestions include auto-fix code that can be applied with one click?",
+      "options": ["Yes, always show fix", "Only when confident", "No, just describe the issue"],
+      "answer": "Only when confident"
+    },
+    {
+      "question": "What programming languages should we support initially?",
+      "options": ["JavaScript/TypeScript only", "JS/TS + Python", "Top 5 languages"],
+      "answer": "JavaScript/TypeScript only"
+    },
+    {
+      "question": "Should we store review history for users to reference later?",
+      "options": ["Yes, keep 30 days", "Yes, unlimited", "No, ephemeral only"],
+      "answer": "Yes, keep 90 days with option to permanently save important reviews"
+    }
+  ]
+}

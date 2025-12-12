@@ -1,0 +1,256 @@
+{
+  "$schema": "https://explorer.dev/schemas/page-story.json",
+  "pageName": "project-detail",
+  "pagePath": "src/components/ProjectDetail.tsx",
+  "pageRoute": "/project/:id",
+  "type": "page",
+  "generatedAt": "2025-12-08T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default – Fully Specced Project with Issues",
+      "description": "Project that has all spec files, is fully approved, and contains issues.",
+      "routeParams": {
+        "id": "00123-my-cool-app"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-456",
+          "name": "Alice Smith",
+          "email": "alice@example.com",
+          "role": "manager"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/00123-my-cool-app": {
+          "id": "00123-my-cool-app",
+          "path": "/projects/00123-my-cool-app",
+          "request": "# Project Request\nWe need a new feature...",
+          "prd": "# Product Requirements Document\n## Features ...",
+          "acceptanceCriteria": "- Given ...\n- When ...\n- Then ...",
+          "design": "# Design Brief\nUser flows ...",
+          "screens": "# Screens\nScreen 1: ...\nScreen 2: ...",
+          "tech": "# Technical Spec\nArchitecture ...",
+          "techChoices": "- React 18\n- TypeScript\n- Tailwind CSS",
+          "summary": {
+            "issues_list": [
+              {
+                "id": 1,
+                "title": "Login bug"
+              },
+              {
+                "id": 2,
+                "title": "Performance issue"
+              }
+            ]
+          },
+          "screenInventory": null
+        },
+        "GET /api/specification/status/00123-my-cool-app": {
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": true
+            }
+          },
+          "currentPhase": "engineering",
+          "isComplete": true
+        },
+        "GET /api/specification/breakdown-status/00123-my-cool-app": {
+          "isComplete": true,
+          "issueCount": 2
+        },
+        "GET /api/specification/breakdown/00123-my-cool-app": {
+          "success": true,
+          "prompt": ""
+        },
+        "GET /api/projects/00123-my-cool-app/settings": {
+          "question_depth": "standard",
+          "document_length": "standard"
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Page while data is being fetched.",
+      "routeParams": {
+        "id": "00123-my-cool-app"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-456",
+          "name": "Alice Smith",
+          "email": "alice@example.com",
+          "role": "manager"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/00123-my-cool-app": {
+          "__delay": 2000
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "error",
+      "name": "Error State – Project Not Found",
+      "description": "API returns 404 or other error.",
+      "routeParams": {
+        "id": "nonexistent-project"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-456",
+          "name": "Alice Smith",
+          "email": "alice@example.com",
+          "role": "manager"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/nonexistent-project": {
+          "__error": {
+            "status": 404,
+            "message": "Project not found"
+          }
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "unauthenticated",
+      "name": "Not Logged In",
+      "description": "User is not authenticated; page should still render but may restrict actions.",
+      "routeParams": {
+        "id": "00123-my-cool-app"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": false
+      },
+      "mockApi": {
+        "GET /api/projects/00123-my-cool-app": {
+          "id": "00123-my-cool-app",
+          "path": "/projects/00123-my-cool-app",
+          "request": "# Project Request\nWe need a new feature..."
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State – No Spec Files Yet",
+      "description": "Project exists but has no request, PRD, design, tech, etc.",
+      "routeParams": {
+        "id": "00456-empty-project"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-789",
+          "name": "Bob Jones",
+          "email": "bob@example.com",
+          "role": "developer"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/00456-empty-project": {
+          "id": "00456-empty-project",
+          "path": "/projects/00456-empty-project"
+        },
+        "GET /api/specification/status/00456-empty-project": {
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "",
+          "isComplete": false
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "partial",
+      "name": "Partial Spec – PRD Generated, Others Missing",
+      "description": "Project has a PRD but missing design and tech specs.",
+      "routeParams": {
+        "id": "00234-prd-only"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-321",
+          "name": "Carol Lee",
+          "email": "carol@example.com",
+          "role": "designer"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/00234-prd-only": {
+          "id": "00234-prd-only",
+          "path": "/projects/00234-prd-only",
+          "request": "# Project Request\nNeed a new dashboard.",
+          "prd": "# Product Requirements Document\n## Dashboard Features ..."
+        },
+        "GET /api/specification/status/00234-prd-only": {
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "ux",
+          "isComplete": false
+        }
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

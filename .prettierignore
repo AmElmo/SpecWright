@@ -1,0 +1,6 @@
+dist/
+node_modules/
+*.log
+outputs/
+test-data/
+test-data-for-web-ui/

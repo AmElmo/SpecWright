@@ -1,0 +1,40 @@
+{
+  "project_request": "original_user_request",
+  "questions": [
+    {
+      "question": "What are the main actions users need to take in this project?",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "How do users typically discover and access this project?",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "What information do users need to see before taking action?",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "Are there different user types with different permissions?",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "What happens after users complete the main action?",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "How should users provide input - forms, buttons, etc?",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "What feedback do users need when they take actions?",
+      "options": [],
+      "answer": ""
+    }
+  ]
+}

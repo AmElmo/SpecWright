@@ -1,0 +1,86 @@
+{
+  "project_name": "AI Code Review Assistant",
+  "project_id": "000-ai-code-review-assistant",
+  "total_estimated_hours": 21,
+  "issues_list": [
+    {
+      "issue_id": "ENG-001",
+      "title": "Submit code for AI review",
+      "description": "Complete flow: paste code → AI analyzes → suggestions appear in seconds",
+      "status": "approved",
+      "estimated_hours": 5,
+      "dependencies": [],
+      "test_strategy": {
+        "automated_tests": "E2E test: paste code, submit, verify suggestions returned",
+        "manual_verification": "Paste buggy code, verify AI finds real issues within 10 seconds"
+      },
+      "file_path": "issues/ENG-001.md"
+    },
+    {
+      "issue_id": "ENG-002",
+      "title": "View and explore suggestions",
+      "description": "Browse, filter, and understand issues with line highlighting",
+      "status": "approved",
+      "estimated_hours": 4,
+      "dependencies": [],
+      "test_strategy": {
+        "automated_tests": "Component tests for filtering, expansion, and highlighting",
+        "manual_verification": "Submit code, click through categories, verify line highlighting works"
+      },
+      "file_path": "issues/ENG-002.md"
+    },
+    {
+      "issue_id": "ENG-003",
+      "title": "Apply suggested fix with diff preview",
+      "description": "One-click apply with before/after diff preview and undo",
+      "status": "in-review",
+      "estimated_hours": 4,
+      "dependencies": ["ENG-001"],
+      "test_strategy": {
+        "automated_tests": "Test diff rendering, apply action, and undo functionality",
+        "manual_verification": "Apply a fix, verify code changes, test undo within 30 seconds"
+      },
+      "file_path": "issues/ENG-003.md"
+    },
+    {
+      "issue_id": "ENG-004",
+      "title": "Dismiss suggestions",
+      "description": "Hide irrelevant suggestions with optional feedback",
+      "status": "pending",
+      "estimated_hours": 2,
+      "dependencies": ["ENG-002"],
+      "test_strategy": {
+        "automated_tests": "Test dismiss action, feedback submission, list update",
+        "manual_verification": "Dismiss a suggestion, verify it's removed from list"
+      },
+      "file_path": "issues/ENG-004.md"
+    },
+    {
+      "issue_id": "ENG-005",
+      "title": "Configure review preferences",
+      "description": "Toggle which categories AI checks for",
+      "status": "pending",
+      "estimated_hours": 3,
+      "dependencies": [],
+      "test_strategy": {
+        "automated_tests": "Test preference save/load, verify filtering works",
+        "manual_verification": "Disable Style, run review, verify no style suggestions appear"
+      },
+      "file_path": "issues/ENG-005.md"
+    },
+    {
+      "issue_id": "ENG-006",
+      "title": "View review history",
+      "description": "See past reviews and re-open them",
+      "status": "pending",
+      "estimated_hours": 3,
+      "dependencies": ["ENG-001", "ENG-003"],
+      "test_strategy": {
+        "automated_tests": "Test history listing, pagination, re-open functionality",
+        "manual_verification": "Run reviews, check history, open old review"
+      },
+      "file_path": "issues/ENG-006.md"
+    }
+  ],
+  "definition_of_done": "Each feature independently testable by a human, all acceptance criteria met"
+}

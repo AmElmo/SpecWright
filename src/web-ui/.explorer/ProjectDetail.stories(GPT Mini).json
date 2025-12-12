@@ -1,0 +1,333 @@
+{
+  "$schema": "https://explorer.dev/schemas/page-story.json",
+  "pageName": "ProjectDetail",
+  "pagePath": "src/components/ProjectDetail.tsx",
+  "pageRoute": "/project/:id",
+  "type": "page",
+  "generatedAt": "2025-12-08T12:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Happy Path – Partial Specification",
+      "description": "Project detail with a moderate amount of content and an in-flight specification that can be continued.",
+      "routeParams": {
+        "id": "proj-001"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "pm-001",
+          "name": "Priya Manager",
+          "email": "priya@example.com",
+          "role": "product-manager"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/proj-001": {
+          "id": "proj-001",
+          "path": "/project/proj-001",
+          "request": "### Request\nBuild a unified workspace dashboard to help teams track scope and status across all active initiatives.",
+          "prd": "### PRD\n**Goals**\n1. Surface spec progress and approval status.\n2. Highlight outstanding issues for engineering and design.\n\n**Deliverables**\n- Overview page with progress indicator\n- Sectioned tabs for Request, PRD, Design, and Engineering notes.",
+          "acceptanceCriteria": "- Given I land on the project detail\n- When I review the tabs\n- Then I should see the latest PRD, design brief, and tech notes.\n\n- Given I have answered the PM questions\n- When I continue the specification\n- Then my answers persist and the spec status updates.",
+          "design": "### Design Brief\nCreate a modular layout with a hero region, tab strip, and card-based content areas that allow designers to attach callouts for each screen.",
+          "screens": "Screen Inventory:\n1. Overview – status badges, action buttons, and quick links.\n2. PM Notes – Markdown summary of requirements.\n3. Engineering Breakdown – components and APIs.",
+          "tech": "### Technical Approach\n- Frontend in React 18 + TypeScript\n- Backend GraphQL API with Apollo\n- Hosting on Vercel with automated previews.",
+          "techChoices": "### Technology Choices\n1. Framer Motion – for micro-interactions\n2. Supabase – for specs storage\n3. OpenAI – for automated question generation",
+          "summary": {
+            "issues_list": [
+              {
+                "id": "ISSUE-101",
+                "title": "Define user onboarding flow",
+                "status": "pending"
+              }
+            ]
+          },
+          "screenInventory": {
+            "totalScreens": 3
+          }
+        },
+        "GET /api/specification/status/proj-001": {
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "ux-review",
+          "isComplete": false
+        },
+        "GET /api/specification/breakdown-status/proj-001": {
+          "isComplete": true,
+          "issueCount": 1
+        },
+        "GET /api/projects/proj-001/settings": {
+          "question_depth": "standard",
+          "document_length": "standard"
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "spec-complete",
+      "name": "Fully Specified Project",
+      "description": "Displays a project where every tab has content, all phases are approved, and the View Issues CTA is available.",
+      "routeParams": {
+        "id": "proj-002"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "eng-007",
+          "name": "Eli Engineer",
+          "email": "eli@example.com",
+          "role": "engineer"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/proj-002": {
+          "id": "proj-002",
+          "path": "/project/proj-002",
+          "request": "### Request\nModernize the mobile shopping experience with live inventory and push notifications.",
+          "prd": "### PRD\n**Key results**\n- New product detail page\n- Live inventory status\n- Promotions engine",
+          "acceptanceCriteria": "- Given inventory updates\n- When the shopper views a product\n- Then they should see realtime stock and expected shipping windows.",
+          "design": "### Design Brief\nKeep the layout light and card-focused with dismissible hints for each interaction.",
+          "screens": "Detailed screen list:\n- Product Gallery\n- Inventory Timeline\n- Promotion Banner",
+          "tech": "### Technical Approach\n- Next.js with incremental static regeneration\n- Webhook-powered inventory updates\n- Dedicated analytics Lambda for conversions",
+          "techChoices": "### Technology Choices\n1. WebSockets – for inventory streaming\n2. Redis – for caching availability\n3. Segment – for analytics",
+          "summary": {
+            "issues_list": [
+              {
+                "id": "ISSUE-201",
+                "title": "Implement live inventory listener",
+                "status": "approved"
+              },
+              {
+                "id": "ISSUE-202",
+                "title": "Create promotions API",
+                "status": "in-review"
+              },
+              {
+                "id": "ISSUE-203",
+                "title": "Design mobile hero banner",
+                "status": "pending"
+              }
+            ]
+          },
+          "screenInventory": {
+            "totalScreens": 4
+          }
+        },
+        "GET /api/specification/status/proj-002": {
+          "phases": {
+            "pm": {
+              "complete": true
+            },
+            "ux": {
+              "complete": true
+            },
+            "engineer": {
+              "complete": true
+            }
+          },
+          "currentPhase": "post-launch",
+          "isComplete": true
+        },
+        "GET /api/specification/breakdown-status/proj-002": {
+          "isComplete": true,
+          "issueCount": 5
+        },
+        "GET /api/projects/proj-002/settings": {
+          "question_depth": "thorough",
+          "document_length": "comprehensive"
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Shows the spinner while the project and related data are fetching.",
+      "routeParams": {
+        "id": "proj-001"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "pm-001",
+          "name": "Priya Manager",
+          "email": "priya@example.com",
+          "role": "product-manager"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/proj-001": {
+          "__delay": 999999
+        },
+        "GET /api/specification/status/proj-001": {
+          "__delay": 999999
+        },
+        "GET /api/specification/breakdown-status/proj-001": {
+          "__delay": 999999
+        },
+        "GET /api/projects/proj-001/settings": {
+          "__delay": 999999
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "error",
+      "name": "API Error",
+      "description": "Project fetch fails and displays the error banner.",
+      "routeParams": {
+        "id": "proj-001"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "pm-001",
+          "name": "Priya Manager",
+          "email": "priya@example.com",
+          "role": "product-manager"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/proj-001": {
+          "__error": {
+            "status": 500,
+            "message": "Failed to load project metadata"
+          }
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Project exists but no documentation has been created yet; tabs show the placeholder state.",
+      "routeParams": {
+        "id": "proj-003"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "ux-003",
+          "name": "Nia Designer",
+          "email": "nia@example.com",
+          "role": "designer"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects/proj-003": {
+          "id": "proj-003",
+          "path": "/project/proj-003",
+          "summary": {
+            "issues_list": []
+          }
+        },
+        "GET /api/specification/status/proj-003": {
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-questions-generate",
+          "isComplete": false
+        },
+        "GET /api/specification/breakdown-status/proj-003": {
+          "isComplete": false,
+          "issueCount": 0
+        },
+        "GET /api/projects/proj-003/settings": {
+          "question_depth": "light",
+          "document_length": "brief"
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "unauthenticated",
+      "name": "Not Logged In",
+      "description": "Redirect-ready state when the user is not authenticated.",
+      "routeParams": {
+        "id": "proj-004"
+      },
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": false
+      },
+      "mockApi": {
+        "GET /api/projects/proj-004": {
+          "id": "proj-004",
+          "path": "/project/proj-004",
+          "request": "### Request\nSecure admin workflows.",
+          "summary": {
+            "issues_list": []
+          }
+        },
+        "GET /api/specification/status/proj-004": {
+          "phases": {
+            "pm": {
+              "complete": false
+            },
+            "ux": {
+              "complete": false
+            },
+            "engineer": {
+              "complete": false
+            }
+          },
+          "currentPhase": "pm-questions-generate",
+          "isComplete": false
+        },
+        "GET /api/specification/breakdown-status/proj-004": {
+          "isComplete": false,
+          "issueCount": 0
+        },
+        "GET /api/projects/proj-004/settings": {
+          "question_depth": "standard",
+          "document_length": "standard"
+        }
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}
+

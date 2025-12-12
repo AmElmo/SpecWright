@@ -1,0 +1,84 @@
+{
+  "$schema": "https://explorer.dev/schemas/page-story.json",
+  "pageName": "example-page",
+  "pagePath": "src/pages/example.tsx",
+  "pageRoute": "/example",
+  "type": "page",
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default",
+      "description": "The default state of the page with typical data",
+      "routeParams": {},
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-123",
+          "name": "Test User",
+          "email": "test@example.com",
+          "role": "user"
+        }
+      },
+      "mockApi": {
+        "GET /api/data": {
+          "items": [
+            { "id": "1", "title": "Item 1" },
+            { "id": "2", "title": "Item 2" }
+          ],
+          "total": 2
+        }
+      },
+      "mockServerActions": {
+        "@/lib/actions": {
+          "submitForm": {
+            "returns": { "success": true, "message": "Form submitted" }
+          }
+        }
+      }
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Page while data is being fetched",
+      "mockApi": {
+        "GET /api/data": { "__delay": 999999 }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "error",
+      "name": "Error State", 
+      "description": "Page when API returns an error",
+      "mockApi": {
+        "GET /api/data": { "__error": { "status": 500, "message": "Server error" } }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "unauthenticated",
+      "name": "Not Logged In",
+      "description": "Page when user is not authenticated",
+      "mockAuth": {
+        "isAuthenticated": false
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Page when there is no data",
+      "mockApi": {
+        "GET /api/data": { "items": [], "total": 0 }
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": ["light", "dark"],
+  "viewports": [
+    { "name": "mobile", "width": 375, "height": 667 },
+    { "name": "tablet", "width": 768, "height": 1024 },
+    { "name": "desktop", "width": 1280, "height": 800 }
+  ]
+}

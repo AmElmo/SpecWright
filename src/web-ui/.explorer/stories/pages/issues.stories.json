@@ -1,0 +1,310 @@
+{
+  "$schema": "https://explorer.dev/schemas/page-story.json",
+  "pageName": "issues",
+  "pagePath": "src/components/TaskBoard.tsx",
+  "pageRoute": "/issues",
+  "type": "page",
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default State",
+      "description": "The default state of the page with typical data",
+      "routeParams": {},
+      "queryParams": {},
+      "mockAuth": {
+        "isAuthenticated": true,
+        "user": {
+          "id": "user-123",
+          "name": "Test User",
+          "email": "test@example.com",
+          "role": "user"
+        }
+      },
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "project-1",
+            "name": "Project Alpha"
+          },
+          {
+            "id": "project-2",
+            "name": "Project Beta"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-1",
+            "title": "Implement user authentication",
+            "description": "Create login and registration system",
+            "status": "pending",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "filePath": "/path/to/issue1",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          },
+          {
+            "issueId": "issue-2",
+            "title": "Design database schema",
+            "description": "Create ER diagram and schema for the application",
+            "status": "in-review",
+            "estimatedHours": 12,
+            "dependencies": [
+              "issue-1"
+            ],
+            "filePath": "/path/to/issue2",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          },
+          {
+            "issueId": "issue-3",
+            "title": "Implement API endpoints",
+            "description": "Create RESTful API endpoints for the application",
+            "status": "approved",
+            "estimatedHours": 15,
+            "dependencies": [
+              "issue-2"
+            ],
+            "filePath": "/path/to/issue3",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Page while data is being fetched",
+      "mockApi": {
+        "GET /api/projects": {
+          "__delay": 999999
+        },
+        "GET /api/issues": {
+          "__delay": 999999
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "error",
+      "name": "Error State",
+      "description": "Page when API returns an error",
+      "mockApi": {
+        "GET /api/projects": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        },
+        "GET /api/issues": {
+          "__error": {
+            "status": 500,
+            "message": "Server error"
+          }
+        }
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Page when there is no data",
+      "mockApi": {
+        "GET /api/projects": [],
+        "GET /api/issues": []
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "unauthenticated",
+      "name": "Not Logged In",
+      "description": "Page when user is not authenticated",
+      "mockAuth": {
+        "isAuthenticated": false
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "blocked-issues",
+      "name": "Blocked Issues",
+      "description": "Page with blocked issues",
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "project-1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-1",
+            "title": "Implement user authentication",
+            "description": "Create login and registration system",
+            "status": "pending",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "filePath": "/path/to/issue1",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          },
+          {
+            "issueId": "issue-2",
+            "title": "Design database schema",
+            "description": "Create ER diagram and schema for the application",
+            "status": "pending",
+            "estimatedHours": 12,
+            "dependencies": [
+              "issue-1"
+            ],
+            "filePath": "/path/to/issue2",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "in-review",
+      "name": "In Review State",
+      "description": "Page with issues in review",
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "project-1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-1",
+            "title": "Implement user authentication",
+            "description": "Create login and registration system",
+            "status": "in-review",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "filePath": "/path/to/issue1",
+            "projectId": "project-1",
+            "projectName": "Project Alpha",
+            "testStrategy": {
+              "manual_verification": "Verify that users can log in and register successfully."
+            }
+          }
+        ]
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "approved",
+      "name": "Approved State",
+      "description": "Page with approved issues",
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "project-1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-1",
+            "title": "Implement user authentication",
+            "description": "Create login and registration system",
+            "status": "approved",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "filePath": "/path/to/issue1",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "project-filter",
+      "name": "Project Filter",
+      "description": "Page with project filter applied",
+      "queryParams": {
+        "project": "project-1"
+      },
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "project-1",
+            "name": "Project Alpha"
+          },
+          {
+            "id": "project-2",
+            "name": "Project Beta"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-1",
+            "title": "Implement user authentication",
+            "description": "Create login and registration system",
+            "status": "pending",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "filePath": "/path/to/issue1",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {}
+    },
+    {
+      "id": "list-view",
+      "name": "List View",
+      "description": "Page in list view mode",
+      "mockApi": {
+        "GET /api/projects": [
+          {
+            "id": "project-1",
+            "name": "Project Alpha"
+          }
+        ],
+        "GET /api/issues": [
+          {
+            "issueId": "issue-1",
+            "title": "Implement user authentication",
+            "description": "Create login and registration system",
+            "status": "pending",
+            "estimatedHours": 8,
+            "dependencies": [],
+            "filePath": "/path/to/issue1",
+            "projectId": "project-1",
+            "projectName": "Project Alpha"
+          }
+        ]
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "project_id": "000-ai-code-review-assistant",
+  "project_name": "AI Code Review Assistant",
+  "job_stories": [
+    {
+      "job_story_id": "js_001",
+      "title": "Submit Code for Review",
+      "situation": "I have written code that I want to check for issues",
+      "motivation": "get AI-powered feedback quickly",
+      "outcome": "I can find and fix problems before committing",
+      "acceptance_criteria": [
+        {
+          "id": "ac_001_01",
+          "given": "I am on the Code Review page",
+          "when": "I paste JavaScript or TypeScript code into the editor",
+          "then": "The editor displays syntax highlighting for the detected language"
+        },
+        {
+          "id": "ac_001_02",
+          "given": "I have pasted code into the editor",
+          "when": "I click the 'Analyze Code' button",
+          "then": "A loading spinner appears with 'Analyzing...' message"
+        },
+        {
+          "id": "ac_001_03",
+          "given": "The AI is analyzing my code",
+          "when": "Analysis completes (within 10 seconds for <500 lines)",
+          "then": "The suggestions panel displays the results grouped by category"
+        },
+        {
+          "id": "ac_001_04",
+          "given": "The AI analysis fails",
+          "when": "An error occurs during analysis",
+          "then": "An error message is shown with a 'Retry' button"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_002",
+      "title": "Review and Understand Suggestions",
+      "situation": "the AI has analyzed my code and found issues",
+      "motivation": "understand what problems exist and why they matter",
+      "outcome": "I can learn and decide which issues to fix",
+      "acceptance_criteria": [
+        {
+          "id": "ac_002_01",
+          "given": "Suggestions are displayed in the panel",
+          "when": "I view the suggestions list",
+          "then": "Each suggestion shows a severity badge (Critical/Warning/Info) with appropriate color"
+        },
+        {
+          "id": "ac_002_02",
+          "given": "I see a suggestion in the list",
+          "when": "I click on the suggestion card",
+          "then": "The card expands to show the full AI explanation"
+        },
+        {
+          "id": "ac_002_03",
+          "given": "A suggestion card is expanded",
+          "when": "I view the suggestion details",
+          "then": "The editor scrolls to and highlights the relevant line of code"
+        },
+        {
+          "id": "ac_002_04",
+          "given": "Suggestions exist in multiple categories",
+          "when": "I click a category tab (Security, Bugs, Performance, Style)",
+          "then": "The list filters to show only suggestions in that category"
+        },
+        {
+          "id": "ac_002_05",
+          "given": "The AI found no issues in my code",
+          "when": "Analysis completes with zero suggestions",
+          "then": "A celebration empty state is shown saying 'No issues found!'"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_003",
+      "title": "Apply Suggested Fix",
+      "situation": "I see a suggestion that has an auto-fix available",
+      "motivation": "quickly apply the fix without manual editing",
+      "outcome": "I can resolve issues efficiently",
+      "acceptance_criteria": [
+        {
+          "id": "ac_003_01",
+          "given": "A suggestion has an available auto-fix",
+          "when": "I view the expanded suggestion card",
+          "then": "An 'Apply Fix' button is visible"
+        },
+        {
+          "id": "ac_003_02",
+          "given": "I click the 'Apply Fix' button",
+          "when": "The diff modal opens",
+          "then": "I see a side-by-side comparison with red for removed code and green for added code"
+        },
+        {
+          "id": "ac_003_03",
+          "given": "I am viewing the diff preview",
+          "when": "I click 'Apply Change' to confirm",
+          "then": "The code in the editor updates with the fix applied"
+        },
+        {
+          "id": "ac_003_04",
+          "given": "I have applied a fix",
+          "when": "The fix is applied successfully",
+          "then": "The suggestion card shows a green checkmark indicating 'Resolved'"
+        },
+        {
+          "id": "ac_003_05",
+          "given": "I have applied a fix",
+          "when": "Within 30 seconds of applying",
+          "then": "An 'Undo' button is visible that can revert the change"
+        }
+      ]
+    }
+  ]
+}

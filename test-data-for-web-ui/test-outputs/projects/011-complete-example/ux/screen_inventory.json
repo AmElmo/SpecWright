@@ -1,0 +1,145 @@
+{
+  "project_name": "User Profile Management",
+  "project_id": "011",
+  "total_screens": 6,
+  "screens": {
+    "add": [
+      {
+        "screen_id": "scr_001",
+        "screen_name": "Profile Settings Main",
+        "screen_type": "form",
+        "purpose": "Primary interface for viewing and editing user profile information",
+        "user_actions": [
+          "View current profile information",
+          "Edit personal details (name, email, bio, location)",
+          "Upload/change profile picture",
+          "Save changes",
+          "Cancel changes"
+        ],
+        "navigation_from": [
+          "Main navigation menu",
+          "User dropdown menu",
+          "Account settings hub"
+        ],
+        "navigation_to": [
+          "Password change screen",
+          "Privacy settings tab",
+          "Notification preferences tab",
+          "Account deletion screen"
+        ],
+        "priority": "critical"
+      },
+      {
+        "screen_id": "scr_002",
+        "screen_name": "Privacy Settings",
+        "screen_type": "settings",
+        "purpose": "Manage field-level privacy controls for profile information",
+        "user_actions": [
+          "Toggle privacy for each profile field",
+          "Preview public profile",
+          "Reset to default privacy settings"
+        ],
+        "navigation_from": [
+          "Profile Settings Main (tab switch)",
+          "Privacy link in navigation"
+        ],
+        "navigation_to": [
+          "Profile Settings Main",
+          "Public profile preview"
+        ],
+        "priority": "high"
+      },
+      {
+        "screen_id": "scr_003",
+        "screen_name": "Notification Preferences",
+        "screen_type": "settings",
+        "purpose": "Control notification delivery preferences across channels",
+        "user_actions": [
+          "Enable/disable email notifications by category",
+          "Enable/disable push notifications by category",
+          "Enable/disable SMS notifications (if applicable)",
+          "Send test notification",
+          "Save preferences"
+        ],
+        "navigation_from": [
+          "Profile Settings Main (tab switch)",
+          "Email notification links"
+        ],
+        "navigation_to": [
+          "Profile Settings Main"
+        ],
+        "priority": "high"
+      },
+      {
+        "screen_id": "scr_004",
+        "screen_name": "Change Password",
+        "screen_type": "form",
+        "purpose": "Secure password change interface",
+        "user_actions": [
+          "Enter current password",
+          "Enter new password",
+          "Confirm new password",
+          "View password strength indicator",
+          "Submit password change",
+          "Cancel"
+        ],
+        "navigation_from": [
+          "Profile Settings Main (password section link)",
+          "Security settings"
+        ],
+        "navigation_to": [
+          "Profile Settings Main (after success)",
+          "Login page (if all sessions logged out)"
+        ],
+        "priority": "critical"
+      },
+      {
+        "screen_id": "scr_005",
+        "screen_name": "Profile Picture Upload",
+        "screen_type": "modal",
+        "purpose": "Upload and crop profile picture",
+        "user_actions": [
+          "Select image from device",
+          "View image preview",
+          "Crop/adjust image",
+          "Remove current picture",
+          "Confirm upload",
+          "Cancel"
+        ],
+        "navigation_from": [
+          "Profile Settings Main (click avatar)"
+        ],
+        "navigation_to": [
+          "Profile Settings Main (after upload)"
+        ],
+        "priority": "high"
+      },
+      {
+        "screen_id": "scr_006",
+        "screen_name": "Delete Account",
+        "screen_type": "modal",
+        "purpose": "Multi-step account deletion with confirmations",
+        "user_actions": [
+          "Read deletion consequences",
+          "Re-authenticate",
+          "Confirm deletion intent",
+          "Download personal data (GDPR)",
+          "Final confirmation",
+          "Cancel process"
+        ],
+        "navigation_from": [
+          "Profile Settings Main (danger zone link)"
+        ],
+        "navigation_to": [
+          "Login page (after deletion)",
+          "Profile Settings Main (if cancelled)"
+        ],
+        "priority": "high"
+      }
+    ],
+    "edit": [],
+    "delete": []
+  },
+  "notes": "All screens follow consistent design system. Mobile-responsive layouts required for all screens. Focus on progressive disclosure - advanced options hidden until needed."
+}
+

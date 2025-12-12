@@ -1,0 +1,25 @@
+{
+  "project_request": "AI-powered code review that analyzes code and suggests improvements with one-click apply.",
+  "questions": [
+    {
+      "question": "How should users submit code for review?",
+      "options": ["Paste into text area", "File upload", "GitHub PR integration", "All three"],
+      "answer": "Paste into text area"
+    },
+    {
+      "question": "How should suggestions be displayed?",
+      "options": ["Inline in code (like IDE)", "Side panel list", "Both views available"],
+      "answer": "Both views available"
+    },
+    {
+      "question": "What should happen when a user applies a suggested fix?",
+      "options": ["Replace in editor immediately", "Show diff first, then apply", "Copy to clipboard"],
+      "answer": "Show diff first, then apply"
+    },
+    {
+      "question": "Should users be able to configure which categories of issues to check?",
+      "options": ["Yes, per-review", "Yes, in settings", "No, always check all"],
+      "answer": "Both: defaults in settings with quick toggles available per review"
+    }
+  ]
+}

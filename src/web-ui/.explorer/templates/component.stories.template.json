@@ -1,0 +1,84 @@
+{
+  "$schema": "https://explorer.dev/schemas/component-story.json",
+  "componentName": "ExampleComponent",
+  "componentPath": "src/components/ExampleComponent.tsx",
+  "type": "component",
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "default",
+      "name": "Default",
+      "description": "The default state of the component with typical data",
+      "props": {
+        "exampleProp": "example value"
+      },
+      "mockApi": {
+        "GET /api/example": {
+          "id": "123",
+          "name": "Example Data",
+          "status": "active"
+        }
+      },
+      "mockServerActions": {
+        "@/lib/actions": {
+          "createItem": {
+            "returns": { "id": "new-123", "success": true }
+          },
+          "deleteItem": {
+            "returns": { "success": true }
+          }
+        }
+      },
+      "mockContext": {}
+    },
+    {
+      "id": "loading",
+      "name": "Loading State",
+      "description": "Component while data is being fetched",
+      "props": {},
+      "mockApi": {
+        "GET /api/example": { "__delay": 999999 }
+      },
+      "mockServerActions": {
+        "@/lib/actions": {
+          "createItem": {
+            "delay": 999999,
+            "returns": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "error",
+      "name": "Error State",
+      "description": "Component when API returns an error",
+      "props": {},
+      "mockApi": {
+        "GET /api/example": { "__error": { "status": 500, "message": "Server error" } }
+      },
+      "mockServerActions": {
+        "@/lib/actions": {
+          "createItem": {
+            "throwError": "Failed to create item"
+          }
+        }
+      }
+    },
+    {
+      "id": "empty",
+      "name": "Empty State",
+      "description": "Component when there is no data",
+      "props": {},
+      "mockApi": {
+        "GET /api/example": null
+      },
+      "mockServerActions": {}
+    }
+  ],
+  "themeVariants": ["light", "dark"],
+  "viewports": [
+    { "name": "mobile", "width": 375, "height": 667 },
+    { "name": "tablet", "width": 768, "height": 1024 },
+    { "name": "desktop", "width": 1280, "height": 800 }
+  ]
+}

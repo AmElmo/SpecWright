@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   LINEAR-INSPIRED DESIGN SYSTEM
+   Clean, minimal, professional
+   ============================================ */
+
+@layer base {
+  :root {
+    /* Backgrounds - Linear uses very subtle grays */
+    --background: 0 0% 98%;
+    --background-secondary: 0 0% 96%;
+    --foreground: 0 0% 9%;
+    
+    /* Cards/Surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    
+    /* Popovers */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    
+    /* Primary - Linear's signature violet/indigo */
+    --primary: 235 69% 61%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - Subtle gray */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 32%;
+    
+    /* Muted - For subdued elements */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 46%;
+    
+    /* Accent */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders - Very subtle */
+    --border: 0 0% 90%;
+    --border-light: 0 0% 94%;
+    --input: 0 0% 90%;
+    --ring: 235 69% 61%;
+    
+    /* Sidebar */
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-active: 0 0% 96%;
+    --sidebar-hover: 0 0% 94%;
+    
+    /* Status Colors - Linear-inspired muted tones */
+    --status-backlog: 0 0% 64%;
+    --status-planned: 210 100% 50%;
+    --status-in-progress: 44 100% 50%;
+    --status-completed: 142 76% 36%;
+    
+    /* Spacing & Radius */
+    --radius: 6px;
+    --radius-sm: 4px;
+    --radius-lg: 8px;
+    
+    /* Shadows - Very subtle */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    
+    /* Fonts */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+}
+
+/* Global CSS Reset and Base Styles */
+@layer base {
+  * {
+    @apply border-border;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+  }
+
+  code {
+    font-family: var(--font-mono);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  /* Improved focus styles */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+}
+
+/* Linear-style utility classes */
+@layer components {
+  /* Subtle hover background */
+  .hover-bg {
+    transition: background-color 0.1s ease;
+  }
+  
+  .hover-bg:hover {
+    background-color: hsl(var(--sidebar-hover));
+  }
+
+  /* Active item highlight */
+  .active-item {
+    background-color: hsl(var(--sidebar-active));
+  }
+
+  /* Status dots */
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot-backlog {
+    background-color: hsl(var(--status-backlog));
+  }
+
+  .status-dot-planned {
+    background-color: hsl(var(--status-planned));
+  }
+
+  .status-dot-in-progress {
+    background-color: hsl(var(--status-in-progress));
+  }
+
+  .status-dot-completed {
+    background-color: hsl(var(--status-completed));
+  }
+
+  /* Linear-style spinner */
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .linear-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid hsl(var(--border));
+    border-top-color: hsl(var(--primary));
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* Subtle card hover */
+  .card-hover {
+    transition: all 0.15s ease;
+  }
+
+  .card-hover:hover {
+    background-color: hsl(0 0% 99%);
+  }
+
+  /* Text truncation */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Custom scrollbar - Linear style */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: hsl(0 0% 80%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(0 0% 70%);
+}
+
+/* Selection */
+::selection {
+  background-color: hsl(235 69% 61% / 0.2);
+}

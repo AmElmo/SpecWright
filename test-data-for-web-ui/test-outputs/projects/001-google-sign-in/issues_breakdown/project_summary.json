@@ -1,0 +1,249 @@
+{
+  "project_name": "Google Sign-In Integration",
+  "project_id": "001",
+  "total_estimated_hours": 86,
+  "average_complexity": 5.3,
+  "total_issues": 18,
+  "generated_at": "2024-11-15T10:30:00Z",
+  
+  "issues_by_category": {
+    "frontend": 5,
+    "backend": 6,
+    "database": 1,
+    "testing": 3,
+    "devops": 3
+  },
+  
+  "issues_by_complexity": {
+    "low": 5,
+    "medium": 8,
+    "high": 5
+  },
+  
+  "issues_list": [
+    {
+      "issue_id": "ENG-001",
+      "title": "Set up Google OAuth configuration and credentials",
+      "status": "approved",
+      "category": "backend",
+      "complexity": 3,
+      "estimated_hours": 2,
+      "priority": "critical",
+      "dependencies": [],
+      "description": "Configure Google Cloud Console, create OAuth 2.0 credentials, set up redirect URIs",
+      "file_path": "issues/ENG-001.md"
+    },
+    {
+      "issue_id": "ENG-002",
+      "title": "Create database schema for users table",
+      "status": "approved",
+      "category": "database",
+      "complexity": 4,
+      "estimated_hours": 3,
+      "priority": "critical",
+      "dependencies": [],
+      "description": "Design and implement PostgreSQL schema with Prisma, create migrations",
+      "file_path": "issues/ENG-002.md"
+    },
+    {
+      "issue_id": "ENG-003",
+      "title": "Set up Redis for session storage",
+      "status": "approved",
+      "category": "devops",
+      "complexity": 3,
+      "estimated_hours": 2,
+      "priority": "high",
+      "dependencies": [],
+      "description": "Configure Redis instance, set up connection pool, implement session store",
+      "file_path": "issues/ENG-003.md"
+    },
+    {
+      "issue_id": "ENG-004",
+      "title": "Implement backend OAuth endpoints",
+      "status": "in-review",
+      "category": "backend",
+      "complexity": 8,
+      "estimated_hours": 8,
+      "priority": "critical",
+      "dependencies": ["ENG-001", "ENG-002", "ENG-003"],
+      "description": "Create /auth/google and /auth/google/callback endpoints with Passport.js",
+      "file_path": "issues/ENG-004.md"
+    },
+    {
+      "issue_id": "ENG-005",
+      "title": "Implement JWT token generation and validation",
+      "status": "in-review",
+      "category": "backend",
+      "complexity": 6,
+      "estimated_hours": 5,
+      "priority": "critical",
+      "dependencies": ["ENG-004"],
+      "description": "Set up jsonwebtoken, create middleware for token validation",
+      "file_path": "issues/ENG-005.md"
+    },
+    {
+      "issue_id": "ENG-006",
+      "title": "Create React authentication context",
+      "status": "pending",
+      "category": "frontend",
+      "complexity": 5,
+      "estimated_hours": 4,
+      "priority": "high",
+      "dependencies": [],
+      "description": "Implement AuthContext with React Context API for global auth state",
+      "file_path": "issues/ENG-006.md"
+    },
+    {
+      "issue_id": "ENG-007",
+      "title": "Build Google Sign-In button component",
+      "status": "pending",
+      "category": "frontend",
+      "complexity": 4,
+      "estimated_hours": 3,
+      "priority": "high",
+      "dependencies": ["ENG-006"],
+      "description": "Create reusable GoogleSignInButton component using @react-oauth/google",
+      "file_path": "issues/ENG-007.md"
+    },
+    {
+      "issue_id": "ENG-008",
+      "title": "Implement OAuth callback handling in frontend",
+      "status": "pending",
+      "category": "frontend",
+      "complexity": 6,
+      "estimated_hours": 5,
+      "priority": "high",
+      "dependencies": ["ENG-007"],
+      "description": "Handle redirect from Google, exchange code for token, store JWT",
+      "file_path": "issues/ENG-008.md"
+    },
+    {
+      "issue_id": "ENG-009",
+      "title": "Create protected route component",
+      "status": "pending",
+      "category": "frontend",
+      "complexity": 4,
+      "estimated_hours": 3,
+      "priority": "medium",
+      "dependencies": ["ENG-006"],
+      "description": "Build ProtectedRoute wrapper that checks authentication before rendering",
+      "file_path": "issues/ENG-009.md"
+    },
+    {
+      "issue_id": "ENG-010",
+      "title": "Implement logout functionality",
+      "status": "pending",
+      "category": "backend",
+      "complexity": 3,
+      "estimated_hours": 2,
+      "priority": "medium",
+      "dependencies": ["ENG-004"],
+      "description": "Create logout endpoint, invalidate session, clear Redis cache",
+      "file_path": "issues/ENG-010.md"
+    },
+    {
+      "issue_id": "ENG-011",
+      "title": "Add error handling UI components",
+      "status": "pending",
+      "category": "frontend",
+      "complexity": 5,
+      "estimated_hours": 4,
+      "priority": "medium",
+      "dependencies": ["ENG-008"],
+      "description": "Create error toast/modal for auth failures with retry options",
+      "file_path": "issues/ENG-011.md"
+    },
+    {
+      "issue_id": "ENG-012",
+      "title": "Implement rate limiting middleware",
+      "status": "pending",
+      "category": "backend",
+      "complexity": 4,
+      "estimated_hours": 3,
+      "priority": "high",
+      "dependencies": ["ENG-004"],
+      "description": "Add express-rate-limit to auth endpoints to prevent abuse",
+      "file_path": "issues/ENG-012.md"
+    },
+    {
+      "issue_id": "ENG-013",
+      "title": "Write unit tests for backend auth logic",
+      "status": "pending",
+      "category": "testing",
+      "complexity": 6,
+      "estimated_hours": 6,
+      "priority": "medium",
+      "dependencies": ["ENG-004", "ENG-005"],
+      "description": "Test OAuth flow, JWT validation, session management with Jest",
+      "file_path": "issues/ENG-013.md"
+    },
+    {
+      "issue_id": "ENG-014",
+      "title": "Write integration tests for API endpoints",
+      "status": "pending",
+      "category": "testing",
+      "complexity": 7,
+      "estimated_hours": 8,
+      "priority": "medium",
+      "dependencies": ["ENG-013"],
+      "description": "Test full auth flow with Supertest and mocked Google API",
+      "file_path": "issues/ENG-014.md"
+    },
+    {
+      "issue_id": "ENG-015",
+      "title": "Write E2E tests for sign-in flow",
+      "status": "pending",
+      "category": "testing",
+      "complexity": 8,
+      "estimated_hours": 10,
+      "priority": "low",
+      "dependencies": ["ENG-008", "ENG-011"],
+      "description": "Test complete user journey with Playwright or Cypress",
+      "file_path": "issues/ENG-015.md"
+    },
+    {
+      "issue_id": "ENG-016",
+      "title": "Set up monitoring and logging",
+      "status": "pending",
+      "category": "devops",
+      "complexity": 5,
+      "estimated_hours": 4,
+      "priority": "medium",
+      "dependencies": ["ENG-004"],
+      "description": "Integrate Datadog or similar for auth metrics and error tracking",
+      "file_path": "issues/ENG-016.md"
+    },
+    {
+      "issue_id": "ENG-017",
+      "title": "Create deployment configuration",
+      "status": "pending",
+      "category": "devops",
+      "complexity": 6,
+      "estimated_hours": 5,
+      "priority": "high",
+      "dependencies": ["ENG-013", "ENG-014"],
+      "description": "Set up Docker, CI/CD pipeline, environment variables",
+      "file_path": "issues/ENG-017.md"
+    },
+    {
+      "issue_id": "ENG-018",
+      "title": "Perform security audit",
+      "status": "pending",
+      "category": "backend",
+      "complexity": 7,
+      "estimated_hours": 6,
+      "priority": "critical",
+      "dependencies": ["ENG-004", "ENG-005", "ENG-012"],
+      "description": "Review CSRF protection, token storage, rate limiting, and HTTPS enforcement",
+      "file_path": "issues/ENG-018.md"
+    }
+  ],
+  
+  "definition_of_done": [
+    "All OAuth endpoints tested and working",
+    "User authentication persists across sessions",
+    "Security audit passed with no critical issues",
+    "All tests passing (unit, integration, E2E)",
+    "Documentation updated with setup instructions"
+  ]
+}

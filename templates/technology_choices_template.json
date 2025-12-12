@@ -1,0 +1,50 @@
+{
+  "project_name": "[FEATURE_NAME_PLACEHOLDER]",
+  "technology_decisions": [
+    {
+      "category": "[TECHNOLOGY_CATEGORY_PLACEHOLDER]",
+      "description": "[WHY_THIS_CHOICE_IS_NEEDED_PLACEHOLDER]",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "[TECHNOLOGY_OPTION_NAME_PLACEHOLDER]",
+          "description": "[TECHNOLOGY_DESCRIPTION_PLACEHOLDER]",
+          "version": "[VERSION_PLACEHOLDER]",
+          "documentation_url": "[DOCUMENTATION_URL_PLACEHOLDER]",
+          "github_url": "[GITHUB_URL_PLACEHOLDER]",
+          "pros": [
+            "[PRO_1_PLACEHOLDER]",
+            "[PRO_2_PLACEHOLDER]"
+          ],
+          "cons": [
+            "[CON_1_PLACEHOLDER]",
+            "[CON_2_PLACEHOLDER]"
+          ],
+          "trade_offs": [
+            "[TRADEOFF_1_PLACEHOLDER]",
+            "[TRADEOFF_2_PLACEHOLDER]"
+          ],
+          "maturity": "[MATURITY_LEVEL_PLACEHOLDER]",
+          "community_size": "[COMMUNITY_SIZE_PLACEHOLDER]",
+          "last_updated": "[LAST_UPDATED_PLACEHOLDER]",
+          "implementation_complexity": "[COMPLEXITY_PLACEHOLDER]",
+          "estimated_time": "[ESTIMATED_TIME_PLACEHOLDER]",
+          "recommended": false,
+          "recommendation_reason": "[RECOMMENDATION_REASON_PLACEHOLDER]"
+        }
+      ],
+      "user_choice": "",
+      "user_choice_description": "",
+      "user_choice_version": "",
+      "user_reason": "",
+      "final_decision": ""
+    }
+  ],
+  "summary": {
+    "total_decisions": 0,
+    "decisions_made": 0,
+    "estimated_setup_time": "[SETUP_TIME_PLACEHOLDER]",
+    "estimated_learning_curve": "[LEARNING_CURVE_PLACEHOLDER]",
+    "overall_complexity": "[COMPLEXITY_LEVEL_PLACEHOLDER]"
+  }
+}

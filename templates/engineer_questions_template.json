@@ -1,0 +1,41 @@
+{
+  "project_request": "[PROJECT_REQUEST_PLACEHOLDER]",
+  "questions": [
+    {
+      "question": "[PERFORMANCE_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "[CONCURRENT_USERS_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "[SECURITY_DATA_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "[EXTERNAL_SERVICES_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "[DATA_STORAGE_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "[TECHNOLOGY_CONSTRAINTS_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    },
+    {
+      "question": "[SCALABILITY_QUESTION_PLACEHOLDER]",
+      "options": [],
+      "answer": ""
+    }
+  ]
+}
+

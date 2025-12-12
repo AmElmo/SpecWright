@@ -1,0 +1,25 @@
+{
+  "project_request": "AI-powered code review that analyzes code and suggests improvements with one-click apply.",
+  "questions": [
+    {
+      "question": "Which AI model/service should power the code review?",
+      "options": ["OpenAI GPT-4", "Anthropic Claude", "Self-hosted model", "Multiple with fallback"],
+      "answer": "Anthropic Claude"
+    },
+    {
+      "question": "How should we handle rate limiting and costs?",
+      "options": ["Per-user daily limit", "Token budget per review", "Unlimited with queue"],
+      "answer": "Token budget per review"
+    },
+    {
+      "question": "Should analysis happen client-side or server-side?",
+      "options": ["Client-side (API key in browser)", "Server-side (our API key)", "Hybrid"],
+      "answer": "Server-side (our API key)"
+    },
+    {
+      "question": "How should we structure the AI prompt for consistent results?",
+      "options": ["Single prompt", "Multi-step chain", "Category-specific prompts"],
+      "answer": "Category-specific prompts"
+    }
+  ]
+}

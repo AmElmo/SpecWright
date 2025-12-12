@@ -1,0 +1,204 @@
+{
+  "project_name": "User Profile Management",
+  "project_id": "011",
+  "screens": [
+    {
+      "screen_id": "scr_001",
+      "screen_name": "Profile Settings Main",
+      "components": [
+        {
+          "component_id": "comp_001",
+          "component_type": "avatar",
+          "name": "Profile Picture",
+          "properties": {
+            "size": "120px",
+            "shape": "circle",
+            "clickable": true,
+            "fallback": "user initials"
+          },
+          "states": ["default", "hover", "uploading"],
+          "interactions": "Click to open upload modal"
+        },
+        {
+          "component_id": "comp_002",
+          "component_type": "form",
+          "name": "Profile Information Form",
+          "fields": [
+            {
+              "field_name": "full_name",
+              "field_type": "text_input",
+              "label": "Full Name",
+              "required": true,
+              "validation": "min 2 chars, max 100 chars",
+              "placeholder": "Enter your full name"
+            },
+            {
+              "field_name": "email",
+              "field_type": "email_input",
+              "label": "Email Address",
+              "required": true,
+              "validation": "valid email format, unique",
+              "helper_text": "We'll send a confirmation email"
+            },
+            {
+              "field_name": "bio",
+              "field_type": "textarea",
+              "label": "Bio",
+              "required": false,
+              "validation": "max 500 chars",
+              "character_counter": true,
+              "rows": 4
+            },
+            {
+              "field_name": "location",
+              "field_type": "text_input",
+              "label": "Location",
+              "required": false,
+              "validation": "max 100 chars",
+              "placeholder": "City, Country"
+            },
+            {
+              "field_name": "website",
+              "field_type": "url_input",
+              "label": "Website",
+              "required": false,
+              "validation": "valid URL format",
+              "placeholder": "https://"
+            }
+          ],
+          "actions": [
+            {
+              "action_type": "submit",
+              "label": "Save Changes",
+              "style": "primary",
+              "loading_state": true
+            },
+            {
+              "action_type": "cancel",
+              "label": "Cancel",
+              "style": "secondary"
+            }
+          ]
+        },
+        {
+          "component_id": "comp_003",
+          "component_type": "tab_navigation",
+          "name": "Settings Tabs",
+          "tabs": [
+            {"label": "Profile", "route": "/settings/profile"},
+            {"label": "Privacy", "route": "/settings/privacy"},
+            {"label": "Notifications", "route": "/settings/notifications"},
+            {"label": "Password", "route": "/settings/password"}
+          ]
+        }
+      ]
+    },
+    {
+      "screen_id": "scr_002",
+      "screen_name": "Privacy Settings",
+      "components": [
+        {
+          "component_id": "comp_004",
+          "component_type": "toggle_list",
+          "name": "Privacy Controls",
+          "items": [
+            {
+              "field": "email",
+              "label": "Email Address",
+              "default_state": "private",
+              "description": "Only you can see this"
+            },
+            {
+              "field": "bio",
+              "label": "Bio",
+              "default_state": "public",
+              "description": "Visible to everyone"
+            },
+            {
+              "field": "location",
+              "label": "Location",
+              "default_state": "public",
+              "description": "Visible to everyone"
+            },
+            {
+              "field": "website",
+              "label": "Website",
+              "default_state": "public",
+              "description": "Visible to everyone"
+            },
+            {
+              "field": "profile_picture",
+              "label": "Profile Picture",
+              "default_state": "public",
+              "description": "Visible to everyone"
+            }
+          ]
+        },
+        {
+          "component_id": "comp_005",
+          "component_type": "button",
+          "name": "Preview Profile Button",
+          "label": "Preview Public Profile",
+          "style": "secondary",
+          "action": "Open profile preview in new tab"
+        }
+      ]
+    },
+    {
+      "screen_id": "scr_003",
+      "screen_name": "Notification Preferences",
+      "components": [
+        {
+          "component_id": "comp_006",
+          "component_type": "toggle_group",
+          "name": "Email Notifications",
+          "items": [
+            {
+              "id": "email_account",
+              "label": "Account Activity",
+              "description": "Login alerts, password changes",
+              "default_state": true,
+              "disabled": false
+            },
+            {
+              "id": "email_updates",
+              "label": "Product Updates",
+              "description": "New features, announcements",
+              "default_state": true,
+              "disabled": false
+            },
+            {
+              "id": "email_marketing",
+              "label": "Marketing",
+              "description": "Promotional emails, newsletters",
+              "default_state": false,
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "component_id": "comp_007",
+          "component_type": "toggle_group",
+          "name": "Push Notifications",
+          "items": [
+            {
+              "id": "push_messages",
+              "label": "Messages",
+              "description": "New direct messages",
+              "default_state": true,
+              "disabled": false
+            },
+            {
+              "id": "push_updates",
+              "label": "Updates",
+              "description": "Activity on your content",
+              "default_state": true,
+              "disabled": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

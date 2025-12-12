@@ -1,0 +1,1123 @@
+{
+  "project_id": "000-ai-code-review-assistant",
+  "project_name": "AI Code Review Assistant",
+  "screens": [
+    {
+      "id": "code-review-main",
+      "name": "Code Review Editor",
+      "route": "/code-review",
+      "description": "Main split-view interface where users paste code and see AI suggestions",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "AI Code Review",
+            "children": [
+              { "type": "tabs", "tabs": ["Review", "History", "Settings"], "activeTab": "Review" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "badge", "text": "Pro Plan" },
+              { "type": "avatar", "size": "sm", "text": "JD" }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": "none",
+            "children": [
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "md",
+                "gap": "sm",
+                "children": [
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "align": "center",
+                    "children": [
+                      { "type": "heading", "text": "Code Input", "size": "sm" },
+                      {
+                        "type": "row",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "select", "placeholder": "JavaScript", "options": ["JavaScript", "TypeScript", "Python", "Go", "Rust"] },
+                          { "type": "button", "text": "Clear", "variant": "ghost" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "none",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "none",
+                        "children": [
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "1", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "function processUserData(data) {", "size": "xs" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "2", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "  const user = eval(data.query);", "size": "xs", "color": "error" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "3", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "  if (user.name == null) {", "size": "xs" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "4", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "    return { error: 'No user' };", "size": "xs" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "5", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "  }", "size": "xs" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "6", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "  return user;", "size": "xs" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "7", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "}", "size": "xs" }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  { "type": "spacer", "size": "sm" },
+                  { "type": "button", "text": "🔍 Analyze Code", "variant": "primary", "fullWidth": true }
+                ]
+              },
+              { "type": "divider", "direction": "vertical" },
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "md",
+                "gap": "md",
+                "children": [
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "align": "center",
+                    "children": [
+                      { "type": "heading", "text": "Review Results", "size": "sm" },
+                      {
+                        "type": "row",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "badge", "text": "3 issues", "variant": "warning" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "button", "text": "All", "variant": "secondary" },
+                      { "type": "button", "text": "Security", "variant": "ghost" },
+                      { "type": "button", "text": "Bugs", "variant": "ghost" },
+                      { "type": "button", "text": "Performance", "variant": "ghost" },
+                      { "type": "button", "text": "Style", "variant": "ghost" }
+                    ]
+                  },
+                  {
+                    "type": "stack",
+                    "gap": "sm",
+                    "children": [
+                      {
+                        "type": "card",
+                        "padding": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "sm",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "children": [
+                                  {
+                                    "type": "row",
+                                    "gap": "sm",
+                                    "children": [
+                                      { "type": "badge", "text": "Critical", "variant": "destructive" },
+                                      { "type": "text", "text": "Security Vulnerability", "size": "sm" }
+                                    ]
+                                  },
+                                  { "type": "text", "text": "Line 2", "size": "xs", "color": "muted" }
+                                ]
+                              },
+                              { "type": "text", "text": "Use of eval() is dangerous and can lead to code injection attacks.", "size": "xs", "color": "muted" },
+                              {
+                                "type": "row",
+                                "gap": "sm",
+                                "children": [
+                                  { "type": "button", "text": "View Fix", "variant": "outline" },
+                                  { "type": "button", "text": "Dismiss", "variant": "ghost" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "padding": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "sm",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "children": [
+                                  {
+                                    "type": "row",
+                                    "gap": "sm",
+                                    "children": [
+                                      { "type": "badge", "text": "Warning", "variant": "warning" },
+                                      { "type": "text", "text": "Potential Bug", "size": "sm" }
+                                    ]
+                                  },
+                                  { "type": "text", "text": "Line 3", "size": "xs", "color": "muted" }
+                                ]
+                              },
+                              { "type": "text", "text": "Using loose equality (==) with null. Consider using strict equality (===).", "size": "xs", "color": "muted" },
+                              {
+                                "type": "row",
+                                "gap": "sm",
+                                "children": [
+                                  { "type": "button", "text": "Apply Fix", "variant": "primary" },
+                                  { "type": "button", "text": "Dismiss", "variant": "ghost" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "padding": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "sm",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "children": [
+                                  {
+                                    "type": "row",
+                                    "gap": "sm",
+                                    "children": [
+                                      { "type": "badge", "text": "Info" },
+                                      { "type": "text", "text": "Missing Type Annotations", "size": "sm" }
+                                    ]
+                                  },
+                                  { "type": "text", "text": "Line 1", "size": "xs", "color": "muted" }
+                                ]
+                              },
+                              { "type": "text", "text": "Function parameter 'data' lacks type annotation. Consider adding TypeScript types.", "size": "xs", "color": "muted" },
+                              {
+                                "type": "row",
+                                "gap": "sm",
+                                "children": [
+                                  { "type": "button", "text": "View Fix", "variant": "outline" },
+                                  { "type": "button", "text": "Dismiss", "variant": "ghost" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Editor should feel like VS Code. Support paste with formatting preserved. Suggestions panel scrolls independently. Clicking a suggestion should highlight the relevant code line.",
+      "components_to_reuse": [
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" },
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Tabs", "path": "components/ui/Tabs.tsx" },
+        { "name": "Select", "path": "components/ui/Select.tsx" },
+        { "name": "Avatar", "path": "components/ui/Avatar.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "CodeEditor", "path": "components/code-review/CodeEditor.tsx", "description": "Monaco-based code editor with syntax highlighting and line numbers" },
+        { "name": "SuggestionCard", "path": "components/code-review/SuggestionCard.tsx", "description": "Card displaying AI suggestion with severity, description, and actions" },
+        { "name": "SuggestionsPanel", "path": "components/code-review/SuggestionsPanel.tsx", "description": "Scrollable panel containing filtered list of suggestions" },
+        { "name": "CategoryFilter", "path": "components/code-review/CategoryFilter.tsx", "description": "Tab-based filter for suggestion categories" }
+      ]
+    },
+    {
+      "id": "fix-preview-modal",
+      "name": "Fix Preview Modal",
+      "route": null,
+      "description": "Modal showing before/after diff before applying a suggested fix",
+      "wireframe": {
+        "type": "card",
+        "padding": "none",
+        "children": [
+          {
+            "type": "stack",
+            "gap": "none",
+            "children": [
+              {
+                "type": "row",
+                "padding": "md",
+                "justify": "between",
+                "align": "center",
+                "children": [
+                  {
+                    "type": "row",
+                    "gap": "sm",
+                    "children": [
+                      { "type": "heading", "text": "Preview Fix", "size": "md" },
+                      { "type": "badge", "text": "Security", "variant": "destructive" }
+                    ]
+                  },
+                  { "type": "icon-button", "icon": "✕" }
+                ]
+              },
+              { "type": "divider" },
+              {
+                "type": "stack",
+                "padding": "md",
+                "gap": "md",
+                "children": [
+                  { "type": "text", "text": "Replace eval() with JSON.parse() for safe data parsing", "size": "sm" },
+                  {
+                    "type": "row",
+                    "gap": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "text", "text": "⊖", "color": "error" },
+                              { "type": "label", "text": "Current Code" }
+                            ]
+                          },
+                          {
+                            "type": "card",
+                            "padding": "sm",
+                            "children": [
+                              {
+                                "type": "stack",
+                                "gap": "xs",
+                                "children": [
+                                  { "type": "text", "text": "function processUserData(data) {", "size": "xs" },
+                                  { "type": "text", "text": "  const user = eval(data.query);", "size": "xs", "color": "error" },
+                                  { "type": "text", "text": "  // ...", "size": "xs", "color": "muted" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "text", "text": "⊕", "color": "accent" },
+                              { "type": "label", "text": "After Fix" }
+                            ]
+                          },
+                          {
+                            "type": "card",
+                            "padding": "sm",
+                            "children": [
+                              {
+                                "type": "stack",
+                                "gap": "xs",
+                                "children": [
+                                  { "type": "text", "text": "function processUserData(data) {", "size": "xs" },
+                                  { "type": "text", "text": "  const user = JSON.parse(data.query);", "size": "xs", "color": "accent" },
+                                  { "type": "text", "text": "  // ...", "size": "xs", "color": "muted" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "alert",
+                    "text": "This change replaces dangerous eval() with safe JSON.parse(). Make sure your data is valid JSON.",
+                    "variant": "default"
+                  }
+                ]
+              },
+              { "type": "divider" },
+              {
+                "type": "row",
+                "padding": "md",
+                "justify": "end",
+                "gap": "sm",
+                "children": [
+                  { "type": "button", "text": "Cancel", "variant": "ghost" },
+                  { "type": "button", "text": "Apply Fix", "variant": "primary" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Use familiar diff colors: red background for removed, green background for added. Modal should be large enough to show meaningful context. Include clear explanation of what the fix does.",
+      "components_to_reuse": [
+        { "name": "Modal", "path": "components/ui/Modal.tsx" },
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" },
+        { "name": "Alert", "path": "components/ui/Alert.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "DiffViewer", "path": "components/code-review/DiffViewer.tsx", "description": "Side-by-side code diff with syntax highlighting" },
+        { "name": "CodeBlock", "path": "components/code-review/CodeBlock.tsx", "description": "Syntax-highlighted code display with line highlighting" }
+      ]
+    },
+    {
+      "id": "review-history",
+      "name": "Review History",
+      "route": "/code-review/history",
+      "description": "List of past code reviews with ability to re-open them",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "AI Code Review",
+            "children": [
+              { "type": "tabs", "tabs": ["Review", "History", "Settings"], "activeTab": "History" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "badge", "text": "Pro Plan" },
+              { "type": "avatar", "size": "sm", "text": "JD" }
+            ]
+          },
+          {
+            "type": "stack",
+            "padding": "lg",
+            "gap": "md",
+            "children": [
+              {
+                "type": "row",
+                "justify": "between",
+                "align": "center",
+                "children": [
+                  {
+                    "type": "stack",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "heading", "text": "Review History", "size": "xl" },
+                      { "type": "text", "text": "Your code reviews from the last 30 days", "color": "muted" }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "gap": "sm",
+                    "children": [
+                      { "type": "input", "placeholder": "Search reviews...", "icon": "🔍" },
+                      { "type": "select", "placeholder": "All Languages" }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "card",
+                "padding": "none",
+                "children": [
+                  {
+                    "type": "table",
+                    "headers": ["Date", "Language", "Lines", "Issues Found", "Fixed", "Actions"],
+                    "rows": [
+                      {
+                        "cells": [
+                          { "type": "text", "text": "Today, 2:34 PM", "size": "sm" },
+                          { "type": "badge", "text": "JavaScript" },
+                          { "type": "text", "text": "127 lines", "size": "sm", "color": "muted" },
+                          { "type": "row", "children": [
+                            { "type": "badge", "text": "2", "variant": "destructive" },
+                            { "type": "badge", "text": "3", "variant": "warning" },
+                            { "type": "badge", "text": "1" }
+                          ]},
+                          { "type": "text", "text": "4/6", "size": "sm" },
+                          { "type": "button", "text": "View", "variant": "ghost" }
+                        ]
+                      },
+                      {
+                        "cells": [
+                          { "type": "text", "text": "Today, 10:15 AM", "size": "sm" },
+                          { "type": "badge", "text": "TypeScript" },
+                          { "type": "text", "text": "84 lines", "size": "sm", "color": "muted" },
+                          { "type": "row", "children": [
+                            { "type": "badge", "text": "0", "variant": "default" },
+                            { "type": "badge", "text": "1", "variant": "warning" },
+                            { "type": "badge", "text": "2" }
+                          ]},
+                          { "type": "text", "text": "3/3", "size": "sm" },
+                          { "type": "button", "text": "View", "variant": "ghost" }
+                        ]
+                      },
+                      {
+                        "cells": [
+                          { "type": "text", "text": "Yesterday", "size": "sm" },
+                          { "type": "badge", "text": "Python" },
+                          { "type": "text", "text": "256 lines", "size": "sm", "color": "muted" },
+                          { "type": "row", "children": [
+                            { "type": "badge", "text": "1", "variant": "destructive" },
+                            { "type": "badge", "text": "5", "variant": "warning" },
+                            { "type": "badge", "text": "3" }
+                          ]},
+                          { "type": "text", "text": "7/9", "size": "sm" },
+                          { "type": "button", "text": "View", "variant": "ghost" }
+                        ]
+                      },
+                      {
+                        "cells": [
+                          { "type": "text", "text": "Dec 5, 2024", "size": "sm" },
+                          { "type": "badge", "text": "Go" },
+                          { "type": "text", "text": "189 lines", "size": "sm", "color": "muted" },
+                          { "type": "row", "children": [
+                            { "type": "badge", "text": "0", "variant": "default" },
+                            { "type": "badge", "text": "2", "variant": "warning" },
+                            { "type": "badge", "text": "4" }
+                          ]},
+                          { "type": "text", "text": "6/6", "size": "sm" },
+                          { "type": "button", "text": "View", "variant": "ghost" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "row",
+                "justify": "between",
+                "align": "center",
+                "children": [
+                  { "type": "text", "text": "Showing 1-4 of 23 reviews", "size": "sm", "color": "muted" },
+                  {
+                    "type": "row",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "button", "text": "←", "variant": "outline" },
+                      { "type": "button", "text": "1", "variant": "secondary" },
+                      { "type": "button", "text": "2", "variant": "outline" },
+                      { "type": "button", "text": "3", "variant": "outline" },
+                      { "type": "button", "text": "→", "variant": "outline" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Show last 30 days by default. Clicking 'View' opens the review in read-only mode. Sort by date descending. Color-code issue counts by severity.",
+      "components_to_reuse": [
+        { "name": "Table", "path": "components/ui/Table.tsx" },
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" },
+        { "name": "Input", "path": "components/ui/Input.tsx" },
+        { "name": "Select", "path": "components/ui/Select.tsx" },
+        { "name": "Pagination", "path": "components/ui/Pagination.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "ReviewHistoryTable", "path": "components/code-review/ReviewHistoryTable.tsx", "description": "Specialized table for displaying review history with severity badges" },
+        { "name": "HistoryFilters", "path": "components/code-review/HistoryFilters.tsx", "description": "Search and filter controls for history" }
+      ]
+    },
+    {
+      "id": "settings-preferences",
+      "name": "Review Preferences",
+      "route": "/settings/code-review",
+      "description": "Settings page for configuring which categories the AI checks and review behavior",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "AI Code Review",
+            "children": [
+              { "type": "tabs", "tabs": ["Review", "History", "Settings"], "activeTab": "Settings" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "badge", "text": "Pro Plan" },
+              { "type": "avatar", "size": "sm", "text": "JD" }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": "lg",
+            "padding": "lg",
+            "children": [
+              {
+                "type": "sidebar",
+                "children": [
+                  { "type": "button", "text": "Code Review", "variant": "secondary", "fullWidth": true },
+                  { "type": "button", "text": "Account", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Notifications", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Integrations", "variant": "ghost", "fullWidth": true },
+                  { "type": "button", "text": "Billing", "variant": "ghost", "fullWidth": true }
+                ]
+              },
+              {
+                "type": "stack",
+                "gap": "lg",
+                "children": [
+                  {
+                    "type": "stack",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "heading", "text": "Code Review Settings", "size": "xl" },
+                      { "type": "text", "text": "Configure how the AI analyzes your code", "color": "muted" }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "lg",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "heading", "text": "Categories to Check", "size": "sm" },
+                              { "type": "text", "text": "Select which types of issues the AI should look for", "size": "sm", "color": "muted" }
+                            ]
+                          },
+                          { "type": "divider" },
+                          {
+                            "type": "stack",
+                            "gap": "md",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      {
+                                        "type": "row",
+                                        "gap": "sm",
+                                        "children": [
+                                          { "type": "text", "text": "🔒", "size": "lg" },
+                                          { "type": "text", "text": "Security Vulnerabilities", "size": "sm" }
+                                        ]
+                                      },
+                                      { "type": "text", "text": "SQL injection, XSS, eval(), unsafe patterns", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": true }
+                                ]
+                              },
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      {
+                                        "type": "row",
+                                        "gap": "sm",
+                                        "children": [
+                                          { "type": "text", "text": "🐛", "size": "lg" },
+                                          { "type": "text", "text": "Bugs & Logic Errors", "size": "sm" }
+                                        ]
+                                      },
+                                      { "type": "text", "text": "Null references, type mismatches, edge cases", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": true }
+                                ]
+                              },
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      {
+                                        "type": "row",
+                                        "gap": "sm",
+                                        "children": [
+                                          { "type": "text", "text": "⚡", "size": "lg" },
+                                          { "type": "text", "text": "Performance Issues", "size": "sm" }
+                                        ]
+                                      },
+                                      { "type": "text", "text": "Memory leaks, N+1 queries, unnecessary re-renders", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": true }
+                                ]
+                              },
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      {
+                                        "type": "row",
+                                        "gap": "sm",
+                                        "children": [
+                                          { "type": "text", "text": "✨", "size": "lg" },
+                                          { "type": "text", "text": "Code Style & Best Practices", "size": "sm" }
+                                        ]
+                                      },
+                                      { "type": "text", "text": "Naming conventions, formatting, documentation", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": false }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "lg",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "heading", "text": "Review Behavior", "size": "sm" },
+                              { "type": "text", "text": "Customize how reviews are performed", "size": "sm", "color": "muted" }
+                            ]
+                          },
+                          { "type": "divider" },
+                          {
+                            "type": "stack",
+                            "gap": "md",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      { "type": "text", "text": "Auto-detect Language", "size": "sm" },
+                                      { "type": "text", "text": "Automatically detect the programming language", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": true }
+                                ]
+                              },
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      { "type": "text", "text": "Save Review History", "size": "sm" },
+                                      { "type": "text", "text": "Keep reviews for 30 days", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": true }
+                                ]
+                              },
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "align": "center",
+                                "children": [
+                                  {
+                                    "type": "stack",
+                                    "gap": "xs",
+                                    "children": [
+                                      { "type": "text", "text": "Show AI Explanations", "size": "sm" },
+                                      { "type": "text", "text": "Include detailed explanations for each suggestion", "size": "xs", "color": "muted" }
+                                    ]
+                                  },
+                                  { "type": "toggle", "label": "", "checked": true }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "end",
+                    "gap": "sm",
+                    "children": [
+                      { "type": "button", "text": "Reset to Defaults", "variant": "ghost" },
+                      { "type": "button", "text": "Save Preferences", "variant": "primary" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Default: Security, Bugs, Performance ON; Style OFF. Changes should show toast confirmation. Settings are persisted to user profile.",
+      "components_to_reuse": [
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Toggle", "path": "components/ui/Toggle.tsx" },
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Tabs", "path": "components/ui/Tabs.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "SettingsSection", "path": "components/settings/SettingsSection.tsx", "description": "Reusable card section with header and content" },
+        { "name": "SettingsToggle", "path": "components/settings/SettingsToggle.tsx", "description": "Toggle row with label, description, and icon" },
+        { "name": "SettingsSidebar", "path": "components/settings/SettingsSidebar.tsx", "description": "Navigation sidebar for settings pages" }
+      ]
+    },
+    {
+      "id": "empty-state",
+      "name": "Empty State - No Code",
+      "route": "/code-review",
+      "description": "Initial state when no code has been pasted yet",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "AI Code Review",
+            "children": [
+              { "type": "tabs", "tabs": ["Review", "History", "Settings"], "activeTab": "Review" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "badge", "text": "Pro Plan" },
+              { "type": "avatar", "size": "sm", "text": "JD" }
+            ]
+          },
+          {
+            "type": "stack",
+            "align": "center",
+            "padding": "xl",
+            "gap": "lg",
+            "children": [
+              { "type": "spacer", "size": "xl" },
+              { "type": "image", "text": "📋", "width": 80, "height": 80 },
+              { "type": "heading", "text": "Paste your code to get started", "size": "lg" },
+              { "type": "text", "text": "Our AI will analyze your code for security vulnerabilities, bugs, and performance issues.", "color": "muted" },
+              { "type": "spacer", "size": "md" },
+              {
+                "type": "card",
+                "padding": "lg",
+                "children": [
+                  {
+                    "type": "stack",
+                    "align": "center",
+                    "gap": "md",
+                    "children": [
+                      { "type": "text", "text": "Drop a file here or paste code", "color": "muted" },
+                      { "type": "divider", "text": "or" },
+                      {
+                        "type": "row",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "button", "text": "📁 Upload File", "variant": "outline" },
+                          { "type": "button", "text": "📋 Paste from Clipboard", "variant": "primary" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "type": "spacer", "size": "lg" },
+              {
+                "type": "row",
+                "gap": "xl",
+                "children": [
+                  {
+                    "type": "stack",
+                    "align": "center",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "text", "text": "🔒", "size": "lg" },
+                      { "type": "text", "text": "Security", "size": "sm" }
+                    ]
+                  },
+                  {
+                    "type": "stack",
+                    "align": "center",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "text", "text": "🐛", "size": "lg" },
+                      { "type": "text", "text": "Bugs", "size": "sm" }
+                    ]
+                  },
+                  {
+                    "type": "stack",
+                    "align": "center",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "text", "text": "⚡", "size": "lg" },
+                      { "type": "text", "text": "Performance", "size": "sm" }
+                    ]
+                  },
+                  {
+                    "type": "stack",
+                    "align": "center",
+                    "gap": "xs",
+                    "children": [
+                      { "type": "text", "text": "✨", "size": "lg" },
+                      { "type": "text", "text": "Style", "size": "sm" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Support drag and drop for files. Support cmd+V to paste. Auto-detect language on paste.",
+      "components_to_reuse": [
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Card", "path": "components/ui/Card.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "DropZone", "path": "components/code-review/DropZone.tsx", "description": "File drop area with drag-and-drop support" },
+        { "name": "EmptyState", "path": "components/ui/EmptyState.tsx", "description": "Reusable empty state with icon, title, description, and actions" }
+      ]
+    },
+    {
+      "id": "loading-state",
+      "name": "Loading State - Analyzing",
+      "route": "/code-review",
+      "description": "State shown while AI is analyzing the code",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "AI Code Review",
+            "children": [
+              { "type": "tabs", "tabs": ["Review", "History", "Settings"], "activeTab": "Review" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "badge", "text": "Pro Plan" },
+              { "type": "avatar", "size": "sm", "text": "JD" }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": "none",
+            "children": [
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "md",
+                "gap": "sm",
+                "children": [
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "align": "center",
+                    "children": [
+                      { "type": "heading", "text": "Code Input", "size": "sm" },
+                      { "type": "badge", "text": "127 lines" }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "skeleton", "width": "100%", "height": 16 },
+                          { "type": "skeleton", "width": "80%", "height": 16 },
+                          { "type": "skeleton", "width": "90%", "height": 16 },
+                          { "type": "skeleton", "width": "70%", "height": 16 },
+                          { "type": "skeleton", "width": "85%", "height": 16 }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              { "type": "divider", "direction": "vertical" },
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "md",
+                "gap": "md",
+                "align": "center",
+                "children": [
+                  { "type": "spacer", "size": "xl" },
+                  { "type": "progress", "label": "Analyzing code..." },
+                  { "type": "heading", "text": "AI is reviewing your code", "size": "md" },
+                  { "type": "text", "text": "Checking for security issues, bugs, and performance problems...", "color": "muted" },
+                  { "type": "spacer", "size": "md" },
+                  {
+                    "type": "stack",
+                    "gap": "sm",
+                    "children": [
+                      {
+                        "type": "row",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "text", "text": "✓", "color": "accent" },
+                          { "type": "text", "text": "Parsing code structure", "size": "sm", "color": "muted" }
+                        ]
+                      },
+                      {
+                        "type": "row",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "text", "text": "✓", "color": "accent" },
+                          { "type": "text", "text": "Detecting language: JavaScript", "size": "sm", "color": "muted" }
+                        ]
+                      },
+                      {
+                        "type": "row",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "progress", "label": "" },
+                          { "type": "text", "text": "Running security analysis...", "size": "sm" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Show progress steps as they complete. Typical analysis takes 3-5 seconds. Allow cancel button.",
+      "components_to_reuse": [
+        { "name": "Progress", "path": "components/ui/Progress.tsx" },
+        { "name": "Skeleton", "path": "components/ui/Skeleton.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "AnalysisProgress", "path": "components/code-review/AnalysisProgress.tsx", "description": "Progress indicator with step-by-step status" }
+      ]
+    }
+  ],
+  "user_flows": [
+    {
+      "id": "flow_submit_and_review",
+      "name": "Submit Code and Review Suggestions",
+      "steps": [
+        { "step": 1, "screen": "empty-state", "action": "User arrives at the code review page and sees the empty state" },
+        { "step": 2, "screen": "empty-state", "action": "User pastes code using Cmd+V or clicks 'Paste from Clipboard'" },
+        { "step": 3, "screen": "loading-state", "action": "Loading spinner shows while AI analyzes the code" },
+        { "step": 4, "screen": "code-review-main", "action": "Suggestions appear in the right panel grouped by severity" },
+        { "step": 5, "screen": "code-review-main", "action": "User clicks a suggestion card to expand and see details" },
+        { "step": 6, "screen": "code-review-main", "action": "Editor scrolls to and highlights the relevant code line" }
+      ]
+    },
+    {
+      "id": "flow_apply_fix",
+      "name": "Apply a Suggested Fix",
+      "steps": [
+        { "step": 1, "screen": "code-review-main", "action": "User views a suggestion with an 'Apply Fix' button" },
+        { "step": 2, "screen": "code-review-main", "action": "User clicks 'View Fix' to preview the change" },
+        { "step": 3, "screen": "fix-preview-modal", "action": "Modal opens showing before/after diff" },
+        { "step": 4, "screen": "fix-preview-modal", "action": "User reviews the changes (red = removed, green = added)" },
+        { "step": 5, "screen": "fix-preview-modal", "action": "User clicks 'Apply Fix' to confirm" },
+        { "step": 6, "screen": "code-review-main", "action": "Code in editor updates, suggestion marked as resolved" },
+        { "step": 7, "screen": "code-review-main", "action": "Toast notification confirms fix was applied" }
+      ]
+    },
+    {
+      "id": "flow_view_history",
+      "name": "View Past Reviews",
+      "steps": [
+        { "step": 1, "screen": "code-review-main", "action": "User clicks 'History' tab in the navigation" },
+        { "step": 2, "screen": "review-history", "action": "User sees table of past reviews from last 30 days" },
+        { "step": 3, "screen": "review-history", "action": "User can filter by language or search for specific reviews" },
+        { "step": 4, "screen": "review-history", "action": "User clicks 'View' on a past review" },
+        { "step": 5, "screen": "code-review-main", "action": "Past review opens in read-only mode with original code and suggestions" }
+      ]
+    },
+    {
+      "id": "flow_configure_preferences",
+      "name": "Configure Review Preferences",
+      "steps": [
+        { "step": 1, "screen": "code-review-main", "action": "User clicks 'Settings' tab in the navigation" },
+        { "step": 2, "screen": "settings-preferences", "action": "User sees toggle switches for each category" },
+        { "step": 3, "screen": "settings-preferences", "action": "User toggles off 'Code Style & Best Practices'" },
+        { "step": 4, "screen": "settings-preferences", "action": "User clicks 'Save Preferences'" },
+        { "step": 5, "screen": "settings-preferences", "action": "Toast confirms 'Preferences saved'" },
+        { "step": 6, "screen": "code-review-main", "action": "Future reviews exclude style suggestions" }
+      ]
+    }
+  ]
+}
