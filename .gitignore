@@ -25,7 +25,10 @@ npm-debug.log*
 dist/
 
 # LLM logs and explorer cache
-src/web-ui/.explorer/llm-logs/
+src/web-ui/.explorer/
+
+# Auto-generated files
+src/web-ui/src/__Canvas.tsx
 
 # Internal TODO (use GitHub Issues for public tracking)
 TODO.md
@@ -37,5 +40,3 @@ invalid-location-test/
 .env
 .env.local
 .env.*.local
-
-TODO.md
