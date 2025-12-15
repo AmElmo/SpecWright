@@ -343,7 +343,7 @@ These frameworks inform SpecWright's AI-powered approach to specification-driven
 
 - **Issues**: [GitHub Issues](https://github.com/amelmo/specwright/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/amelmo/specwright/discussions)
-- **Email**: [julien@argil.ai](mailto:julien@argil.ai)
+- **Email**: [julien@argil.io](mailto:julien@argil.io)
 
 ---
 
