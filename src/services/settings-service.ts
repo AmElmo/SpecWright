@@ -24,6 +24,12 @@ export interface CostEstimationSettings {
   tier: ModelTier;
 }
 
+export interface LinearSettings {
+  apiKey?: string;
+  defaultTeamId?: string;
+  defaultTeamName?: string;
+}
+
 export interface Settings {
   aiTool: AITool;
   git: {
@@ -31,6 +37,7 @@ export interface Settings {
     strategy: GitStrategy;
   };
   costEstimation: CostEstimationSettings;
+  linear?: LinearSettings;
 }
 
 // ============================================================================
@@ -153,7 +160,8 @@ export function getDefaultSettings(): Settings {
     costEstimation: {
       enabled: true,  // Enabled by default
       tier: 'standard'
-    }
+    },
+    linear: undefined  // Not configured by default
   };
 }
 
@@ -176,13 +184,14 @@ export function loadSettings(): Settings {
         costEstimation: {
           ...getDefaultSettings().costEstimation,
           ...saved.costEstimation
-        }
+        },
+        linear: saved.linear  // Optional, may be undefined
       };
     }
   } catch (error) {
     logger.error('Error loading settings:', error);
   }
-  
+
   return getDefaultSettings();
 }
 
@@ -218,7 +227,10 @@ export function updateSettings(updates: Partial<Settings>): Settings {
     costEstimation: {
       ...current.costEstimation,
       ...(updates.costEstimation || {})
-    }
+    },
+    linear: updates.linear !== undefined
+      ? (updates.linear === null ? undefined : { ...current.linear, ...updates.linear })
+      : current.linear
   };
   saveSettings(updated);
   return updated;

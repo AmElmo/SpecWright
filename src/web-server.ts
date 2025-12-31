@@ -159,7 +159,7 @@ const renderIssueAsMarkdown = (issue: any): string => {
   return md;
 };
 
-export async function startWebServer(port = 3001) {
+export async function startWebServer(port = 5174) {
   const app = express();
   
   // Capture workspace path for Cursor targeting
@@ -2549,7 +2549,212 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   });
   
   // Request changes on task
-  
+
+  // ============================================================================
+  // Linear Integration Endpoints
+  // ============================================================================
+
+  // Get Linear configuration status
+  app.get('/api/linear/status', async (req, res) => {
+    try {
+      const { isLinearConfigured, getLinearConfig } = await import('./services/linear-sync-service.js');
+      const configured = isLinearConfigured();
+      const config = getLinearConfig();
+
+      res.json({
+        configured,
+        hasApiKey: !!config?.apiKey,
+        defaultTeamId: config?.defaultTeamId,
+        defaultTeamName: config?.defaultTeamName,
+      });
+    } catch (error) {
+      logger.error('Error getting Linear status:', error);
+      res.status(500).json({ error: 'Failed to get Linear status' });
+    }
+  });
+
+  // Save Linear configuration
+  app.put('/api/linear/config', async (req, res) => {
+    try {
+      const { apiKey, defaultTeamId, defaultTeamName } = req.body;
+      const { saveLinearConfig, validateLinearApiKey } = await import('./services/linear-sync-service.js');
+
+      // Validate API key if provided
+      if (apiKey) {
+        const valid = await validateLinearApiKey(apiKey);
+        if (!valid) {
+          return res.status(400).json({ error: 'Invalid Linear API key' });
+        }
+      }
+
+      saveLinearConfig({
+        apiKey,
+        defaultTeamId,
+        defaultTeamName,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Error saving Linear config:', error);
+      res.status(500).json({ error: 'Failed to save Linear configuration' });
+    }
+  });
+
+  // Get available Linear teams
+  app.get('/api/linear/teams', async (req, res) => {
+    try {
+      const { getLinearTeams } = await import('./services/linear-sync-service.js');
+      const teams = await getLinearTeams();
+      res.json({ teams });
+    } catch (error) {
+      logger.error('Error fetching Linear teams:', error);
+      res.status(500).json({ error: 'Failed to fetch Linear teams' });
+    }
+  });
+
+  // Validate Linear API key
+  app.post('/api/linear/validate', async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      if (!apiKey) {
+        return res.status(400).json({ error: 'API key required' });
+      }
+
+      const { validateLinearApiKey } = await import('./services/linear-sync-service.js');
+      const valid = await validateLinearApiKey(apiKey);
+      res.json({ valid });
+    } catch (error) {
+      logger.error('Error validating Linear API key:', error);
+      res.status(500).json({ error: 'Failed to validate API key' });
+    }
+  });
+
+  // Get project sync status
+  app.get('/api/projects/:projectId/linear-status', async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const { isProjectSynced, getProjectSyncState } = await import('./services/linear-sync-service.js');
+
+      const synced = isProjectSynced(projectId);
+      const syncState = synced ? getProjectSyncState(projectId) : null;
+
+      res.json({
+        synced,
+        syncState,
+      });
+    } catch (error) {
+      logger.error('Error getting project Linear status:', error);
+      res.status(500).json({ error: 'Failed to get project Linear status' });
+    }
+  });
+
+  // Sync project to Linear
+  app.post('/api/projects/:projectId/sync-to-linear', async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const { teamId } = req.body;
+
+      logger.debug(`\n🔄 [API] Syncing project ${projectId} to Linear`);
+
+      // Find the project folder
+      const projectsDir = path.join(OUTPUT_DIR, 'projects');
+      const projectFolders = fs.readdirSync(projectsDir);
+      const matchingFolder = projectFolders.find(f => f === projectId || f.startsWith(`${projectId}-`));
+
+      if (!matchingFolder) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const projectPath = path.join(projectsDir, matchingFolder);
+
+      // Load project metadata
+      const statusPath = path.join(projectPath, 'project_status.json');
+      let projectMetadata: any = { id: projectId };
+
+      if (fs.existsSync(statusPath)) {
+        try {
+          const statusContent = fs.readFileSync(statusPath, 'utf-8');
+          const status = JSON.parse(statusContent);
+          projectMetadata = {
+            id: projectId,
+            name: matchingFolder.replace(/^\d+-/, '').replace(/-/g, ' '),
+            ...status,
+          };
+        } catch (e) {
+          // Use basic metadata
+        }
+      }
+
+      // Load project request for description
+      const requestPath = path.join(projectPath, 'project_request.md');
+      if (fs.existsSync(requestPath)) {
+        projectMetadata.description = fs.readFileSync(requestPath, 'utf-8');
+      }
+
+      // Load issues
+      const issuesPath = path.join(projectPath, 'issues', 'issues.json');
+      let issues: any[] = [];
+
+      if (fs.existsSync(issuesPath)) {
+        try {
+          const issuesContent = fs.readFileSync(issuesPath, 'utf-8');
+          const issuesData = JSON.parse(issuesContent);
+          issues = (issuesData.issues || issuesData.issues_list || []).map((issue: any) => ({
+            issueId: issue.issue_id,
+            title: issue.title,
+            description: issue.description,
+            status: issue.status || 'pending',
+            estimatedHours: issue.estimated_hours || 0,
+            dependencies: issue.dependencies || [],
+            screensAffected: issue.screens_affected || [],
+            keyDecisions: issue.key_decisions || [],
+            acceptanceCriteria: (issue.acceptance_criteria || []).map((ac: any) =>
+              typeof ac === 'string' ? { id: '', description: ac } : { id: ac.id || '', description: ac.description || ac }
+            ),
+            technicalDetails: issue.technical_details,
+            testStrategy: issue.testing_strategy || issue.test_strategy,
+            humanInTheLoop: issue.human_in_the_loop || [],
+            projectId,
+            projectName: projectMetadata.name || matchingFolder,
+          }));
+        } catch (e) {
+          logger.error('Failed to parse issues:', e);
+        }
+      }
+
+      // Perform sync
+      const { syncProjectToLinear } = await import('./services/linear-sync-service.js');
+      const result = await syncProjectToLinear(projectId, projectMetadata, issues, teamId);
+
+      if (result.success) {
+        logger.debug(`✅ Project ${projectId} synced to Linear: ${result.linearProjectUrl}`);
+      } else {
+        logger.debug(`⚠️ Project ${projectId} sync completed with errors`);
+      }
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error syncing project to Linear:', error);
+      res.status(500).json({ error: 'Failed to sync project to Linear' });
+    }
+  });
+
+  // Get all synced projects
+  app.get('/api/linear/synced-projects', async (req, res) => {
+    try {
+      const { getSyncedProjects } = await import('./services/linear-sync-service.js');
+      const projects = getSyncedProjects();
+      res.json({ projects });
+    } catch (error) {
+      logger.error('Error getting synced projects:', error);
+      res.status(500).json({ error: 'Failed to get synced projects' });
+    }
+  });
+
+  // ============================================================================
+  // End Linear Integration Endpoints
+  // ============================================================================
+
   // Delete a project
   app.delete('/api/projects/:projectId', (req, res) => {
     try {

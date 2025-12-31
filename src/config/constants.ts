@@ -36,3 +36,7 @@ export const AGENTS_DIR = path.join(SPECWRIGHT_DIR, 'agents');
 export const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
 export const SESSION_DIR = path.join(OUTPUT_DIR, timestamp);
 
+// Web server port - using uncommon port to avoid conflicts
+// Port 5174 is unlikely to be used by other dev tools
+export const DEFAULT_PORT = 5174;
+
