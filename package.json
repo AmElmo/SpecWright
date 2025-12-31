@@ -1,6 +1,6 @@
 {
   "name": "specwright",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "AI-Powered Specification Engine - Transform Ideas into Specs",
   "type": "module",
   "main": "dist/specwright.js",

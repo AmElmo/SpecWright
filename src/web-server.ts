@@ -31,7 +31,7 @@ import {
 } from './services/status-service.js';
 import { getReconciledProjectStatus } from './services/reconciliation-service.js';
 import type { AgentType } from './types/project-status.js';
-import { parseIssueFile } from './services/issue-service.js';
+import { parseIssueFile, getIssueById } from './services/issue-service.js';
 import {
   generatePMQuestionsPrompt,
   generatePMPRDPrompt,
@@ -2306,45 +2306,34 @@ ${suggestion || 'Implement this change directly in your code editor.'}
     try {
       const { projectId, issueId } = req.params;
       logger.debug(`[API] Generating prompt for ${projectId}/${issueId}`);
-      
+
       // Find the actual project folder (could be "002" or "002-project-name")
       const projectsDir = path.join(OUTPUT_DIR, 'projects');
       const projectFolders = fs.readdirSync(projectsDir);
-      const matchingFolder = projectFolders.find(f => 
+      const matchingFolder = projectFolders.find(f =>
         f === projectId || f.startsWith(`${projectId}-`)
       );
-      
+
       if (!matchingFolder) {
         logger.error(`[API] Project folder not found for ID: ${projectId}`);
         return res.status(404).json({ error: 'Project not found' });
       }
-      
-      const projectPath = path.join(projectsDir, matchingFolder);
-      
-      const issuePath = path.join(projectPath, 'issues', `${issueId}.md`);
-      
-      logger.debug(`[API] Looking for issue at: ${issuePath}`);
-      
-      if (!fs.existsSync(issuePath)) {
-        logger.error(`[API] Issue file not found: ${issuePath}`);
+
+      // Get issue from issues.json (issues are stored in JSON, not separate .md files)
+      const issue = getIssueById(projectId, issueId);
+
+      if (!issue) {
+        logger.error(`[API] Issue not found: ${issueId} in project ${projectId}`);
         return res.status(404).json({ error: 'Issue not found' });
       }
-      
-      // Parse the issue file to get structured data
-      const issue = parseIssueFile(issuePath, projectId);
-      
-      if (!issue) {
-        logger.error(`[API] Failed to parse issue file: ${issuePath}`);
-        return res.status(500).json({ error: 'Failed to parse issue file' });
-      }
-      
-      logger.debug(`[API] Successfully parsed issue: ${issue.issueId}`);
-      
+
+      logger.debug(`[API] Successfully loaded issue: ${issue.issueId}`);
+
       // Generate full contextual prompt with all project specs and completion instructions
       const prompt = generateIssuePrompt(issue, matchingFolder);
-      
+
       logger.debug(`[API] Generated prompt (${prompt.length} chars)`);
-      
+
       res.json({ prompt });
     } catch (error) {
       logger.error('Error generating task prompt:', error);
@@ -2433,35 +2422,27 @@ ${suggestion || 'Implement this change directly in your code editor.'}
     try {
       const { projectId, issueId } = req.params;
       logger.debug(`\n🚀 [API] Shipping issue ${issueId} in project ${projectId}`);
-      
+
       // Find the actual project folder (could be "002" or "002-project-name")
       const projectsDir = path.join(OUTPUT_DIR, 'projects');
       const projectFolders = fs.readdirSync(projectsDir);
-      const matchingFolder = projectFolders.find(f => 
+      const matchingFolder = projectFolders.find(f =>
         f === projectId || f.startsWith(`${projectId}-`)
       );
-      
+
       if (!matchingFolder) {
         logger.error(`[API] Project folder not found for ID: ${projectId}`);
         return res.status(404).json({ error: 'Project not found' });
       }
-      
-      const projectPath = path.join(projectsDir, matchingFolder);
-      const issuePath = path.join(projectPath, 'issues', `${issueId}.md`);
-      
-      if (!fs.existsSync(issuePath)) {
-        logger.error(`[API] Issue file not found: ${issuePath}`);
+
+      // Get issue from issues.json (issues are stored in JSON, not separate .md files)
+      const issue = getIssueById(projectId, issueId);
+
+      if (!issue) {
+        logger.error(`[API] Issue not found: ${issueId} in project ${projectId}`);
         return res.status(404).json({ error: 'Issue not found' });
       }
-      
-      // Parse the issue file to get structured data
-      const issue = parseIssueFile(issuePath, projectId);
-      
-      if (!issue) {
-        logger.error(`[API] Failed to parse issue file: ${issuePath}`);
-        return res.status(500).json({ error: 'Failed to parse issue file' });
-      }
-      
+
       // Generate full contextual prompt with all project specs and completion instructions
       const prompt = generateIssuePrompt(issue, matchingFolder);
       
