@@ -2577,20 +2577,33 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   app.put('/api/linear/config', async (req, res) => {
     try {
       const { apiKey, defaultTeamId, defaultTeamName } = req.body;
-      const { saveLinearConfig, validateLinearApiKey } = await import('./services/linear-sync-service.js');
+      const { saveLinearConfig, validateLinearApiKey, getLinearConfig } = await import('./services/linear-sync-service.js');
 
-      // Validate API key if provided
-      if (apiKey) {
+      // If apiKey is explicitly null, clear the configuration (disconnect)
+      if (apiKey === null) {
+        saveLinearConfig({
+          apiKey: undefined,
+          defaultTeamId: undefined,
+          defaultTeamName: undefined,
+        });
+        return res.json({ success: true, disconnected: true });
+      }
+
+      // Validate API key if provided as a string
+      if (apiKey && typeof apiKey === 'string') {
         const valid = await validateLinearApiKey(apiKey);
         if (!valid) {
           return res.status(400).json({ error: 'Invalid Linear API key' });
         }
       }
 
+      // Get existing config to preserve apiKey when only updating team
+      const existingConfig = getLinearConfig();
+
       saveLinearConfig({
-        apiKey,
-        defaultTeamId,
-        defaultTeamName,
+        apiKey: apiKey || existingConfig?.apiKey,
+        defaultTeamId: defaultTeamId !== undefined ? defaultTeamId : existingConfig?.defaultTeamId,
+        defaultTeamName: defaultTeamName !== undefined ? defaultTeamName : existingConfig?.defaultTeamName,
       });
 
       res.json({ success: true });

@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
+import { Input } from './ui/input';
 import { CursorLogo, ClaudeCodeLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
@@ -381,6 +382,19 @@ interface CostEstimationSettings {
   tier: 'budget' | 'standard' | 'premium';
 }
 
+// Linear integration settings interface
+interface LinearSettings {
+  apiKey?: string;
+  defaultTeamId?: string;
+  defaultTeamName?: string;
+}
+
+interface LinearTeam {
+  id: string;
+  name: string;
+  key: string;
+}
+
 export function Settings() {
   const location = useLocation();
   const [gitPreferences, setGitPreferences] = useState<GitPreferences>({
@@ -404,7 +418,19 @@ export function Settings() {
   const [initialGitPreferences, setInitialGitPreferences] = useState<GitPreferences | null>(null);
   const [initialAIToolPreferences, setInitialAIToolPreferences] = useState<AIToolPreferences | null>(null);
   const [initialCostEstimation, setInitialCostEstimation] = useState<CostEstimationSettings | null>(null);
-  
+
+  // Linear integration state
+  const [linearSettings, setLinearSettings] = useState<LinearSettings>({});
+  const [, setInitialLinearSettings] = useState<LinearSettings | null>(null);
+  const [, setHasLinearChanges] = useState(false);
+  const [savingLinear, setSavingLinear] = useState(false);
+  const [linearTeams, setLinearTeams] = useState<LinearTeam[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [linearApiKeyInput, setLinearApiKeyInput] = useState('');
+  const [linearError, setLinearError] = useState<string | null>(null);
+  const [linearSuccess, setLinearSuccess] = useState<string | null>(null);
+  const [validatingApiKey, setValidatingApiKey] = useState(false);
+
   // View state: 'main' or 'customize'
   const [settingsView, setSettingsView] = useState<'main' | 'customize'>('main');
   
@@ -441,6 +467,23 @@ export function Settings() {
         const data = await costResponse.json();
         setCostEstimation(data);
         setInitialCostEstimation(data);
+      }
+
+      // Load Linear settings
+      const linearResponse = await fetch('/api/linear/status');
+      if (linearResponse.ok) {
+        const data = await linearResponse.json();
+        if (data.configured) {
+          const settings: LinearSettings = {
+            apiKey: '••••••••', // Masked - we don't expose the actual key
+            defaultTeamId: data.defaultTeamId,
+            defaultTeamName: data.defaultTeamName,
+          };
+          setLinearSettings(settings);
+          setInitialLinearSettings(settings);
+          // Load teams if configured
+          loadLinearTeams();
+        }
       }
     } catch (error) {
       logger.error('Failed to load preferences:', error);
@@ -519,6 +562,147 @@ export function Settings() {
     const newSettings = { ...costEstimation, tier: tier as CostEstimationSettings['tier'] };
     setCostEstimation(newSettings);
     setHasCostChanges(JSON.stringify(newSettings) !== JSON.stringify(initialCostEstimation));
+  };
+
+  // Linear integration functions
+  const loadLinearTeams = async () => {
+    setLoadingTeams(true);
+    try {
+      const response = await fetch('/api/linear/teams');
+      if (response.ok) {
+        const data = await response.json();
+        setLinearTeams(data.teams || []);
+      }
+    } catch (error) {
+      logger.error('Failed to load Linear teams:', error);
+    } finally {
+      setLoadingTeams(false);
+    }
+  };
+
+  const validateAndSaveLinearApiKey = async () => {
+    if (!linearApiKeyInput.trim()) {
+      setLinearError('Please enter an API key');
+      return;
+    }
+
+    setValidatingApiKey(true);
+    setLinearError(null);
+    setLinearSuccess(null);
+
+    try {
+      // First validate the API key
+      const validateResponse = await fetch('/api/linear/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: linearApiKeyInput.trim() })
+      });
+
+      const validateData = await validateResponse.json();
+
+      if (!validateData.valid) {
+        setLinearError('Invalid API key. Please check and try again.');
+        return;
+      }
+
+      // Save the API key
+      const saveResponse = await fetch('/api/linear/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: linearApiKeyInput.trim() })
+      });
+
+      if (saveResponse.ok) {
+        setLinearSuccess('API key saved successfully!');
+        setLinearApiKeyInput('');
+        setLinearSettings({
+          apiKey: '••••••••',
+          defaultTeamId: undefined,
+          defaultTeamName: undefined,
+        });
+        setInitialLinearSettings({
+          apiKey: '••••••••',
+          defaultTeamId: undefined,
+          defaultTeamName: undefined,
+        });
+        // Load teams after saving
+        loadLinearTeams();
+      } else {
+        setLinearError('Failed to save API key');
+      }
+    } catch (error) {
+      logger.error('Error validating/saving Linear API key:', error);
+      setLinearError('Failed to connect. Please try again.');
+    } finally {
+      setValidatingApiKey(false);
+    }
+  };
+
+  const handleLinearTeamChange = async (teamId: string) => {
+    const team = linearTeams.find(t => t.id === teamId);
+    if (!team) return;
+
+    setSavingLinear(true);
+    setLinearError(null);
+    setLinearSuccess(null);
+
+    try {
+      const response = await fetch('/api/linear/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          defaultTeamId: teamId,
+          defaultTeamName: team.name
+        })
+      });
+
+      if (response.ok) {
+        const newSettings = {
+          ...linearSettings,
+          defaultTeamId: teamId,
+          defaultTeamName: team.name,
+        };
+        setLinearSettings(newSettings);
+        setInitialLinearSettings(newSettings);
+        setHasLinearChanges(false);
+        setLinearSuccess('Default team updated!');
+      } else {
+        setLinearError('Failed to update default team');
+      }
+    } catch (error) {
+      logger.error('Error updating Linear team:', error);
+      setLinearError('Failed to update. Please try again.');
+    } finally {
+      setSavingLinear(false);
+    }
+  };
+
+  const disconnectLinear = async () => {
+    setSavingLinear(true);
+    setLinearError(null);
+    setLinearSuccess(null);
+
+    try {
+      const response = await fetch('/api/linear/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: null })
+      });
+
+      if (response.ok) {
+        setLinearSettings({});
+        setInitialLinearSettings(null);
+        setLinearTeams([]);
+        setLinearSuccess('Linear disconnected');
+      } else {
+        setLinearError('Failed to disconnect');
+      }
+    } catch (error) {
+      logger.error('Error disconnecting Linear:', error);
+      setLinearError('Failed to disconnect. Please try again.');
+    } finally {
+      setSavingLinear(false);
+    }
   };
 
   const handleStrategyChange = (value: string) => {
@@ -1145,9 +1329,9 @@ export function Settings() {
                     </div>
                   )}
 
-                  <div 
+                  <div
                     className="p-4 rounded-lg"
-                    style={{ 
+                    style={{
                       backgroundColor: costEstimation.enabled ? 'hsl(235 69% 97%)' : 'hsl(0 0% 98%)',
                       border: `1px solid ${costEstimation.enabled ? 'hsl(235 69% 92%)' : 'hsl(0 0% 94%)'}`
                     }}
@@ -1156,11 +1340,175 @@ export function Settings() {
                       {costEstimation.enabled ? 'Cost estimates will appear in the sidebar' : 'Cost tracking disabled'}
                     </p>
                     <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>
-                      {costEstimation.enabled 
+                      {costEstimation.enabled
                         ? 'During specification, you\'ll see input and output token counts with estimated costs for each phase.'
                         : 'Enable to track token usage and see cost estimates during specification workflows.'}
                     </p>
                   </div>
+                </div>
+              </section>
+
+              {/* Linear Integration Section */}
+              <section className="mt-8">
+                <div
+                  className="rounded-lg p-5"
+                  style={{ backgroundColor: 'white', border: '1px solid hsl(0 0% 92%)' }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: 'hsl(0 0% 9%)' }}>
+                        <svg width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M50 0C22.4 0 0 22.4 0 50s22.4 50 50 50 50-22.4 50-50S77.6 0 50 0zm0 90c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z" fill="#5E6AD2"/>
+                          <path d="M68.5 35.5L44.5 59.5l-13-13" stroke="#5E6AD2" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Linear Integration
+                      </h2>
+                      <p className="text-[13px] mt-1" style={{ color: 'hsl(0 0% 46%)' }}>
+                        Connect to Linear to sync projects and issues.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Error/Success Messages */}
+                  {linearError && (
+                    <div
+                      className="p-3 rounded-lg mb-4"
+                      style={{ backgroundColor: 'hsl(0 84% 97%)', border: '1px solid hsl(0 84% 90%)' }}
+                    >
+                      <p className="text-[13px]" style={{ color: 'hsl(0 84% 40%)' }}>{linearError}</p>
+                    </div>
+                  )}
+                  {linearSuccess && (
+                    <div
+                      className="p-3 rounded-lg mb-4"
+                      style={{ backgroundColor: 'hsl(142 76% 97%)', border: '1px solid hsl(142 76% 85%)' }}
+                    >
+                      <p className="text-[13px]" style={{ color: 'hsl(142 76% 30%)' }}>{linearSuccess}</p>
+                    </div>
+                  )}
+
+                  {/* Not Connected State */}
+                  {!linearSettings.apiKey && (
+                    <div>
+                      <div className="mb-4">
+                        <Label htmlFor="linear-api-key" className="text-[13px] mb-2 block">API Key</Label>
+                        <div className="flex gap-2 max-w-md">
+                          <Input
+                            id="linear-api-key"
+                            type="password"
+                            placeholder="lin_api_..."
+                            value={linearApiKeyInput}
+                            onChange={(e) => setLinearApiKeyInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                validateAndSaveLinearApiKey();
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={validateAndSaveLinearApiKey}
+                            disabled={validatingApiKey || !linearApiKeyInput.trim()}
+                            className="px-4 py-2 rounded-md text-[13px] font-medium whitespace-nowrap disabled:opacity-50"
+                            style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
+                          >
+                            {validatingApiKey ? 'Connecting...' : 'Connect'}
+                          </button>
+                        </div>
+                        <p className="text-[11px] mt-2" style={{ color: 'hsl(0 0% 60%)' }}>
+                          Get your API key from{' '}
+                          <a
+                            href="https://linear.app/settings/api"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                            style={{ color: 'hsl(235 69% 61%)' }}
+                          >
+                            Linear Settings → API
+                          </a>
+                        </p>
+                      </div>
+
+                      <div
+                        className="p-4 rounded-lg"
+                        style={{ backgroundColor: 'hsl(0 0% 98%)', border: '1px solid hsl(0 0% 94%)' }}
+                      >
+                        <p className="text-[13px] font-medium mb-1" style={{ color: 'hsl(0 0% 9%)' }}>
+                          Not connected
+                        </p>
+                        <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>
+                          Connect your Linear account to sync projects and issues directly from SpecWright.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Connected State */}
+                  {linearSettings.apiKey && (
+                    <div>
+                      {/* Team Selection */}
+                      <div className="mb-4">
+                        <Label htmlFor="linear-team" className="text-[13px] mb-2 block">Default Team</Label>
+                        <Select
+                          value={linearSettings.defaultTeamId || ''}
+                          onValueChange={handleLinearTeamChange}
+                          disabled={loadingTeams || savingLinear}
+                        >
+                          <SelectTrigger id="linear-team" className="w-full max-w-sm">
+                            <SelectValue placeholder={loadingTeams ? 'Loading teams...' : 'Select a team'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {linearTeams.map((team) => (
+                              <SelectItem key={team.id} value={team.id}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(0 0% 95%)' }}>
+                                    {team.key}
+                                  </span>
+                                  <span>{team.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] mt-2" style={{ color: 'hsl(0 0% 60%)' }}>
+                          Projects will sync to this team by default.
+                        </p>
+                      </div>
+
+                      <div
+                        className="p-4 rounded-lg mb-4"
+                        style={{ backgroundColor: 'hsl(142 76% 97%)', border: '1px solid hsl(142 76% 85%)' }}
+                      >
+                        <p className="text-[13px] font-medium mb-1" style={{ color: 'hsl(142 76% 30%)' }}>
+                          Connected to Linear
+                        </p>
+                        <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>
+                          {linearSettings.defaultTeamName
+                            ? `Projects will sync to ${linearSettings.defaultTeamName}`
+                            : 'Select a default team above to enable syncing.'}
+                        </p>
+                      </div>
+
+                      {/* Disconnect Button */}
+                      <button
+                        onClick={disconnectLinear}
+                        disabled={savingLinear}
+                        className="text-[13px] px-3 py-1.5 rounded-md transition-colors"
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: 'hsl(0 84% 40%)',
+                          border: '1px solid hsl(0 84% 80%)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'hsl(0 84% 97%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        {savingLinear ? 'Disconnecting...' : 'Disconnect Linear'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
