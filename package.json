@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "npm run build:cli && npm run build:ui",
-    "build:cli": "tsc --emitDeclarationOnly && babel src --out-dir dist --extensions '.ts,.tsx' --ignore 'src/web-ui/**' --copy-files && chmod +x dist/cli.js",
+    "build:cli": "tsc --emitDeclarationOnly && babel src --out-dir dist --extensions '.ts,.tsx' --ignore 'src/web-ui/**' --copy-files",
     "build:ui": "vite build src/web-ui --outDir ../../dist/web-ui",
     "dev": "SPECWRIGHT_DEBUG=true tsx src/specwright.ts",
     "dev:ui": "vite src/web-ui",
