@@ -1,7 +1,9 @@
 /**
  * Web Server - Express server with API routes and WebSocket support
- * 
+ *
  * This module provides the web interface for SpecWright with real-time updates.
+ *
+ * Tracing: All functions are automatically traced by Babel when --trace flag is used.
  */
 
 import express from 'express';
@@ -16,9 +18,9 @@ import { logger } from './utils/logger.js';
 import { OUTPUT_DIR, TEMPLATES_DIR } from './config/constants.js';
 import { openCursorAndPaste } from './utils/clipboard.js';
 import { finalizeScopingPlan } from './services/scoping-service.js';
-import { 
-  getOrCreateStatus, 
-  markAIWorkStarted, 
+import {
+  getOrCreateStatus,
+  markAIWorkStarted,
   markAIWorkComplete,
   completePhaseAndAdvance,
   isHumanInputRequired,
@@ -2642,11 +2644,20 @@ ${suggestion || 'Implement this change directly in your code editor.'}
     }
   });
 
-  // Get project sync status
+  // Get project sync status (with optional verification against Linear)
   app.get('/api/projects/:projectId/linear-status', async (req, res) => {
     try {
       const { projectId } = req.params;
-      const { isProjectSynced, getProjectSyncState } = await import('./services/linear-sync-service.js');
+      const verify = req.query.verify === 'true';
+      const { isProjectSynced, getProjectSyncState, verifyLinearProjectExists } = await import('./services/linear-sync-service.js');
+
+      // If verify=true, check if the project still exists in Linear
+      if (verify) {
+        const exists = await verifyLinearProjectExists(projectId);
+        if (!exists) {
+          return res.json({ synced: false, syncState: null });
+        }
+      }
 
       const synced = isProjectSynced(projectId);
       const syncState = synced ? getProjectSyncState(projectId) : null;
@@ -2670,9 +2681,13 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       logger.debug(`\n🔄 [API] Syncing project ${projectId} to Linear`);
 
       // Find the project folder
+      // Prefer folder with full name (e.g., "001-project-name") over just the ID (e.g., "001")
       const projectsDir = path.join(OUTPUT_DIR, 'projects');
       const projectFolders = fs.readdirSync(projectsDir);
-      const matchingFolder = projectFolders.find(f => f === projectId || f.startsWith(`${projectId}-`));
+      const matchingFolders = projectFolders.filter(f => f === projectId || f.startsWith(`${projectId}-`));
+      // Sort to prefer longer names (full folder name > just ID)
+      matchingFolders.sort((a, b) => b.length - a.length);
+      const matchingFolder = matchingFolders[0];
 
       if (!matchingFolder) {
         return res.status(404).json({ error: 'Project not found' });
@@ -2680,28 +2695,50 @@ ${suggestion || 'Implement this change directly in your code editor.'}
 
       const projectPath = path.join(projectsDir, matchingFolder);
 
+      // Extract project number and title from folder name (e.g., "001-document-upload-and-storage-system")
+      const projectNumber = matchingFolder.match(/^(\d+)/)?.[1] || projectId;
+      const projectTitle = matchingFolder.replace(/^\d+-/, '').replace(/-/g, ' ');
+      // Capitalize first letter of each word for the title
+      const formattedTitle = projectTitle.replace(/\b\w/g, c => c.toUpperCase());
+
       // Load project metadata
       const statusPath = path.join(projectPath, 'project_status.json');
-      let projectMetadata: any = { id: projectId };
+      let projectMetadata: any = {
+        id: projectNumber,
+        name: formattedTitle,
+        fullId: matchingFolder, // Full folder name for URLs
+      };
 
       if (fs.existsSync(statusPath)) {
         try {
           const statusContent = fs.readFileSync(statusPath, 'utf-8');
           const status = JSON.parse(statusContent);
+          // Merge status but preserve our extracted name and id
           projectMetadata = {
-            id: projectId,
-            name: matchingFolder.replace(/^\d+-/, '').replace(/-/g, ' '),
             ...status,
+            id: projectNumber,
+            name: formattedTitle,
+            fullId: matchingFolder,
           };
+          logger.debug(`📋 Project metadata after merge:`);
+          logger.debug(`  id: ${projectMetadata.id}`);
+          logger.debug(`  name: ${projectMetadata.name}`);
+          logger.debug(`  fullId: ${projectMetadata.fullId}`);
         } catch (e) {
           // Use basic metadata
+          logger.error('Failed to parse project status:', e);
         }
       }
 
-      // Load project request for description
+      // Load project request for description - extract just the Description section
       const requestPath = path.join(projectPath, 'project_request.md');
       if (fs.existsSync(requestPath)) {
-        projectMetadata.description = fs.readFileSync(requestPath, 'utf-8');
+        const requestContent = fs.readFileSync(requestPath, 'utf-8');
+        // Extract the Description section content
+        const descriptionMatch = requestContent.match(/## Description\s*\n([\s\S]*?)(?=\n## |\n---|\n\*Created|$)/);
+        if (descriptionMatch) {
+          projectMetadata.description = descriptionMatch[1].trim();
+        }
       }
 
       // Load issues
@@ -2712,6 +2749,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         try {
           const issuesContent = fs.readFileSync(issuesPath, 'utf-8');
           const issuesData = JSON.parse(issuesContent);
+          logger.debug(`Found ${(issuesData.issues || issuesData.issues_list || []).length} issues to sync`);
           issues = (issuesData.issues || issuesData.issues_list || []).map((issue: any) => ({
             issueId: issue.issue_id,
             title: issue.title,
@@ -2727,17 +2765,19 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             technicalDetails: issue.technical_details,
             testStrategy: issue.testing_strategy || issue.test_strategy,
             humanInTheLoop: issue.human_in_the_loop || [],
-            projectId,
-            projectName: projectMetadata.name || matchingFolder,
+            projectId: matchingFolder,
+            projectName: formattedTitle,
           }));
         } catch (e) {
           logger.error('Failed to parse issues:', e);
         }
+      } else {
+        logger.debug(`No issues file found at ${issuesPath}`);
       }
 
-      // Perform sync
+      // Perform sync - use matchingFolder (full folder name) for URLs and sync state
       const { syncProjectToLinear } = await import('./services/linear-sync-service.js');
-      const result = await syncProjectToLinear(projectId, projectMetadata, issues, teamId);
+      const result = await syncProjectToLinear(matchingFolder, projectMetadata, issues, teamId);
 
       if (result.success) {
         logger.debug(`✅ Project ${projectId} synced to Linear: ${result.linearProjectUrl}`);

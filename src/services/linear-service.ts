@@ -194,6 +194,8 @@ export class LinearService {
 
   /**
    * Add multiple external links to a project
+   * Note: Linear has a 255 character limit on project descriptions,
+   * so we skip adding links if they would exceed the limit.
    */
   async addProjectLinks(projectId: string, links: LinearExternalLink[]): Promise<void> {
     try {
@@ -212,8 +214,16 @@ export class LinearService {
 
       if (linksMarkdown) {
         const linkSection = `\n\n---\n**Specwright Resources:**\n${linksMarkdown}`;
+        const newDescription = existingDescription + linkSection;
+
+        // Skip if the new description would exceed Linear's 255 character limit
+        if (newDescription.length > 255) {
+          logger.debug('Skipping project links: would exceed 255 character description limit');
+          return;
+        }
+
         await this.client.updateProject(projectId, {
-          description: existingDescription + linkSection,
+          description: newDescription,
         });
       }
     } catch (error) {
@@ -251,6 +261,39 @@ export class LinearService {
           // Continue with other dependencies
         }
       }
+    }
+  }
+
+  /**
+   * Check if a project exists and is active in Linear
+   * Returns true if the project exists and is not canceled/archived, false otherwise
+   */
+  async projectExists(projectId: string): Promise<boolean> {
+    try {
+      const project = await this.client.project(projectId);
+      if (!project) {
+        return false;
+      }
+
+      // Check the project state - Linear projects can be in various states
+      // state is a string like "backlog", "planned", "started", "paused", "completed", "canceled"
+      const state = project.state?.toLowerCase() || '';
+      if (state === 'canceled') {
+        logger.debug(`Linear project ${projectId} is canceled`);
+        return false;
+      }
+
+      // Also check if project is archived
+      if (project.archivedAt) {
+        logger.debug(`Linear project ${projectId} is archived`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      // Project not found or error - treat as not existing
+      logger.debug(`Linear project ${projectId} not found or error:`, error);
+      return false;
     }
   }
 

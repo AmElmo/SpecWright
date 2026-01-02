@@ -236,6 +236,13 @@ const TrashIcon = () => (
   </svg>
 );
 
+const LinearIcon = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 0C22.4 0 0 22.4 0 50s22.4 50 50 50 50-22.4 50-50S77.6 0 50 0zm0 90c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z" fill="currentColor"/>
+    <path d="M68.5 35.5L44.5 59.5l-13-13" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 // Document type definitions with emojis and descriptions
 const documentTypes = [
   { id: 'request', label: 'Request', shortLabel: 'Request', emoji: '💬', description: 'Your original project request and requirements', agent: null },
@@ -292,6 +299,14 @@ export function ProjectDetail() {
   // Ship modal state
   const [shipModalOpen, setShipModalOpen] = useState(false);
   const [shipModalIssue, setShipModalIssue] = useState<FullIssue | null>(null);
+
+  // Linear sync status
+  const [linearSyncStatus, setLinearSyncStatus] = useState<{
+    synced: boolean;
+    linearUrl?: string;
+    syncedAt?: string;
+  } | null>(null);
+  const [syncingToLinear, setSyncingToLinear] = useState(false);
   
   // Close menu when clicking outside
   useEffect(() => {
@@ -363,14 +378,14 @@ export function ProjectDetail() {
   // Save project icon
   const handleIconChange = async (newIcon: ProjectIcon | null) => {
     if (!id) return;
-    
+
     try {
       const response = await fetch(`/api/projects/${id}/icon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ icon: newIcon })
       });
-      
+
       if (response.ok) {
         setProjectIcon(newIcon);
       }
@@ -379,8 +394,53 @@ export function ProjectDetail() {
     }
   };
 
+  // Fetch Linear sync status (with verification against Linear API)
+  const fetchLinearSyncStatus = async () => {
+    if (!id) return;
+    try {
+      // Use verify=true to check if the Linear project still exists
+      const response = await fetch(`/api/projects/${id}/linear-status?verify=true`);
+      if (response.ok) {
+        const status = await response.json();
+        setLinearSyncStatus({
+          synced: status.synced,
+          linearUrl: status.syncState?.linearProjectUrl,
+          syncedAt: status.syncState?.syncedAt
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to fetch Linear sync status:', err);
+    }
+  };
+
+  // Sync project to Linear
+  const syncToLinear = async () => {
+    if (!id) return;
+    setSyncingToLinear(true);
+    try {
+      const response = await fetch(`/api/projects/${id}/sync-to-linear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setLinearSyncStatus({
+          synced: true,
+          linearUrl: result.linearProjectUrl,
+          syncedAt: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to sync to Linear:', err);
+    } finally {
+      setSyncingToLinear(false);
+    }
+  };
+
   useEffect(() => {
     fetchProject();
+    fetchLinearSyncStatus();
   }, [id]);
 
   // Fetch full issues for Kanban board
@@ -1621,15 +1681,15 @@ export function ProjectDetail() {
               value={projectIcon}
               onChange={handleIconChange}
               trigger={
-                <div 
+                <div
                   className="w-8 h-8 rounded-md flex items-center justify-center cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-slate-300"
-                  style={{ 
-                    backgroundColor: projectIcon?.type === 'icon' 
-                      ? projectIcon.color || 'hsl(235 69% 61%)' 
-                      : projectIcon?.type === 'emoji' 
-                        ? 'hsl(0 0% 96%)' 
-                        : 'hsl(235 69% 61%)', 
-                    color: 'white' 
+                  style={{
+                    backgroundColor: projectIcon?.type === 'icon'
+                      ? projectIcon.color || 'hsl(235 69% 61%)'
+                      : projectIcon?.type === 'emoji'
+                        ? 'hsl(0 0% 96%)'
+                        : 'hsl(235 69% 61%)',
+                    color: 'white'
                   }}
                 >
                   {projectIcon?.type === 'emoji' ? (
@@ -1643,7 +1703,7 @@ export function ProjectDetail() {
               }
             />
             <div className="flex-1 min-w-0">
-              <h1 
+              <h1
                 className="text-[14px] font-semibold truncate"
                 style={{ color: 'hsl(0 0% 9%)' }}
                 title={id}
@@ -1652,6 +1712,44 @@ export function ProjectDetail() {
               </h1>
             </div>
           </div>
+
+          {/* Linear Sync Status */}
+          {linearSyncStatus !== null && (
+            <div className="mt-3 flex items-center gap-2">
+              {linearSyncStatus.synced ? (
+                <a
+                  href={linearSyncStatus.linearUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors no-underline"
+                  style={{
+                    backgroundColor: 'hsl(235 69% 97%)',
+                    color: '#5E6AD2',
+                    border: '1px solid hsl(235 69% 90%)'
+                  }}
+                  title={`Synced ${linearSyncStatus.syncedAt ? new Date(linearSyncStatus.syncedAt).toLocaleDateString() : ''}`}
+                >
+                  <LinearIcon size={12} />
+                  <span>View in Linear</span>
+                </a>
+              ) : (
+                <button
+                  onClick={syncToLinear}
+                  disabled={syncingToLinear}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-50"
+                  style={{
+                    backgroundColor: 'hsl(0 0% 96%)',
+                    color: 'hsl(0 0% 46%)',
+                    border: '1px solid hsl(0 0% 90%)'
+                  }}
+                  title="Sync this project to Linear"
+                >
+                  <LinearIcon size={12} />
+                  <span>{syncingToLinear ? 'Syncing...' : 'Sync to Linear'}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Navigation Sections */}

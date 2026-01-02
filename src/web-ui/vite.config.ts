@@ -5,8 +5,24 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Enable tracing in development when SPECWRIGHT_TRACE is set
+const enableTrace = process.env.SPECWRIGHT_TRACE === 'true'
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      babel: enableTrace
+        ? {
+            plugins: [path.resolve(__dirname, '../../babel-plugin-auto-trace.cjs')],
+          }
+        : undefined,
+    }),
+  ],
+  define: {
+    // Pass trace env to client
+    'process.env.SPECWRIGHT_TRACE': JSON.stringify(process.env.SPECWRIGHT_TRACE || 'false'),
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

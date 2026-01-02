@@ -5,15 +5,18 @@
   "type": "module",
   "main": "dist/specwright.js",
   "bin": {
-    "specwright": "./dist/specwright.js"
+    "specwright": "./dist/cli.js"
   },
   "scripts": {
     "build": "npm run build:cli && npm run build:ui",
-    "build:cli": "tsc",
+    "build:cli": "tsc --emitDeclarationOnly && babel src --out-dir dist --extensions '.ts,.tsx' --ignore 'src/web-ui/**' --copy-files && chmod +x dist/cli.js",
     "build:ui": "vite build src/web-ui --outDir ../../dist/web-ui",
     "dev": "SPECWRIGHT_DEBUG=true tsx src/specwright.ts",
     "dev:ui": "vite src/web-ui",
     "dev:server": "SPECWRIGHT_DEBUG=true tsx src/web-server.ts",
+    "dev:trace": "SPECWRIGHT_TRACE=true SPECWRIGHT_DEBUG=true tsx src/specwright.ts",
+    "dev:ui:trace": "SPECWRIGHT_TRACE=true vite src/web-ui",
+    "dev:server:trace": "SPECWRIGHT_TRACE=true SPECWRIGHT_DEBUG=true tsx src/web-server.ts",
     "start": "node dist/specwright.js",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
@@ -79,6 +82,9 @@
     "ws": "^8.17.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
     "@types/express": "^4.17.21",
     "@types/inquirer": "^9.0.9",
     "@types/node": "^24.9.1",

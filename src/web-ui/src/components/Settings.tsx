@@ -431,6 +431,13 @@ export function Settings() {
   const [linearSuccess, setLinearSuccess] = useState<string | null>(null);
   const [validatingApiKey, setValidatingApiKey] = useState(false);
 
+  // Sync status for existing projects
+  const [projectSyncList, setProjectSyncList] = useState<Array<{ id: string; name: string; synced: boolean; linearUrl?: string }>>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [syncingProjects, setSyncingProjects] = useState<Set<string>>(new Set());
+  const [syncAllInProgress, setSyncAllInProgress] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // View state: 'main' or 'customize'
   const [settingsView, setSettingsView] = useState<'main' | 'customize'>('main');
   
@@ -693,6 +700,7 @@ export function Settings() {
         setLinearSettings({});
         setInitialLinearSettings(null);
         setLinearTeams([]);
+        setProjectSyncList([]);
         setLinearSuccess('Linear disconnected');
       } else {
         setLinearError('Failed to disconnect');
@@ -704,6 +712,162 @@ export function Settings() {
       setSavingLinear(false);
     }
   };
+
+  // Load all projects with their sync status
+  const loadProjectsSyncStatus = async () => {
+    setLoadingProjects(true);
+    setSyncError(null);
+    try {
+      // Get all projects
+      const projectsResponse = await fetch('/api/projects');
+      if (!projectsResponse.ok) throw new Error('Failed to load projects');
+      const projects = await projectsResponse.json();
+
+      // Get sync status for each project (with verification against Linear API)
+      const projectsWithStatus = await Promise.all(
+        projects.map(async (project: { id: string; name: string }) => {
+          try {
+            // Use verify=true to check if the Linear project still exists
+            const statusResponse = await fetch(`/api/projects/${project.id}/linear-status?verify=true`);
+            if (statusResponse.ok) {
+              const status = await statusResponse.json();
+              return {
+                id: project.id,
+                name: project.name || project.id,
+                synced: status.synced,
+                linearUrl: status.syncState?.linearProjectUrl
+              };
+            }
+          } catch {
+            // Ignore individual status errors
+          }
+          return {
+            id: project.id,
+            name: project.name || project.id,
+            synced: false
+          };
+        })
+      );
+
+      setProjectSyncList(projectsWithStatus);
+    } catch (error) {
+      logger.error('Failed to load projects sync status:', error);
+      setSyncError('Failed to load projects');
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  // Sync a single project to Linear
+  const syncSingleProject = async (projectId: string) => {
+    if (!linearSettings.defaultTeamId) {
+      setSyncError('Please select a default team first');
+      return;
+    }
+
+    setSyncingProjects(prev => new Set(prev).add(projectId));
+    setSyncError(null);
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/sync-to-linear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: linearSettings.defaultTeamId })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Update the project in the list
+        setProjectSyncList(prev =>
+          prev.map(p =>
+            p.id === projectId
+              ? { ...p, synced: true, linearUrl: result.linearProjectUrl }
+              : p
+          )
+        );
+        setLinearSuccess(`Project synced successfully (${result.issuesSynced} issues, ${result.documentsSynced} documents)`);
+      } else {
+        const error = await response.json();
+        setSyncError(error.error || 'Failed to sync project');
+      }
+    } catch (error) {
+      logger.error('Failed to sync project:', error);
+      setSyncError('Failed to sync project');
+    } finally {
+      setSyncingProjects(prev => {
+        const next = new Set(prev);
+        next.delete(projectId);
+        return next;
+      });
+    }
+  };
+
+  // Sync all unsynced projects
+  const syncAllProjects = async () => {
+    if (!linearSettings.defaultTeamId) {
+      setSyncError('Please select a default team first');
+      return;
+    }
+
+    const unsyncedProjects = projectSyncList.filter(p => !p.synced);
+    if (unsyncedProjects.length === 0) {
+      setLinearSuccess('All projects are already synced!');
+      return;
+    }
+
+    setSyncAllInProgress(true);
+    setSyncError(null);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const project of unsyncedProjects) {
+      try {
+        setSyncingProjects(prev => new Set(prev).add(project.id));
+
+        const response = await fetch(`/api/projects/${project.id}/sync-to-linear`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: linearSettings.defaultTeamId })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setProjectSyncList(prev =>
+            prev.map(p =>
+              p.id === project.id
+                ? { ...p, synced: true, linearUrl: result.linearProjectUrl }
+                : p
+            )
+          );
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      } finally {
+        setSyncingProjects(prev => {
+          const next = new Set(prev);
+          next.delete(project.id);
+          return next;
+        });
+      }
+    }
+
+    setSyncAllInProgress(false);
+    if (failCount === 0) {
+      setLinearSuccess(`Successfully synced ${successCount} project${successCount !== 1 ? 's' : ''}!`);
+    } else {
+      setSyncError(`Synced ${successCount} project${successCount !== 1 ? 's' : ''}, ${failCount} failed`);
+    }
+  };
+
+  // Load projects when Linear is connected and team is selected
+  useEffect(() => {
+    if (linearSettings.apiKey && linearSettings.defaultTeamId) {
+      loadProjectsSyncStatus();
+    }
+  }, [linearSettings.apiKey, linearSettings.defaultTeamId]);
 
   const handleStrategyChange = (value: string) => {
     const newPreferences: GitPreferences = {
@@ -1487,6 +1651,141 @@ export function Settings() {
                             : 'Select a default team above to enable syncing.'}
                         </p>
                       </div>
+
+                      {/* Sync Existing Projects Section */}
+                      {linearSettings.defaultTeamId && (
+                        <div
+                          className="p-4 rounded-lg mb-4"
+                          style={{ backgroundColor: 'hsl(0 0% 98%)', border: '1px solid hsl(0 0% 92%)' }}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <p className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>
+                                Sync Existing Projects
+                              </p>
+                              <p className="text-[11px] mt-0.5" style={{ color: 'hsl(0 0% 46%)' }}>
+                                Sync projects that were created before Linear integration
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={loadProjectsSyncStatus}
+                                disabled={loadingProjects}
+                                className="text-[12px] px-2.5 py-1 rounded transition-colors"
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  color: 'hsl(235 69% 61%)',
+                                  border: '1px solid hsl(235 69% 80%)'
+                                }}
+                                title="Refresh project list"
+                              >
+                                {loadingProjects ? '...' : '↻'}
+                              </button>
+                              <button
+                                onClick={syncAllProjects}
+                                disabled={syncAllInProgress || loadingProjects || projectSyncList.filter(p => !p.synced).length === 0}
+                                className="text-[12px] px-3 py-1.5 rounded-md font-medium transition-colors disabled:opacity-50"
+                                style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
+                              >
+                                {syncAllInProgress ? 'Syncing...' : 'Sync All'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Sync Error */}
+                          {syncError && (
+                            <div
+                              className="p-2 rounded mb-3"
+                              style={{ backgroundColor: 'hsl(0 84% 97%)', border: '1px solid hsl(0 84% 90%)' }}
+                            >
+                              <p className="text-[12px]" style={{ color: 'hsl(0 84% 40%)' }}>{syncError}</p>
+                            </div>
+                          )}
+
+                          {/* Projects List */}
+                          {loadingProjects ? (
+                            <div className="py-4 text-center">
+                              <div className="linear-spinner mx-auto" style={{ width: '20px', height: '20px' }}></div>
+                              <p className="text-[12px] mt-2" style={{ color: 'hsl(0 0% 46%)' }}>Loading projects...</p>
+                            </div>
+                          ) : projectSyncList.length === 0 ? (
+                            <p className="text-[12px] py-2" style={{ color: 'hsl(0 0% 46%)' }}>
+                              No projects found
+                            </p>
+                          ) : (
+                            <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                              {projectSyncList.map((project) => (
+                                <div
+                                  key={project.id}
+                                  className="flex items-center justify-between p-2 rounded"
+                                  style={{ backgroundColor: 'white', border: '1px solid hsl(0 0% 92%)' }}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {project.synced ? (
+                                      <span
+                                        className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                                        style={{ backgroundColor: 'hsl(142 76% 90%)', color: 'hsl(142 76% 36%)' }}
+                                        title="Synced to Linear"
+                                      >
+                                        ✓
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                                        style={{ backgroundColor: 'hsl(0 0% 95%)', color: 'hsl(0 0% 60%)' }}
+                                        title="Not synced"
+                                      >
+                                        ○
+                                      </span>
+                                    )}
+                                    <span className="text-[12px] truncate" style={{ color: 'hsl(0 0% 9%)' }}>
+                                      {project.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex-shrink-0 ml-2">
+                                    {project.synced ? (
+                                      <a
+                                        href={project.linearUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[11px] px-2 py-1 rounded transition-colors"
+                                        style={{
+                                          backgroundColor: 'hsl(235 69% 97%)',
+                                          color: 'hsl(235 69% 61%)',
+                                          textDecoration: 'none'
+                                        }}
+                                      >
+                                        Open in Linear →
+                                      </a>
+                                    ) : (
+                                      <button
+                                        onClick={() => syncSingleProject(project.id)}
+                                        disabled={syncingProjects.has(project.id) || syncAllInProgress}
+                                        className="text-[11px] px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                        style={{
+                                          backgroundColor: 'hsl(235 69% 61%)',
+                                          color: 'white'
+                                        }}
+                                      >
+                                        {syncingProjects.has(project.id) ? 'Syncing...' : 'Sync'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Summary */}
+                          {projectSyncList.length > 0 && (
+                            <div className="mt-3 pt-3 border-t" style={{ borderColor: 'hsl(0 0% 92%)' }}>
+                              <p className="text-[11px]" style={{ color: 'hsl(0 0% 46%)' }}>
+                                {projectSyncList.filter(p => p.synced).length} of {projectSyncList.length} projects synced
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Disconnect Button */}
                       <button

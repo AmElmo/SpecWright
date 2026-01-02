@@ -12,17 +12,56 @@ import type {
   LinearExternalLink,
 } from '../types/linear-sync.js';
 import { DEFAULT_PORT } from '../config/constants.js';
+import { logger } from '../utils/logger.js';
+
+/**
+ * Linear project description max length
+ */
+const LINEAR_PROJECT_DESCRIPTION_MAX = 255;
+
+/**
+ * Truncate text to a max length, adding ellipsis if needed
+ */
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength - 3) + '...';
+}
 
 /**
  * Map Specwright project to Linear project input
+ *
+ * Name format: "001 - Project Title" (project ID + title)
+ * Description: Uses project.description for the Linear project summary
  */
 export function mapProjectToLinear(
   project: ProjectMetadata,
   teamId: string
 ): CreateLinearProjectInput {
+  logger.debug(`mapProjectToLinear received: id="${project.id}", name="${project.name}", title="${project.title}"`);
+
+  // Build the name: "001 - Project Title"
+  const projectId = project.id || '';
+  const projectTitle = project.name || project.title || '';
+
+  let name: string;
+  if (projectId && projectTitle) {
+    name = `${projectId} - ${projectTitle}`;
+  } else if (projectTitle) {
+    name = projectTitle;
+  } else if (projectId) {
+    name = `Project ${projectId}`;
+  } else {
+    name = 'Untitled Project';
+  }
+
+  logger.debug(`  Final project name: "${name}"`);
+
+  // Use description for the Linear project summary
+  const description = project.description || project.testable_outcome || undefined;
+
   return {
-    name: project.name || project.title || `Project ${project.id}`,
-    description: project.description || project.testable_outcome || undefined,
+    name,
+    description: description ? truncateText(description, LINEAR_PROJECT_DESCRIPTION_MAX) : undefined,
     teamId,
   };
 }
@@ -166,6 +205,7 @@ export function createDocumentInput(
 
 /**
  * Generate external links for Specwright resources
+ * URL format: /project/:id/docs/:docType
  */
 export function generateExternalLinks(projectId: string): LinearExternalLink[] {
   const baseUrl = `http://localhost:${DEFAULT_PORT}`;
@@ -173,15 +213,15 @@ export function generateExternalLinks(projectId: string): LinearExternalLink[] {
   return [
     {
       title: '📱 Screen Designs (Specwright)',
-      url: `${baseUrl}/project/${projectId}/screens`,
+      url: `${baseUrl}/project/${projectId}/docs/screens`,
     },
     {
-      title: '🛠️ Technology Choices (Specwright)',
-      url: `${baseUrl}/project/${projectId}/technology-choices`,
+      title: '🔧 Technology Choices (Specwright)',
+      url: `${baseUrl}/project/${projectId}/docs/tech-choices`,
     },
     {
       title: '✅ Acceptance Criteria (Specwright)',
-      url: `${baseUrl}/project/${projectId}/acceptance-criteria`,
+      url: `${baseUrl}/project/${projectId}/docs/acceptance-criteria`,
     },
     {
       title: '📋 Full Project Overview (Specwright)',

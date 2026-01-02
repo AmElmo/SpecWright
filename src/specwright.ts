@@ -1,4 +1,9 @@
-#!/usr/bin/env node
+/**
+ * Specwright Main Application
+ *
+ * Note: Use cli.ts as the entry point for --trace support.
+ * This file is imported by cli.ts after setting up the trace environment.
+ */
 
 import fs from 'fs';
 import path from 'path';

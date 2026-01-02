@@ -42,7 +42,10 @@
     "dist",
     "backup-js-v2.0.0 (archived)",
     "outputs",
-    "src/web-ui"
+    "src/web-ui",
+    "src/utils/trace-config.ts",
+    "src/utils/trace-register.ts",
+    "src/utils/trace-loader.ts"
   ]
 }
 

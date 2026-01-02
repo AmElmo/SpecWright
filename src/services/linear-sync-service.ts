@@ -50,6 +50,11 @@ export function loadSyncState(projectId: string): LinearSyncState | null {
  */
 function saveSyncState(projectId: string, state: LinearSyncState): void {
   const syncPath = getSyncStatePath(projectId);
+  // Ensure the directory exists
+  const dir = path.dirname(syncPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   fs.writeFileSync(syncPath, JSON.stringify(state, null, 2));
 }
 
@@ -97,7 +102,7 @@ export async function getLinearTeams(apiKey?: string): Promise<LinearTeamInfo[]>
 }
 
 /**
- * Check if a project is synced to Linear
+ * Check if a project is synced to Linear (local check only)
  */
 export function isProjectSynced(projectId: string): boolean {
   const syncState = loadSyncState(projectId);
@@ -112,6 +117,45 @@ export function getProjectSyncState(projectId: string): LinearSyncState | null {
 }
 
 /**
+ * Clear sync state for a project (when Linear project is deleted)
+ */
+export function clearSyncState(projectId: string): void {
+  const syncPath = getSyncStatePath(projectId);
+  if (fs.existsSync(syncPath)) {
+    fs.unlinkSync(syncPath);
+    logger.debug(`Cleared sync state for project ${projectId}`);
+  }
+}
+
+/**
+ * Verify if the Linear project still exists and clear sync state if not
+ * Returns true if synced and project exists, false otherwise
+ */
+export async function verifyLinearProjectExists(projectId: string): Promise<boolean> {
+  const syncState = loadSyncState(projectId);
+  if (!syncState || !syncState.linearProjectId) {
+    return false;
+  }
+
+  const config = getLinearConfig();
+  if (!config?.apiKey) {
+    // Can't verify without API key, assume it exists
+    return true;
+  }
+
+  const service = createLinearService(config.apiKey);
+  const exists = await service.projectExists(syncState.linearProjectId);
+
+  if (!exists) {
+    // Project was deleted in Linear, clear local sync state
+    clearSyncState(projectId);
+    logger.debug(`Linear project for ${projectId} no longer exists, cleared sync state`);
+  }
+
+  return exists;
+}
+
+/**
  * Main sync function - syncs a Specwright project to Linear
  */
 export async function syncProjectToLinear(
@@ -123,6 +167,11 @@ export async function syncProjectToLinear(
   const errors: string[] = [];
   let issuesSynced = 0;
   let documentsSynced = 0;
+
+  logger.debug(`\n📦 Starting Linear sync for project ${projectId}`);
+  logger.debug(`  Project name: ${project.name}`);
+  logger.debug(`  Project ID: ${project.id}`);
+  logger.debug(`  Issues to sync: ${issues.length}`);
 
   // Get Linear config
   const config = getLinearConfig();
@@ -205,14 +254,31 @@ export async function syncProjectToLinear(
       }
     }
 
-    // Step 3: Add external links for JSON resources
+    // Step 3: Add external links as a "Resources" document
+    // (Linear project descriptions are limited to 255 chars, so we use a document instead)
     try {
       const externalLinks = generateExternalLinks(projectId);
-      await service.addProjectLinks(linearProject.id, externalLinks);
-      logger.debug('External links added to Linear project');
+      const linksContent = [
+        '# Specwright Resources',
+        '',
+        'Interactive resources that require the Specwright UI to render:',
+        '',
+        ...externalLinks.map(link => `- [${link.title}](${link.url})`),
+        '',
+        '> **Note:** These links require the Specwright server to be running locally.',
+      ].join('\n');
+
+      const linksDoc = await service.createDocument({
+        title: 'Specwright Resources',
+        content: linksContent,
+        projectId: linearProject.id,
+      });
+      documentIdMap['resources.md'] = linksDoc.id;
+      documentsSynced++;
+      logger.debug('External links document added to Linear project');
     } catch (error) {
-      errors.push('Failed to add external links');
-      logger.error('Failed to add external links:', error);
+      errors.push('Failed to add external links document');
+      logger.error('Failed to add external links document:', error);
     }
 
     // Step 4: Create issues
