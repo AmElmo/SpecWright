@@ -285,15 +285,6 @@ export function Specification() {
       setTriggeringPhase(null);
     }
   };
-  
-  const copyPromptToClipboard = async () => {
-    if (!lastPrompt) return;
-    try {
-      await navigator.clipboard.writeText(lastPrompt);
-    } catch (err) {
-      logger.error('Failed to copy prompt:', err);
-    }
-  };
 
   // Copy button with feedback animation
   const CopyPromptButton = ({ prompt }: { prompt: string }) => {
