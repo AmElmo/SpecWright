@@ -193,7 +193,7 @@ export function DocumentReview({
   const hasAcceptanceCriteria = documentType === 'prd' && acceptanceCriteriaContent;
 
   return (
-    <div className="space-y-6 pb-32">
+    <div className="space-y-6 pb-52">
       {/* Header - Clean, minimal style aligned with UI */}
       <div 
         className="flex flex-col space-y-1 p-4 rounded-lg"
