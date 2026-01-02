@@ -39,9 +39,7 @@ jobs:
       run: npm run build:ui
 
     - name: Check build artifacts
-      run: |
-        test -f dist/specwright.js || exit 1
-        test -d dist/web-ui || exit 1
+      run: node -e "const fs = require('fs'); if (!fs.existsSync('dist/specwright.js')) process.exit(1); if (!fs.existsSync('dist/web-ui')) process.exit(1);"
 
   lint:
     name: Lint

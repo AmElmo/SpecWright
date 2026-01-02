@@ -9,8 +9,7 @@ import chalk from 'chalk';
 import open from 'open';
 import { startWebServer } from '../web-server.js';
 import { logger } from './logger.js';
-
-const DEFAULT_PORT = 3456;
+import { DEFAULT_PORT } from '../config/constants.js';
 const HEALTH_CHECK_TIMEOUT = 1000; // 1 second
 
 let serverInstance: { server: any; wss: any; watcher: any } | null = null;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { IconPicker, IconSVG } from './IconPicker';
@@ -81,6 +81,14 @@ const ArrowIcon = () => (
   </svg>
 );
 
+// Linear icon
+const LinearIcon = ({ size = 12 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 0C22.4 0 0 22.4 0 50s22.4 50 50 50 50-22.4 50-50S77.6 0 50 0zm0 90c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z" fill="currentColor"/>
+    <path d="M68.5 35.5L44.5 59.5l-13-13" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 // Project Icon trigger component for the IconPicker
 const ProjectIconTrigger = ({ icon, projectId }: { icon?: ProjectIcon; projectId: string }) => {
   const defaultColor = 'hsl(235 69% 61%)';
@@ -110,9 +118,28 @@ const ProjectIconTrigger = ({ icon, projectId }: { icon?: ProjectIcon; projectId
 
 export function ProjectCard({ project, onIconChange }: ProjectCardProps) {
   const [localIcon, setLocalIcon] = useState<ProjectIcon | undefined>(project.icon);
+  const [linearSynced, setLinearSynced] = useState<boolean | null>(null);
+  const [linearUrl, setLinearUrl] = useState<string | null>(null);
   const status = project.status || 'ready_to_spec';
   const config = statusConfig[status] || statusConfig['ready_to_spec'];
-  
+
+  // Fetch Linear sync status
+  useEffect(() => {
+    const fetchSyncStatus = async () => {
+      try {
+        const response = await fetch(`/api/projects/${project.fullId}/linear-status`);
+        if (response.ok) {
+          const data = await response.json();
+          setLinearSynced(data.synced);
+          setLinearUrl(data.syncState?.linearProjectUrl || null);
+        }
+      } catch {
+        // Silently fail - Linear might not be configured
+      }
+    };
+    fetchSyncStatus();
+  }, [project.fullId]);
+
   // Handle icon change with optimistic update
   const handleIconChange = async (newIcon: ProjectIcon | null) => {
     // Optimistic update
@@ -179,9 +206,27 @@ export function ProjectCard({ project, onIconChange }: ProjectCardProps) {
             </h3>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span 
+            {/* Linear Sync Status */}
+            {linearSynced && (
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (linearUrl) window.open(linearUrl, '_blank');
+                }}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                style={{
+                  backgroundColor: 'hsl(235 69% 97%)',
+                  color: '#5E6AD2'
+                }}
+                title="View in Linear"
+              >
+                <LinearIcon size={10} />
+              </span>
+            )}
+            <span
               className="text-[12px] font-medium px-2.5 py-1 rounded-full"
-              style={{ 
+              style={{
                 color: config.color,
                 backgroundColor: config.bgColor,
               }}

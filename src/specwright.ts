@@ -1,4 +1,9 @@
-#!/usr/bin/env node
+/**
+ * Specwright Main Application
+ *
+ * Note: Use cli.ts as the entry point for --trace support.
+ * This file is imported by cli.ts after setting up the trace environment.
+ */
 
 import fs from 'fs';
 import path from 'path';
@@ -27,6 +32,7 @@ import { showVersion, showWelcomeInfo, showFolderPreview, showRepoInfo } from '.
 // Import utilities
 import { parseCommand } from './utils/cli-parser.js';
 import { logger } from './utils/logger.js';
+import { DEFAULT_PORT } from './config/constants.js';
 
 // Re-export functions needed by other modules (workflow-service.ts)
 export { waitForCompletion } from './ui/prompts.js';
@@ -95,13 +101,13 @@ const main = async () => {
             
             // Start web server and open browser
             const { startWebServer } = await import('./web-server.js');
-            await startWebServer(3001);
-            
+            await startWebServer(DEFAULT_PORT);
+
             // Open browser
             const open = (await import('open')).default;
-            await open('http://localhost:3001/onboarding');
-            
-            logger.debug("✨ Web UI is running at http://localhost:3001/onboarding");
+            await open(`http://localhost:${DEFAULT_PORT}/onboarding`);
+
+            logger.debug(`✨ Web UI is running at http://localhost:${DEFAULT_PORT}/onboarding`);
             logger.debug("   Complete the onboarding to initialize SpecWright");
             logger.debug("");
             logger.debug("Press Ctrl+C to stop the server");
@@ -115,13 +121,13 @@ const main = async () => {
             
             // Start web server and open how-it-works page
             const { startWebServer } = await import('./web-server.js');
-            await startWebServer(3001);
-            
+            await startWebServer(DEFAULT_PORT);
+
             // Open browser to how-it-works page
             const open = (await import('open')).default;
-            await open('http://localhost:3001/how-it-works');
-            
-            logger.debug("✨ Documentation is open at http://localhost:3001/how-it-works");
+            await open(`http://localhost:${DEFAULT_PORT}/how-it-works`);
+
+            logger.debug(`✨ Documentation is open at http://localhost:${DEFAULT_PORT}/how-it-works`);
             logger.debug("");
             logger.debug("Press Ctrl+C to stop the server");
             

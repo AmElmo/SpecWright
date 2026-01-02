@@ -20,8 +20,8 @@ export function useRealtimeUpdates(onUpdate: () => void, enableNotifications: bo
   
   useEffect(() => {
     // Connect to WebSocket server (only once)
-    // Use port 3456 to match the web server port
-    const ws = new WebSocket('ws://localhost:3456');
+    // Use port 5174 to match the web server port
+    const ws = new WebSocket('ws://localhost:5174');
     
     ws.onopen = () => {
       logger.debug('WebSocket connected');
