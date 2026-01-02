@@ -1713,8 +1713,8 @@ export function ProjectDetail() {
             </div>
           </div>
 
-          {/* Linear Sync Status */}
-          {linearSyncStatus !== null && (
+          {/* Linear Sync Status - only show if already synced, or if spec is complete and has issues */}
+          {linearSyncStatus !== null && (linearSyncStatus.synced || (isFullySpecced && hasIssues)) && (
             <div className="mt-3 flex items-center gap-2">
               {linearSyncStatus.synced ? (
                 <a

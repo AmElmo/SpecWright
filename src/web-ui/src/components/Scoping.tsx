@@ -110,17 +110,6 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
     }
   };
   
-  const copyPromptToClipboard = async () => {
-    if (!lastPrompt) return;
-    
-    try {
-      await navigator.clipboard.writeText(lastPrompt);
-      // Could show a success message here
-    } catch (err) {
-      logger.error('Failed to copy prompt:', err);
-    }
-  };
-  
   const checkScopingStatus = async () => {
     try {
       const response = await fetch('/api/scoping/status');
@@ -375,21 +364,32 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
                   If {aiToolName} didn't open correctly:
                 </p>
                 <button
-                  onClick={copyPromptToClipboard}
-                  className="px-3 py-1.5 rounded-md text-[12px] font-medium transition-all"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(lastPrompt);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    } catch (err) {
+                      logger.error('Failed to copy prompt:', err);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-md text-[12px] font-medium transition-all flex items-center gap-2"
                   style={{
-                    backgroundColor: 'transparent',
-                    color: 'hsl(0 0% 32%)',
-                    border: '1px solid hsl(0 0% 90%)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'hsl(0 0% 96%)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
+                    backgroundColor: copied ? 'hsl(142 76% 94%)' : 'transparent',
+                    color: copied ? 'hsl(142 76% 36%)' : 'hsl(0 0% 32%)',
+                    border: copied ? '1px solid hsl(142 76% 80%)' : '1px solid hsl(0 0% 90%)'
                   }}
                 >
-                  📋 Copy Prompt to Clipboard
+                  {copied ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    '📋 Copy Prompt to Clipboard'
+                  )}
                 </button>
               </div>
             )}
