@@ -89,15 +89,20 @@ export function Specification() {
     status?.currentPhase === 'engineer-questions-answer' ? 'engineer' : null;
   
   useRealtimeUpdates((event) => {
-    // Track headless mode
-    if (event.type === 'headless_started') {
+    // Refinement events have isRefinement=true and are handled by RefinePanel
+    // We should ignore them here to avoid interfering with the main page state
+    const isRefinementEvent = event.isRefinement === true;
+
+    // Track headless mode - but not for refinement events
+    if (event.type === 'headless_started' && !isRefinementEvent) {
       setIsHeadlessMode(true);
     }
-    if (event.type === 'headless_completed') {
+    if (event.type === 'headless_completed' && !isRefinementEvent) {
       // Keep headless mode true for a moment so success banner shows correct message
       setTimeout(() => setIsHeadlessMode(false), 3000);
     }
     // Handle early session capture - enables RefinePanel immediately
+    // This should still work for refinement to capture updated session IDs
     if (event.type === 'session_captured' && event.sessionId) {
       logger.debug('Session captured early:', event.sessionId);
       // Determine which agent this session belongs to based on current phase
@@ -928,39 +933,38 @@ export function Specification() {
           </header>
 
           <div className="p-6">
-            <div className="flex gap-6">
-              {/* Main content */}
-              <div className="flex-1 max-w-4xl">
-                <DocumentReview
-                  projectId={projectId!}
-                  documentPath={status.reviewDocument}
-                  documentContent={reviewDocumentContent}
-                  documentType={getDocumentType()}
-                  onApprove={handleApproveDocument}
-                />
-              </div>
-
-              {/* RefinePanel for feedback */}
-              {currentSessionId && (
-                <RefinePanel
-                  phase={currentAgent}
-                  sessionId={currentSessionId}
-                  onRefineComplete={() => {
-                    // Refresh sessions after refinement
-                    fetch(`/api/sessions/${projectId}`)
-                      .then(res => res.json())
-                      .then(data => {
-                        if (data.sessions) setSessions(data.sessions);
-                      })
-                      .catch(() => {});
-                    // Reload the document
-                    if (status.reviewDocument) {
-                      fetchDocumentForReview(status.reviewDocument);
-                    }
-                  }}
-                />
-              )}
+            {/* Main content - full width without flex squeeze */}
+            <div className="max-w-4xl">
+              <DocumentReview
+                projectId={projectId!}
+                documentPath={status.reviewDocument}
+                documentContent={reviewDocumentContent}
+                documentType={getDocumentType()}
+                onApprove={handleApproveDocument}
+              />
             </div>
+
+            {/* Floating RefinePanel for feedback - in right margin */}
+            {currentSessionId && (
+              <RefinePanel
+                phase={currentAgent}
+                sessionId={currentSessionId}
+                floatingMode={true}
+                onRefineComplete={() => {
+                  // Refresh sessions after refinement
+                  fetch(`/api/sessions/${projectId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.sessions) setSessions(data.sessions);
+                    })
+                    .catch(() => {});
+                  // Reload the document
+                  if (status.reviewDocument) {
+                    fetchDocumentForReview(status.reviewDocument);
+                  }
+                }}
+              />
+            )}
           </div>
         </main>
       </div>

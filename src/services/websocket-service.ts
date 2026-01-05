@@ -50,22 +50,22 @@ export function broadcast(type: string, data: Record<string, unknown>): void {
 /**
  * Broadcast headless progress update
  */
-export function broadcastHeadlessProgress(status: string, phase?: string): void {
-    broadcast('headless_progress', { status, phase });
+export function broadcastHeadlessProgress(status: string, phase?: string, isRefinement?: boolean): void {
+    broadcast('headless_progress', { status, phase, isRefinement: isRefinement ?? false });
 }
 
 /**
  * Broadcast headless execution started
  */
-export function broadcastHeadlessStarted(tool: string, phase?: string): void {
-    broadcast('headless_started', { tool, phase });
+export function broadcastHeadlessStarted(tool: string, phase?: string, isRefinement?: boolean): void {
+    broadcast('headless_started', { tool, phase, isRefinement: isRefinement ?? false });
 }
 
 /**
  * Broadcast headless execution completed
  */
-export function broadcastHeadlessCompleted(tool: string, success: boolean, phase?: string, sessionId?: string): void {
-    broadcast('headless_completed', { tool, success, phase, sessionId });
+export function broadcastHeadlessCompleted(tool: string, success: boolean, phase?: string, sessionId?: string, isRefinement?: boolean): void {
+    broadcast('headless_completed', { tool, success, phase, sessionId, isRefinement: isRefinement ?? false });
 }
 
 /**

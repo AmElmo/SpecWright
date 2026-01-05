@@ -17,6 +17,7 @@ export interface WebSocketEvent {
   phase?: string;
   timestamp?: number;
   sessionId?: string;
+  isRefinement?: boolean;
 }
 
 /**

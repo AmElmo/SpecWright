@@ -438,9 +438,8 @@ export function Breakdown() {
           </header>
 
           <div className="p-6">
-            <div className="flex gap-6">
-              {/* Main content */}
-              <div className="flex-1 max-w-4xl">
+            {/* Main content - full width without flex squeeze */}
+            <div className="max-w-4xl">
                 {/* Header */}
                 <div className="mb-6">
                   <div className="flex items-center gap-3 mb-2">
@@ -534,21 +533,21 @@ export function Breakdown() {
                     Start Over
                   </button>
                 </div>
-              </div>
-
-              {/* RefinePanel - Right Side */}
-              {sessionId && (
-                <RefinePanel
-                  phase="breakdown"
-                  projectId={projectId}
-                  sessionId={sessionId}
-                  onRefineComplete={() => {
-                    // Refresh issues after refinement
-                    fetchIssues();
-                  }}
-                />
-              )}
             </div>
+
+            {/* Floating RefinePanel - Right Margin */}
+            {sessionId && (
+              <RefinePanel
+                phase="breakdown"
+                projectId={projectId}
+                sessionId={sessionId}
+                floatingMode={true}
+                onRefineComplete={() => {
+                  // Refresh issues after refinement
+                  fetchIssues();
+                }}
+              />
+            )}
           </div>
         </main>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
@@ -64,14 +64,34 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   const [logIdCounter, setLogIdCounter] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Track if we've ever reached 'complete' status - once complete, don't switch back for WebSocket events
+  const hasReachedComplete = useRef(false);
+
   // Use realtime hook to listen for file changes
   useRealtimeUpdates((event) => {
     // Check if scoping plan was updated
     if (event.type === 'file_changed' || event.type === 'file_added') {
       checkScopingStatus();
     }
-    // Handle headless progress updates
-    if (event.type === 'headless_started') {
+
+    // Handle headless progress updates - but IGNORE refinement events
+    // Refinement events have isRefinement=true and are handled by RefinePanel
+    const isRefinementEvent = event.isRefinement === true;
+
+    // CRITICAL: Once we've reached 'complete' status, NEVER switch back to 'generating' from WebSocket events
+    // This prevents flickering when: 1) refinement runs, 2) old/stale headless events arrive
+    // Only the user clicking "Scope with AI" should reset this
+    if (hasReachedComplete.current && !isRefinementEvent) {
+      // Still capture session IDs, but don't change status or show headless mode
+      if (event.type === 'session_captured' && event.sessionId) {
+        logger.debug('Session captured (post-complete):', event.sessionId);
+        setSessionId(event.sessionId);
+      }
+      return;
+    }
+
+    if (event.type === 'headless_started' && !isRefinementEvent) {
+      // Only handle initial scoping execution, not refinement
       setIsHeadlessMode(true);
       setHeadlessLogs([]); // Clear previous logs
       setLogIdCounter(0);
@@ -89,7 +109,8 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       setAutomationStatus('sent');
       onStatusChange?.('generating');
     }
-    if (event.type === 'headless_progress' && event.status) {
+    if (event.type === 'headless_progress' && event.status && !isRefinementEvent) {
+      // Only handle initial scoping execution progress, not refinement
       const message = event.status;
       const newEntry: HeadlessLogEntry = {
         id: logIdCounter,
@@ -105,7 +126,8 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       logger.debug('Session captured early:', event.sessionId);
       setSessionId(event.sessionId);
     }
-    if (event.type === 'headless_completed') {
+    if (event.type === 'headless_completed' && !isRefinementEvent) {
+      // Only handle initial scoping execution completion, not refinement
       const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
       const finalEntry: HeadlessLogEntry = {
         id: logIdCounter,
@@ -220,23 +242,28 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
     try {
       const response = await fetch('/api/scoping/status');
       const data = await response.json();
-      
+
       logger.debug('Status check:', data);
-      
+
       if (data.status === 'complete' && data.plan) {
         // Double-check that plan doesn't have placeholders
         const planStr = JSON.stringify(data.plan);
-        if (!planStr.includes('[ANALYSIS_PLACEHOLDER]') && 
+        if (!planStr.includes('[ANALYSIS_PLACEHOLDER]') &&
             !planStr.includes('[SUGGESTION_PLACEHOLDER]') &&
             !planStr.includes('PLACEHOLDER')) {
           setScopingPlan(data.plan);
           setStatus('complete');
+          hasReachedComplete.current = true; // Lock status to prevent flickering
           onStatusChange?.('complete');
         }
         // else: Still has placeholders, keep generating state
       } else if (data.status === 'generating') {
-        setStatus('generating');
-        onStatusChange?.('generating');
+        // IMPORTANT: Don't switch back to 'generating' if we're already 'complete'
+        // This prevents flickering during refinement when files are being updated
+        if (status !== 'complete') {
+          setStatus('generating');
+          onStatusChange?.('generating');
+        }
       }
     } catch (err) {
       logger.error('Failed to check status:', err);
@@ -554,11 +581,9 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         </div>
       )}
       
-      {/* Complete State - Show Results with Refine Panel */}
+      {/* Complete State - Show Results */}
       {status === 'complete' && scopingPlan && (
-        <div className="flex gap-6">
-          {/* Main Content */}
-          <div className="flex-1 space-y-5">
+        <div className="space-y-5">
           {/* Scoping Complete Header */}
           <div 
             className="rounded-lg p-6"
@@ -894,34 +919,39 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
               </div>
             </div>
           )}
-          </div>
-
-          {/* Refine Panel - Right Side */}
-          {sessionId && (
-            <RefinePanel
-              phase="scoping"
-              sessionId={sessionId}
-              onRefineComplete={() => {
-                // Refresh scoping status after refinement
-                checkScopingStatus();
-              }}
-            />
-          )}
         </div>
       )}
     </>
   );
 
+  // RefinePanel component - rendered in both embedded and standalone modes
+  const refinePanelElement = status === 'complete' && sessionId && (
+    <RefinePanel
+      phase="scoping"
+      sessionId={sessionId}
+      floatingMode={true}
+      onRefineComplete={() => {
+        checkScopingStatus();
+      }}
+    />
+  );
+
   // Return with or without wrapper based on embedded prop
   if (embedded) {
-    return content;
+    return (
+      <>
+        {content}
+        {refinePanelElement}
+      </>
+    );
   }
-  
+
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
-      <div className={`mx-auto ${status === 'complete' && sessionId ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div className="min-h-screen p-8 relative" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
+      <div className="mx-auto max-w-3xl">
         {content}
       </div>
+      {refinePanelElement}
     </div>
   );
 }

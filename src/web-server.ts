@@ -1058,20 +1058,20 @@ Please analyze this request and update the scoping_plan.json file.`;
         // For now, we mention that images were attached
       }
 
-      // Broadcast that refinement has started
-      broadcastHeadlessStarted('claude-code', phase);
+      // Broadcast that refinement has started (with isRefinement=true)
+      broadcastHeadlessStarted('claude-code', phase, true);
 
       // Execute with resume
       const result = await executeClaudeHeadless(prompt, {
         workingDir: WORKSPACE_PATH,
         resumeSessionId: sessionId,
         onProgress: (status: string) => {
-          broadcastHeadlessProgress(status, phase);
+          broadcastHeadlessProgress(status, phase, true);
         }
       });
 
-      // Broadcast completion with session ID for frontend
-      broadcastHeadlessCompleted('claude-code', result.success, phase, result.sessionId);
+      // Broadcast completion with session ID for frontend (with isRefinement=true)
+      broadcastHeadlessCompleted('claude-code', result.success, phase, result.sessionId, true);
 
       if (result.success) {
         res.json({
