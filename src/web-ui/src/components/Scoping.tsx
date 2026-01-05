@@ -100,6 +100,11 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       setHeadlessLogs(prev => [...prev, newEntry]);
       setLogIdCounter(prev => prev + 1);
     }
+    // Handle early session capture - enables RefinePanel immediately
+    if (event.type === 'session_captured' && event.sessionId) {
+      logger.debug('Session captured early:', event.sessionId);
+      setSessionId(event.sessionId);
+    }
     if (event.type === 'headless_completed') {
       const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
       const finalEntry: HeadlessLogEntry = {
@@ -109,8 +114,8 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         timestamp: new Date()
       };
       setHeadlessLogs(prev => [...prev, finalEntry]);
-      // Capture session ID for refinement support
-      if (event.sessionId) {
+      // Capture session ID for refinement support (fallback if early capture didn't work)
+      if (event.sessionId && !sessionId) {
         setSessionId(event.sessionId);
       }
       // Clear after a moment

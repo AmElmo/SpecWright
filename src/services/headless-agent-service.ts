@@ -18,6 +18,7 @@ export interface HeadlessOptions {
     allowedTools?: string[];
     timeout?: number; // ms, default 5 minutes
     onProgress?: (message: string) => void; // Callback for streaming progress
+    onSessionId?: (sessionId: string) => void; // Callback when session ID is captured (early)
     resumeSessionId?: string; // Session ID to resume (for refinement/continuation)
 }
 
@@ -129,6 +130,7 @@ export async function executeClaudeHeadless(
         allowedTools = ['Read', 'Edit', 'Write', 'Bash', 'Glob', 'Grep'],
         timeout = 5 * 60 * 1000, // 5 minutes default
         onProgress,
+        onSessionId,
         resumeSessionId
     } = options;
 
@@ -201,10 +203,15 @@ export async function executeClaudeHeadless(
 
                 const parsed = parseStreamMessage(line);
 
-                // Capture session ID if we haven't yet
+                // Capture session ID if we haven't yet - broadcast immediately!
                 if (parsed.sessionId && !capturedSessionId) {
                     capturedSessionId = parsed.sessionId;
                     logger.debug(chalk.green(`  [Session] Captured session ID: ${capturedSessionId}`));
+
+                    // Immediately broadcast session ID so frontend can enable RefinePanel
+                    if (onSessionId) {
+                        onSessionId(capturedSessionId);
+                    }
                 }
 
                 if (parsed.status && parsed.status !== lastStatus) {

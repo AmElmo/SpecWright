@@ -10,7 +10,7 @@ import {
 import { logger } from './logger.js';
 import { canUseHeadless } from './cli-detection.js';
 import { executeHeadless } from '../services/headless-agent-service.js';
-import { broadcastHeadlessProgress, broadcastHeadlessStarted, broadcastHeadlessCompleted } from '../services/websocket-service.js';
+import { broadcastHeadlessProgress, broadcastHeadlessStarted, broadcastHeadlessCompleted, broadcastSessionCaptured } from '../services/websocket-service.js';
 
 const execAsync = promisify(exec);
 
@@ -154,6 +154,11 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
                 onProgress: (status: string) => {
                     // Broadcast progress to WebSocket clients
                     broadcastHeadlessProgress(status);
+                },
+                onSessionId: (sessionId: string) => {
+                    // Broadcast session ID immediately when captured (before completion)
+                    logger.debug(chalk.green(`📌 Session ID captured early: ${sessionId}`));
+                    broadcastSessionCaptured(sessionId);
                 }
             });
 

@@ -87,7 +87,21 @@ export function Specification() {
     status?.currentPhase === 'ux-questions-answer' ? 'ux' :
     status?.currentPhase === 'engineer-questions-answer' ? 'engineer' : null;
   
-  useRealtimeUpdates(() => {
+  useRealtimeUpdates((event) => {
+    // Handle early session capture - enables RefinePanel immediately
+    if (event.type === 'session_captured' && event.sessionId) {
+      logger.debug('Session captured early:', event.sessionId);
+      // Determine which agent this session belongs to based on current phase
+      if (status?.currentPhase) {
+        if (status.currentPhase.startsWith('pm-')) {
+          setSessions(prev => ({ ...prev, pm: event.sessionId }));
+        } else if (status.currentPhase.startsWith('ux-')) {
+          setSessions(prev => ({ ...prev, ux: event.sessionId }));
+        } else if (status.currentPhase.startsWith('engineer-')) {
+          setSessions(prev => ({ ...prev, engineer: event.sessionId }));
+        }
+      }
+    }
     fetchStatus(isInReviewMode);
     if (triggeringPhase) {
       checkIfWorkComplete();

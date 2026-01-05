@@ -67,3 +67,11 @@ export function broadcastHeadlessStarted(tool: string, phase?: string): void {
 export function broadcastHeadlessCompleted(tool: string, success: boolean, phase?: string, sessionId?: string): void {
     broadcast('headless_completed', { tool, success, phase, sessionId });
 }
+
+/**
+ * Broadcast session ID captured (early - before execution completes)
+ * This allows the frontend to enable RefinePanel immediately
+ */
+export function broadcastSessionCaptured(sessionId: string, phase?: string): void {
+    broadcast('session_captured', { sessionId, phase });
+}
