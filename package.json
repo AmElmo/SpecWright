@@ -8,7 +8,7 @@
     "specwright": "./dist/cli.js"
   },
   "scripts": {
-    "build": "npm run build:cli && npm run build:ui",
+    "build": "npm run build:cli && npm run build:ui && chmod +x dist/cli.js",
     "build:cli": "tsc --emitDeclarationOnly && babel src --out-dir dist --extensions .ts,.tsx --ignore \"**/web-ui/**\" --copy-files",
     "build:ui": "vite build src/web-ui --outDir ../../dist/web-ui",
     "dev": "SPECWRIGHT_DEBUG=true tsx src/specwright.ts",

@@ -62,7 +62,14 @@ if (!fs.existsSync(SESSION_DIR)) {
  */
 const main = async () => {
     const args = process.argv.slice(2);
-    
+
+    // Handle --version flag first
+    if (args.includes('--version') || args.includes('-v')) {
+        const pkg = JSON.parse(fs.readFileSync(path.join(SQUAD_DIR, 'package.json'), 'utf-8'));
+        console.log(`specwright v${pkg.version}`);
+        process.exit(0);
+    }
+
     // Check for init command first (special case - shows logo internally)
     if (args.length > 0 && args[0] === 'init') {
         await handleInitCommand();
