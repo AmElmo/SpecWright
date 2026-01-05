@@ -6,6 +6,11 @@ import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code';
 
+interface HeadlessStatus {
+  available: boolean;
+  reason?: string;
+}
+
 interface AIToolOption {
   id: AITool;
   name: string;
@@ -55,6 +60,7 @@ export function Onboarding() {
   const [initializing, setInitializing] = useState(false);
   const [error, setError] = useState<string>('');
   const [repositoryName, setRepositoryName] = useState<string>('');
+  const [headlessStatus, setHeadlessStatus] = useState<Record<AITool, HeadlessStatus> | null>(null);
   const navigate = useNavigate();
 
   const currentStepIndex = STEPS.indexOf(step);
@@ -71,6 +77,16 @@ export function Onboarding() {
       })
       .catch(err => {
         logger.error('Failed to check initialization:', err);
+      });
+
+    // Fetch headless CLI status
+    fetch('/api/settings/headless-status')
+      .then(res => res.json())
+      .then(data => {
+        setHeadlessStatus(data);
+      })
+      .catch(err => {
+        logger.error('Failed to check headless status:', err);
       });
   }, [navigate]);
 
@@ -334,6 +350,28 @@ export function Onboarding() {
                 <div style={{ fontSize: '0.8125rem', color: '#64748b' }}>
                   {tool.description}
                 </div>
+                {/* Headless CLI indicator */}
+                {headlessStatus && headlessStatus[tool.id] && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem'
+                  }}>
+                    {headlessStatus[tool.id].available ? (
+                      <>
+                        <span style={{ color: '#10b981' }}>✓</span>
+                        <span style={{ color: '#10b981' }}>CLI detected - Headless mode</span>
+                      </>
+                    ) : (tool.id === 'claude-code' || tool.id === 'cursor') ? (
+                      <>
+                        <span style={{ color: '#94a3b8' }}>○</span>
+                        <span style={{ color: '#94a3b8' }}>Keyboard automation</span>
+                      </>
+                    ) : null}
+                  </div>
+                )}
               </button>
             ))}
           </div>

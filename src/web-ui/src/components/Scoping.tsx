@@ -13,6 +13,29 @@ interface ScopingPlan {
   projects?: any[];
 }
 
+// Log entry for streaming progress
+interface HeadlessLogEntry {
+  id: number;
+  message: string;
+  icon: string;
+  timestamp: Date;
+}
+
+// Map action types to icons
+function getActionIcon(message: string): string {
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('reading') || lowerMessage.includes('read file')) return '📖';
+  if (lowerMessage.includes('writing') || lowerMessage.includes('write file') || lowerMessage.includes('wrote')) return '✏️';
+  if (lowerMessage.includes('searching') || lowerMessage.includes('search') || lowerMessage.includes('glob') || lowerMessage.includes('grep')) return '🔍';
+  if (lowerMessage.includes('running') || lowerMessage.includes('command') || lowerMessage.includes('bash') || lowerMessage.includes('execute')) return '⚡';
+  if (lowerMessage.includes('thinking') || lowerMessage.includes('analyzing') || lowerMessage.includes('processing')) return '🧠';
+  if (lowerMessage.includes('starting')) return '🚀';
+  if (lowerMessage.includes('completed') || lowerMessage.includes('success') || lowerMessage.includes('✅')) return '✅';
+  if (lowerMessage.includes('failed') || lowerMessage.includes('error') || lowerMessage.includes('⚠️')) return '⚠️';
+  if (lowerMessage.includes('initialized') || lowerMessage.includes('init')) return '⚙️';
+  return '💭';
+}
+
 interface ScopingProps {
   prefillDescription?: string;
   embedded?: boolean; // If true, don't render page-level wrapper
@@ -35,11 +58,61 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   const [lastPrompt, setLastPrompt] = useState<string>('');
   const [automationStatus, setAutomationStatus] = useState<'sending' | 'sent' | 'failed' | null>(null);
   const [copied, setCopied] = useState(false);
-  
+  const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
+  const [isHeadlessMode, setIsHeadlessMode] = useState(false);
+  const [logIdCounter, setLogIdCounter] = useState(0);
+
   // Use realtime hook to listen for file changes
-  useRealtimeUpdates(() => {
+  useRealtimeUpdates((event) => {
     // Check if scoping plan was updated
-    checkScopingStatus();
+    if (event.type === 'file_changed' || event.type === 'file_added') {
+      checkScopingStatus();
+    }
+    // Handle headless progress updates
+    if (event.type === 'headless_started') {
+      setIsHeadlessMode(true);
+      setHeadlessLogs([]); // Clear previous logs
+      setLogIdCounter(0);
+      // Add initial log entry
+      const startEntry: HeadlessLogEntry = {
+        id: 0,
+        message: 'Starting Claude CLI...',
+        icon: '🚀',
+        timestamp: new Date()
+      };
+      setHeadlessLogs([startEntry]);
+      setLogIdCounter(1);
+      // Transition to generating state immediately when headless starts
+      setStatus('generating');
+      setAutomationStatus('sent');
+      onStatusChange?.('generating');
+    }
+    if (event.type === 'headless_progress' && event.status) {
+      const message = event.status;
+      const newEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: getActionIcon(message),
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, newEntry]);
+      setLogIdCounter(prev => prev + 1);
+    }
+    if (event.type === 'headless_completed') {
+      const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
+      const finalEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: event.success ? '✅' : '⚠️',
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, finalEntry]);
+      // Clear after a moment
+      setTimeout(() => {
+        setHeadlessLogs([]);
+        setIsHeadlessMode(false);
+      }, 3000);
+    }
   });
   
   // Initialize from URL params
@@ -345,16 +418,67 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
             
             <div className="text-4xl mb-4 animate-pulse">⏳</div>
             <h2 className="text-[15px] font-semibold mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
-              AI is Analyzing...
+              {isHeadlessMode ? 'Claude is Working...' : 'AI is Analyzing...'}
             </h2>
             <p className="text-[13px] mb-6" style={{ color: 'hsl(0 0% 46%)' }}>
-              Waiting for {aiToolName} to complete the classification...
+              {isHeadlessMode
+                ? 'Running in headless mode - no manual intervention needed'
+                : `Waiting for ${aiToolName} to complete the classification...`}
             </p>
+
+            {/* Headless Streaming Log Display */}
+            {isHeadlessMode && headlessLogs.length > 0 && (
+              <div
+                className="rounded-lg mb-6 overflow-hidden"
+                style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+              >
+                {/* Header */}
+                <div
+                  className="px-4 py-2 flex items-center gap-2"
+                  style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+                >
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
+                  <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
+                    Claude CLI
+                  </span>
+                </div>
+                {/* Log entries */}
+                <div
+                  className="p-3 max-h-[200px] overflow-y-auto"
+                  style={{ scrollBehavior: 'smooth' }}
+                  ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                >
+                  <div className="space-y-1.5">
+                    {headlessLogs.map((log, index) => (
+                      <div
+                        key={log.id}
+                        className="flex items-start gap-2 animate-fadeIn"
+                        style={{
+                          opacity: index === headlessLogs.length - 1 ? 1 : 0.7,
+                          animation: 'fadeIn 0.2s ease-out'
+                        }}
+                      >
+                        <span className="text-[12px] flex-shrink-0 w-5 text-center">{log.icon}</span>
+                        <span
+                          className="text-[12px] font-mono leading-relaxed"
+                          style={{ color: 'hsl(220 10% 75%)' }}
+                        >
+                          {log.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-center mb-6">
               <div className="linear-spinner" style={{ width: '28px', height: '28px' }}></div>
             </div>
             <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>
-              This may take a minute. The page will update automatically when complete.
+              {isHeadlessMode
+                ? 'Claude CLI is executing the task automatically.'
+                : 'This may take a minute. The page will update automatically when complete.'}
             </p>
             
             {/* Fallback: Copy Prompt Button (only show if automation status is null - meaning it succeeded before) */}

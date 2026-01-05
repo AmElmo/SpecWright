@@ -30,6 +30,11 @@ interface AIToolPreferences {
   tool: AITool;
 }
 
+interface HeadlessStatus {
+  available: boolean;
+  reason?: string;
+}
+
 const AI_TOOL_INFO: Record<AITool, { name: string; logo: ReactNode; description: string }> = {
   'cursor': {
     name: 'Cursor',
@@ -418,6 +423,7 @@ export function Settings() {
   const [initialGitPreferences, setInitialGitPreferences] = useState<GitPreferences | null>(null);
   const [initialAIToolPreferences, setInitialAIToolPreferences] = useState<AIToolPreferences | null>(null);
   const [initialCostEstimation, setInitialCostEstimation] = useState<CostEstimationSettings | null>(null);
+  const [headlessStatus, setHeadlessStatus] = useState<Record<AITool, HeadlessStatus> | null>(null);
 
   // Linear integration state
   const [linearSettings, setLinearSettings] = useState<LinearSettings>({});
@@ -491,6 +497,13 @@ export function Settings() {
           // Load teams if configured
           loadLinearTeams();
         }
+      }
+
+      // Load headless CLI status
+      const headlessResponse = await fetch('/api/settings/headless-status');
+      if (headlessResponse.ok) {
+        const data = await headlessResponse.json();
+        setHeadlessStatus(data);
       }
     } catch (error) {
       logger.error('Failed to load preferences:', error);
@@ -1307,15 +1320,31 @@ export function Settings() {
                   </div>
 
                   {currentToolInfo && (
-                    <div 
+                    <div
                       className="p-4 rounded-lg flex items-center gap-3"
                       style={{ backgroundColor: 'hsl(210 100% 97%)', border: '1px solid hsl(210 100% 92%)' }}
                     >
                       {currentToolInfo.logo}
-                      <div>
+                      <div className="flex-1">
                         <p className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>{currentToolInfo.name}</p>
                         <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>{currentToolInfo.description}</p>
                       </div>
+                      {/* Headless status indicator */}
+                      {headlessStatus && headlessStatus[aiToolPreferences.tool] && (
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          {headlessStatus[aiToolPreferences.tool].available ? (
+                            <>
+                              <span style={{ color: 'hsl(142 76% 36%)' }}>✓</span>
+                              <span style={{ color: 'hsl(142 76% 36%)' }}>Headless mode</span>
+                            </>
+                          ) : (aiToolPreferences.tool === 'claude-code' || aiToolPreferences.tool === 'cursor') ? (
+                            <>
+                              <span style={{ color: 'hsl(0 0% 60%)' }}>○</span>
+                              <span style={{ color: 'hsl(0 0% 60%)' }}>Keyboard automation</span>
+                            </>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

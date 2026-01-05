@@ -1,13 +1,16 @@
 import { execSync, exec } from 'child_process';
 import { promisify } from 'util';
 import chalk from 'chalk';
-import { 
+import {
     getCurrentAITool,
-    getAIToolConfig, 
-    type AITool, 
-    type AIToolConfig 
+    getAIToolConfig,
+    type AITool,
+    type AIToolConfig
 } from '../services/settings-service.js';
 import { logger } from './logger.js';
+import { canUseHeadless } from './cli-detection.js';
+import { executeHeadless } from '../services/headless-agent-service.js';
+import { broadcastHeadlessProgress, broadcastHeadlessStarted, broadcastHeadlessCompleted } from '../services/websocket-service.js';
 
 const execAsync = promisify(exec);
 
@@ -115,15 +118,59 @@ export const startCursorFocusMonitoring = (): void => {
 /**
  * Open AI coding tool and paste text into a new chat
  * This is the main automation function used by the web UI
+ *
+ * HEADLESS MODE: If the tool supports headless execution (Claude Code, Cursor)
+ * and the CLI is available, we use headless mode for faster, more reliable execution.
+ * Otherwise, we fall back to keyboard automation.
  */
 export const openAIToolAndPaste = async (text: string, workspacePath?: string, tool?: AITool): Promise<boolean> => {
     // Get the tool config - either from parameter or from saved settings
     const selectedTool = tool || getCurrentAITool();
     const config = getAIToolConfig(selectedTool);
-    
+
+    // Try headless mode first if available
+    try {
+        const headlessAvailable = await canUseHeadless(selectedTool);
+
+        if (headlessAvailable) {
+            logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
+            logger.debug(chalk.magenta(`🚀 HEADLESS MODE available for ${config.name}`));
+            logger.debug(chalk.cyan('📋 Using CLI instead of keyboard automation'));
+            logger.debug(chalk.magenta('═'.repeat(60)));
+
+            // Broadcast that headless execution is starting
+            broadcastHeadlessStarted(config.name);
+
+            const result = await executeHeadless(selectedTool, text, {
+                workingDir: workspacePath,
+                onProgress: (status: string) => {
+                    // Broadcast progress to WebSocket clients
+                    broadcastHeadlessProgress(status);
+                }
+            });
+
+            if (result && result.success) {
+                logger.debug(chalk.green(`✅ Headless execution completed successfully for ${config.name}`));
+                broadcastHeadlessCompleted(config.name, true);
+                return true;
+            }
+
+            // Headless failed, fall through to keyboard automation
+            if (result && result.error) {
+                logger.debug(chalk.yellow(`⚠️ Headless execution failed: ${result.error}`));
+                logger.debug(chalk.yellow('Falling back to keyboard automation...'));
+                broadcastHeadlessCompleted(config.name, false);
+            }
+        }
+    } catch (headlessError) {
+        logger.debug(chalk.yellow('⚠️ Error checking headless availability, using keyboard automation'));
+        logger.debug(chalk.dim(String(headlessError)));
+    }
+
+    // Keyboard automation fallback
     try {
         logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
-        logger.debug(chalk.magenta(`🚀 STARTING openAIToolAndPaste() for ${config.name}`));
+        logger.debug(chalk.magenta(`🚀 STARTING openAIToolAndPaste() for ${config.name} (keyboard automation)`));
         logger.debug(chalk.cyan('📋 Text length:'), text.length, 'characters');
         logger.debug(chalk.cyan('📁 Workspace path:'), workspacePath || 'none');
         logger.debug(chalk.cyan('💻 Platform:'), process.platform);

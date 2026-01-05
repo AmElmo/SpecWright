@@ -6,41 +6,58 @@ import { notifyInTab, clearTabNotification } from './notification-utils';
 export { notifyInTab, clearTabNotification };
 
 /**
- * Hook for real-time updates via WebSocket
- * Connects to the WebSocket server and calls onUpdate when files change
+ * WebSocket event data type
  */
-export function useRealtimeUpdates(onUpdate: () => void, enableNotifications: boolean = true) {
+export interface WebSocketEvent {
+  type: string;
+  path?: string;
+  status?: string;
+  tool?: string;
+  success?: boolean;
+  phase?: string;
+  timestamp?: number;
+}
+
+/**
+ * Hook for real-time updates via WebSocket
+ * Connects to the WebSocket server and calls onUpdate when events occur
+ * @param onUpdate - Callback that receives the event data
+ * @param enableNotifications - Whether to show tab notifications
+ */
+export function useRealtimeUpdates(onUpdate: (event: WebSocketEvent) => void, enableNotifications: boolean = true) {
   // Use a ref to store the callback so we don't reconnect on every render
   const callbackRef = useRef(onUpdate);
-  
+
   // Update the ref when callback changes (without reconnecting)
   useEffect(() => {
     callbackRef.current = onUpdate;
   }, [onUpdate]);
-  
+
   useEffect(() => {
     // Connect to WebSocket server (only once)
     // Use port 5174 to match the web server port
     const ws = new WebSocket('ws://localhost:5174');
-    
+
     ws.onopen = () => {
       logger.debug('WebSocket connected');
     };
-    
+
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'file_changed' || data.type === 'file_added') {
-          logger.debug('File update detected:', data.path);
-          
-          // Trigger tab title notification if enabled and tab is not focused
-          if (enableNotifications && document.hidden) {
-            notifyInTab('✅ Updated');
-          }
-          
-          // Call the latest callback without reconnecting
-          callbackRef.current();
+        const data = JSON.parse(event.data) as WebSocketEvent;
+
+        // Log all events for debugging
+        if (data.type.startsWith('headless_')) {
+          logger.debug('Headless event:', data);
         }
+
+        // Trigger tab title notification for file changes
+        if ((data.type === 'file_changed' || data.type === 'file_added') && enableNotifications && document.hidden) {
+          notifyInTab('✅ Updated');
+        }
+
+        // Always call the callback with the event data
+        callbackRef.current(data);
       } catch (error) {
         logger.error('Error parsing WebSocket message:', error);
       }

@@ -85,6 +85,8 @@ import {
   invalidateOutputTokenCache
 } from './services/cost-tracking-service.js';
 import { formatCost, formatTokens } from './utils/cost-estimation.js';
+import { getHeadlessStatus } from './utils/cli-detection.js';
+import { initWebSocketService } from './services/websocket-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -676,7 +678,18 @@ Generate a comprehensive audit report showing:
       res.status(500).json({ error: 'Failed to get AI tool configurations' });
     }
   });
-  
+
+  // Get headless CLI status for all AI tools
+  app.get('/api/settings/headless-status', async (req, res) => {
+    try {
+      const status = await getHeadlessStatus();
+      res.json(status);
+    } catch (error) {
+      logger.error('Error getting headless status:', error);
+      res.status(500).json({ error: 'Failed to get headless status' });
+    }
+  });
+
   // Get cost estimation settings
   app.get('/api/settings/cost-estimation', (req, res) => {
     try {
@@ -2848,7 +2861,10 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   
   // Setup WebSocket for real-time updates
   const wss = new WebSocketServer({ server });
-  
+
+  // Initialize the WebSocket service for cross-module broadcasting
+  initWebSocketService(wss);
+
   // Track connected clients (silent - UI implementation detail)
   wss.on('connection', (ws) => {
     ws.on('close', () => {
