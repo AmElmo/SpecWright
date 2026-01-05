@@ -78,6 +78,7 @@ export function Specification() {
   const [taskCount, setTaskCount] = useState(0);
   const [isInReviewMode, setIsInReviewMode] = useState(false);
   const [sessions, setSessions] = useState<{ pm?: string; ux?: string; engineer?: string }>({});
+  const [isHeadlessMode, setIsHeadlessMode] = useState(false);
   
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
                            status?.currentPhase === 'ux-questions-answer' || 
@@ -88,6 +89,14 @@ export function Specification() {
     status?.currentPhase === 'engineer-questions-answer' ? 'engineer' : null;
   
   useRealtimeUpdates((event) => {
+    // Track headless mode
+    if (event.type === 'headless_started') {
+      setIsHeadlessMode(true);
+    }
+    if (event.type === 'headless_completed') {
+      // Keep headless mode true for a moment so success banner shows correct message
+      setTimeout(() => setIsHeadlessMode(false), 3000);
+    }
     // Handle early session capture - enables RefinePanel immediately
     if (event.type === 'session_captured' && event.sessionId) {
       logger.debug('Session captured early:', event.sessionId);
@@ -693,10 +702,10 @@ export function Specification() {
                   </div>
                   <div className="text-left">
                     <p className="text-[13px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>
-                      Sent to {aiToolName}!
+                      {isHeadlessMode ? 'Running via Claude CLI' : `Sent to ${aiToolName}!`}
                     </p>
                     <p className="text-[11px]" style={{ color: 'hsl(142 50% 40%)' }}>
-                      Check your editor - the prompt is ready
+                      {isHeadlessMode ? 'Executing in headless mode - no action needed' : 'Check your editor - the prompt is ready'}
                     </p>
                   </div>
                 </div>

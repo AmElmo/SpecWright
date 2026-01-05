@@ -384,15 +384,15 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
                 </div>
                 <div className="text-left">
                   <p className="text-[13px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>
-                    Sent to {aiToolName}!
+                    {isHeadlessMode ? 'Running via Claude CLI' : `Sent to ${aiToolName}!`}
                   </p>
                   <p className="text-[11px]" style={{ color: 'hsl(142 50% 40%)' }}>
-                    Check your editor - the prompt is ready
+                    {isHeadlessMode ? 'Executing in headless mode - no action needed' : 'Check your editor - the prompt is ready'}
                   </p>
                 </div>
               </div>
             )}
-            
+
             {/* Automation Failed Status */}
             {automationStatus === 'failed' && (
               <div 
