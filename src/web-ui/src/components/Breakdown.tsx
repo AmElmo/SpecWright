@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
-import { useRealtimeUpdates } from '@/lib/use-realtime';
+import { useRealtimeUpdates, type WebSocketEvent } from '@/lib/use-realtime';
 import { useAIToolName } from '@/lib/use-ai-tool';
+import { RefinePanel } from './RefinePanel';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 type BreakdownLevel = 'one-shot' | 'few' | 'moderate' | 'detailed';
+type BreakdownState = 'select' | 'generating' | 'preview';
+
+// Issue type from issues.json
+interface Issue {
+  issue_id: string;
+  title: string;
+  status: string;
+  estimated_hours?: number;
+  description: string;
+  acceptance_criteria?: string[];
+  dependencies?: string[];
+}
 
 // Icons
 const IssuesIcon = () => (
@@ -95,17 +108,27 @@ export function Breakdown() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const aiToolName = useAIToolName();
-  
+
   const [breakdownLevel, setBreakdownLevel] = useState<BreakdownLevel>('moderate');
   const [showTooltip, setShowTooltip] = useState(false);
-  const [creatingIssues, setCreatingIssues] = useState(false);
+  const [breakdownState, setBreakdownState] = useState<BreakdownState>('select');
   const [error, setError] = useState<string>('');
   const [issueCount, setIssueCount] = useState(0);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Computed state for backward compatibility
+  const creatingIssues = breakdownState === 'generating';
   
-  // Use realtime hook to listen for file changes
-  useRealtimeUpdates(() => {
+  // Use realtime hook to listen for file changes and headless events
+  useRealtimeUpdates((event: WebSocketEvent) => {
     logger.debug('\n🔔 [Frontend] Realtime update received from WebSocket');
-    
+
+    // Capture session ID from headless completion
+    if (event.type === 'headless_completed' && event.sessionId) {
+      setSessionId(event.sessionId);
+    }
+
     // Check if breakdown completed
     if (creatingIssues) {
       checkBreakdownStatus();
@@ -125,66 +148,86 @@ export function Breakdown() {
   
   const checkBreakdownStatus = async () => {
     if (!projectId) return;
-    
+
     try {
       const response = await fetch(`/api/specification/breakdown-status/${projectId}`);
       if (!response.ok) return;
-      
+
       const data = await response.json();
-      
+
       if (data.isComplete && data.issueCount > 0) {
-        // Breakdown complete!
-        setCreatingIssues(false);
+        // Breakdown complete! Transition to preview state
         setIssueCount(data.issueCount);
-        // Navigate to issues page with project filter
-        // Extract numeric ID (e.g., "0001" from "0001-project-name")
-        const numericId = projectId?.split('-')[0] || projectId;
-        setTimeout(() => {
-          window.open(`/issues?project=${numericId}`, '_blank');
-        }, 2000);
+
+        // Fetch the generated issues for preview
+        await fetchIssues();
+
+        // Transition to preview state
+        setBreakdownState('preview');
       }
     } catch (err) {
       logger.error('Error checking breakdown status:', err);
     }
   };
+
+  const fetchIssues = async () => {
+    if (!projectId) return;
+
+    try {
+      const response = await fetch(`/api/specification/document/${projectId}/issues/issues.json`);
+      if (response.ok) {
+        const data = await response.json();
+        const content = JSON.parse(data.content);
+        setIssues(content.issues || []);
+      }
+    } catch (err) {
+      logger.error('Error fetching issues:', err);
+    }
+  };
+
+  const handleConfirmIssues = () => {
+    // Navigate to issues page with project filter
+    const numericId = projectId?.split('-')[0] || projectId;
+    window.open(`/issues?project=${numericId}`, '_blank');
+  };
   
   const handleCreateIssues = async () => {
     if (!projectId) return;
-    
+
     try {
-      setCreatingIssues(true);
+      setBreakdownState('generating');
       setError('');
-      
+
       const response = await fetch(`/api/specification/breakdown/${projectId}`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ breakdownLevel })
       });
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
         setError(data.error || 'Failed to create issues');
-        setCreatingIssues(false);
+        setBreakdownState('select');
         return;
       }
-      
-      // Handle one-shot: instant issue creation, redirect immediately
+
+      // Handle one-shot: instant issue creation, go directly to issues
       if (data.isOneShot) {
-        setCreatingIssues(false);
         setIssueCount(data.issueCount || 1);
         // Navigate to issues page with project filter
         const numericId = projectId?.split('-')[0] || projectId;
         window.open(`/issues?project=${numericId}`, '_blank');
+        setBreakdownState('select');
         return;
       }
-      
-      // Keep creatingIssues state for AI breakdown - will be cleared by checkBreakdownStatus
+
+      // Keep generating state for AI breakdown - will be transitioned by checkBreakdownStatus
     } catch (err) {
       setError('Failed to create issues');
-      setCreatingIssues(false);
+      setBreakdownState('select');
       logger.error(err);
     }
   };
@@ -367,7 +410,7 @@ export function Breakdown() {
                 
                 {issueCount > 0 && (
                   <p className="text-[13px] mt-4 relative" style={{ color: 'hsl(142 76% 36%)' }}>
-                    ✓ Created {issueCount} issues. Redirecting...
+                    ✓ Created {issueCount} issues. Loading preview...
                   </p>
                 )}
               </div>
@@ -377,7 +420,142 @@ export function Breakdown() {
       </div>
     );
   }
-  
+
+  // Preview state - show generated issues with RefinePanel
+  if (breakdownState === 'preview') {
+    return (
+      <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
+        <Sidebar />
+        <main className="flex-1">
+          <header className="sticky top-0 z-10 px-6 py-3 border-b" style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}>
+            <div className="flex items-center gap-2">
+              <Link to="/" className="text-[13px] no-underline" style={{ color: 'hsl(0 0% 46%)' }}>Projects</Link>
+              <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
+              <Link to={`/project/${projectId}`} className="text-[13px] no-underline" style={{ color: 'hsl(0 0% 46%)' }}>{projectId}</Link>
+              <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
+              <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>Review Issues</span>
+            </div>
+          </header>
+
+          <div className="p-6">
+            <div className="flex gap-6">
+              {/* Main content */}
+              <div className="flex-1 max-w-4xl">
+                {/* Header */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: 'hsl(142 76% 94%)', color: 'hsl(142 76% 36%)' }}
+                    >
+                      ✓
+                    </div>
+                    <div>
+                      <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(0 0% 9%)' }}>
+                        {issueCount} Issues Generated
+                      </h1>
+                      <p className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>
+                        Review the proposed issues before confirming
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Issue cards */}
+                <div className="space-y-3 mb-6">
+                  {issues.map((issue, index) => (
+                    <div
+                      key={issue.issue_id}
+                      className="rounded-lg p-4"
+                      style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px solid hsl(0 0% 92%)' }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className="text-[11px] font-mono px-1.5 py-0.5 rounded flex-shrink-0"
+                          style={{ backgroundColor: 'hsl(235 69% 97%)', color: 'hsl(235 69% 50%)' }}
+                        >
+                          #{index + 1}
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="text-[14px] font-semibold mb-1" style={{ color: 'hsl(0 0% 9%)' }}>
+                            {issue.title}
+                          </h3>
+                          <p className="text-[12px] mb-2" style={{ color: 'hsl(0 0% 46%)' }}>
+                            {issue.description}
+                          </p>
+                          {issue.acceptance_criteria && issue.acceptance_criteria.length > 0 && (
+                            <div>
+                              <p className="text-[11px] font-medium mb-1" style={{ color: 'hsl(0 0% 32%)' }}>
+                                Acceptance Criteria:
+                              </p>
+                              <ul className="space-y-0.5">
+                                {issue.acceptance_criteria.slice(0, 3).map((criteria, i) => (
+                                  <li key={i} className="text-[11px] flex items-start gap-1.5" style={{ color: 'hsl(0 0% 46%)' }}>
+                                    <span style={{ color: 'hsl(142 76% 36%)' }}>✓</span>
+                                    {criteria}
+                                  </li>
+                                ))}
+                                {issue.acceptance_criteria.length > 3 && (
+                                  <li className="text-[11px]" style={{ color: 'hsl(0 0% 60%)' }}>
+                                    +{issue.acceptance_criteria.length - 3} more...
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Confirm button */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleConfirmIssues}
+                    className="flex-1 px-4 py-3 rounded-md text-[14px] font-medium transition-colors"
+                    style={{ backgroundColor: 'hsl(142 76% 36%)', color: 'white' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(142 76% 30%)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'hsl(142 76% 36%)'; }}
+                  >
+                    ✅ Confirm & View Issues
+                  </button>
+                  <button
+                    onClick={() => setBreakdownState('select')}
+                    className="px-4 py-3 rounded-md text-[13px] font-medium transition-colors"
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: 'hsl(0 0% 32%)',
+                      border: '1px solid hsl(0 0% 90%)'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(0 0% 96%)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    Start Over
+                  </button>
+                </div>
+              </div>
+
+              {/* RefinePanel - Right Side */}
+              {sessionId && (
+                <RefinePanel
+                  phase="breakdown"
+                  projectId={projectId}
+                  sessionId={sessionId}
+                  onRefineComplete={() => {
+                    // Refresh issues after refinement
+                    fetchIssues();
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Select state - default
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
       <Sidebar />

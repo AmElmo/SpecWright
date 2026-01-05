@@ -64,6 +64,6 @@ export function broadcastHeadlessStarted(tool: string, phase?: string): void {
 /**
  * Broadcast headless execution completed
  */
-export function broadcastHeadlessCompleted(tool: string, success: boolean, phase?: string): void {
-    broadcast('headless_completed', { tool, success, phase });
+export function broadcastHeadlessCompleted(tool: string, success: boolean, phase?: string, sessionId?: string): void {
+    broadcast('headless_completed', { tool, success, phase, sessionId });
 }

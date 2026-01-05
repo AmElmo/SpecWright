@@ -16,8 +16,11 @@ import { fileURLToPath } from 'url';
 import { getExistingProjects, enrichProjectsWithProgress, getAllIssues, isPMPRDComplete, isUXWireframesComplete, isArchitectComplete, isPMQuestionsGenerated, isPMQuestionsAnswered, isUXDesignBriefComplete, createProjectFolder } from './services/project-service.js';
 import { logger } from './utils/logger.js';
 import { OUTPUT_DIR, TEMPLATES_DIR } from './config/constants.js';
-import { openCursorAndPaste } from './utils/clipboard.js';
+import { openCursorAndPaste, type OpenAIToolResult } from './utils/clipboard.js';
 import { finalizeScopingPlan } from './services/scoping-service.js';
+import { executeClaudeHeadless } from './services/headless-agent-service.js';
+import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted } from './services/websocket-service.js';
+import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, type AgentType } from './services/session-service.js';
 import {
   getOrCreateStatus,
   markAIWorkStarted,
@@ -913,23 +916,30 @@ Please analyze this request and update the scoping_plan.json file.`;
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let result: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (result.success) {
           logger.debug('⏳ Waiting for AI to update: scoping_plan.json');
           logger.debug('   File watcher is active - changes will appear automatically');
+
+          // Save session ID if headless mode was used
+          if (result.sessionId) {
+            saveScopingSession(result.sessionId);
+            logger.debug(`📌 Saved scoping session ID: ${result.sessionId}`);
+          }
         }
       }
-      
-      res.json({ 
-        success,
-        message: skipAutomation 
+
+      res.json({
+        success: result.success,
+        sessionId: result.sessionId,
+        message: skipAutomation
           ? 'Prompt ready. Please paste manually in Cursor.'
-          : (success 
+          : (result.success
             ? 'Cursor opened and prompt pasted. Review and press Enter.'
             : 'Failed to open Cursor automatically. Prompt is in clipboard.'),
         prompt // Return the prompt so UI can offer to copy it
@@ -944,19 +954,19 @@ Please analyze this request and update the scoping_plan.json file.`;
   app.get('/api/scoping/status', (req, res) => {
     try {
       const scopingPlanFile = path.join(OUTPUT_DIR, 'scoping_plan.json');
-      
+
       if (!fs.existsSync(scopingPlanFile)) {
         return res.json({ status: 'not_started' });
       }
-      
+
       const content = fs.readFileSync(scopingPlanFile, 'utf8');
       const plan = JSON.parse(content);
-      
+
       // Check if it's still a template (has placeholders)
-      const isTemplate = 
-        content.includes('[ANALYSIS_PLACEHOLDER]') || 
+      const isTemplate =
+        content.includes('[ANALYSIS_PLACEHOLDER]') ||
         content.includes('[SUGGESTION_PLACEHOLDER]');
-      
+
       res.json({
         status: isTemplate ? 'generating' : 'complete',
         plan
@@ -966,7 +976,21 @@ Please analyze this request and update the scoping_plan.json file.`;
       res.status(500).json({ error: 'Failed to get scoping status' });
     }
   });
-  
+
+  // Get session IDs for a project or scoping
+  app.get('/api/sessions/:projectId?', (req, res) => {
+    try {
+      const projectId = req.params.projectId || '_scoping_active';
+      const sessions = getAllSessions(projectId);
+
+      logger.debug(`📌 Retrieved sessions for ${projectId}:`, sessions);
+      res.json({ sessions });
+    } catch (error) {
+      logger.error('Error getting sessions:', error);
+      res.status(500).json({ error: 'Failed to get sessions' });
+    }
+  });
+
   // Create projects from scoping plan
   app.post('/api/scoping/finalize', async (req, res) => {
     try {
@@ -1004,7 +1028,68 @@ Please analyze this request and update the scoping_plan.json file.`;
       res.status(500).json({ error: 'Failed to finalize scope' });
     }
   });
-  
+
+  // Refine AI output with user feedback
+  // Uses --resume to continue a previous Claude session
+  app.post('/api/refine', async (req, res) => {
+    try {
+      const { phase, projectId, sessionId, feedback, images } = req.body;
+
+      if (!feedback || !feedback.trim()) {
+        return res.status(400).json({ error: 'Feedback is required' });
+      }
+
+      if (!sessionId) {
+        return res.status(400).json({ error: 'Session ID is required for refinement' });
+      }
+
+      logger.debug(chalk.magenta(`\n🔄 Starting refinement for phase: ${phase}`));
+      logger.debug(chalk.cyan(`  Session ID: ${sessionId}`));
+      logger.debug(chalk.cyan(`  Feedback: ${feedback.substring(0, 100)}...`));
+      logger.debug(chalk.cyan(`  Images: ${images?.length || 0}`));
+
+      // Build the refinement prompt
+      let prompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
+
+      // Add image references if provided
+      if (images && images.length > 0) {
+        prompt += `\n\nThe user has attached ${images.length} image(s) for reference.`;
+        // Note: Claude CLI image support would need to be added here
+        // For now, we mention that images were attached
+      }
+
+      // Broadcast that refinement has started
+      broadcastHeadlessStarted('claude-code', phase);
+
+      // Execute with resume
+      const result = await executeClaudeHeadless(prompt, {
+        workingDir: WORKSPACE_PATH,
+        resumeSessionId: sessionId,
+        onProgress: (status: string) => {
+          broadcastHeadlessProgress(status, phase);
+        }
+      });
+
+      // Broadcast completion with session ID for frontend
+      broadcastHeadlessCompleted('claude-code', result.success, phase, result.sessionId);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          sessionId: result.sessionId || sessionId // Return new or same session ID
+        });
+      } else {
+        res.json({
+          success: false,
+          error: result.error || 'Refinement failed'
+        });
+      }
+    } catch (error) {
+      logger.error('Error during refinement:', error);
+      res.status(500).json({ error: 'Failed to refine output' });
+    }
+  });
+
   // Save project settings (stored in project_status.json)
   app.post('/api/projects/:projectId/settings', (req, res) => {
     try {
@@ -1882,16 +1967,43 @@ Please analyze this request and update the scoping_plan.json file.`;
       
       logger.debug(`🔵 [DEBUG] skipAutomation = ${skipAutomation} (header value: ${req.headers['x-integrated-browser']})`);
       logger.debug(`🔵 [DEBUG] All headers:`, req.headers);
-      
-      let success = true;
+
+      let result: OpenAIToolResult = { success: true };
+      let sessionId: string | undefined = undefined;
+
       if (!skipAutomation) {
-        // Trigger Cursor automation with workspace targeting
-        logger.debug(`🔵 [DEBUG] Calling openCursorAndPaste with prompt length: ${prompt.length}`);
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        logger.debug(`🔵 [DEBUG] openCursorAndPaste returned: ${success}`);
-        
+        // Determine which agent this phase belongs to
+        const projectId = req.params.projectId;
+        const agent = mappedPhase.agent;
+        const isFirstPhaseOfAgent = mappedPhase.phase === 'questions-generate';
+
+        // Check if we should resume an existing session
+        const existingSessionId = getAgentSession(projectId, agent);
+
+        if (existingSessionId && !isFirstPhaseOfAgent) {
+          // Resume existing session for this agent
+          logger.debug(`📌 Resuming ${agent} agent session: ${existingSessionId}`);
+          sessionId = existingSessionId;
+          // TODO: For now, still using keyboard automation with session tracking
+          // When refine endpoint is called, it will use --resume
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        } else {
+          // Create new session (first phase of agent)
+          logger.debug(`🆕 Starting new ${agent} agent session`);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+          // Save the session ID if headless mode was used
+          if (result.sessionId) {
+            saveAgentSession(projectId, agent, result.sessionId);
+            sessionId = result.sessionId;
+            logger.debug(`💾 Saved ${agent} session ID: ${result.sessionId}`);
+          }
+        }
+
+        logger.debug(`🔵 [DEBUG] openCursorAndPaste returned:`, result);
+
         // Determine which file we're waiting for based on phase
-        if (success) {
+        if (result.success) {
           let waitingFor = '';
           const cleanPhase = phase.replace('-generate', '');
           if (cleanPhase === 'pm-questions') {
@@ -1930,11 +2042,12 @@ Please analyze this request and update the scoping_plan.json file.`;
         logger.debug(`💰 [Cost] Input: ${formatTokens(inputTokens)} tokens → ${costInfo.inputCost}`);
       }
       
-      const responseData = { 
-        success,
+      const responseData = {
+        success: result.success,
+        sessionId, // Include session ID for frontend
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in Cursor.'
-          : (success 
+          : (result.success
             ? 'Cursor opened and prompt pasted. Review and press Enter.'
             : 'Failed to open Cursor automatically. Prompt is in clipboard.'),
         phase,

@@ -18,27 +18,40 @@ export interface HeadlessOptions {
     allowedTools?: string[];
     timeout?: number; // ms, default 5 minutes
     onProgress?: (message: string) => void; // Callback for streaming progress
+    resumeSessionId?: string; // Session ID to resume (for refinement/continuation)
 }
 
 export interface HeadlessResult {
     success: boolean;
     error?: string;
+    sessionId?: string; // Claude CLI session ID for --resume support
+}
+
+/**
+ * Parsed result from a stream message
+ */
+interface ParsedStreamMessage {
+    status: string | null;
+    sessionId?: string;
 }
 
 /**
  * Parse streaming JSON output from Claude CLI
- * Returns a human-readable status message for display
+ * Returns a human-readable status message and optionally extracts session ID
  */
-function parseStreamMessage(line: string): string | null {
+function parseStreamMessage(line: string): ParsedStreamMessage {
     try {
         const json = JSON.parse(line);
 
         // Log the message type for debugging
         logger.debug(chalk.dim(`  [Stream] type=${json.type}, subtype=${json.subtype || 'none'}`));
 
+        // Extract session ID if present (appears in user/assistant messages)
+        const sessionId = json.sessionId;
+
         // Handle system init message
         if (json.type === 'system' && json.subtype === 'init') {
-            return `ℹ️ Claude initialized (model: ${json.model || 'unknown'})`;
+            return { status: `ℹ️ Claude initialized (model: ${json.model || 'unknown'})`, sessionId };
         }
 
         // Handle assistant messages with content
@@ -51,25 +64,25 @@ function parseStreamMessage(line: string): string | null {
                         // Provide friendly descriptions of tool usage
                         switch (toolName) {
                             case 'Read':
-                                return `📖 Reading file...`;
+                                return { status: `📖 Reading file...`, sessionId };
                             case 'Edit':
-                                return `✏️ Editing file...`;
+                                return { status: `✏️ Editing file...`, sessionId };
                             case 'Write':
-                                return `📝 Writing file...`;
+                                return { status: `📝 Writing file...`, sessionId };
                             case 'Bash':
-                                return `💻 Running command...`;
+                                return { status: `💻 Running command...`, sessionId };
                             case 'Glob':
-                                return `🔍 Searching files...`;
+                                return { status: `🔍 Searching files...`, sessionId };
                             case 'Grep':
-                                return `🔎 Searching content...`;
+                                return { status: `🔎 Searching content...`, sessionId };
                             default:
-                                return `🔧 Using ${toolName}...`;
+                                return { status: `🔧 Using ${toolName}...`, sessionId };
                         }
                     }
                     if (block.type === 'text' && block.text) {
                         const text = block.text.trim();
                         if (text.length > 0) {
-                            return `💭 ${text.substring(0, 80)}${text.length > 80 ? '...' : ''}`;
+                            return { status: `💭 ${text.substring(0, 80)}${text.length > 80 ? '...' : ''}`, sessionId };
                         }
                     }
                 }
@@ -79,23 +92,24 @@ function parseStreamMessage(line: string): string | null {
         // Handle result message
         if (json.type === 'result') {
             const duration = json.duration_ms ? ` (${(json.duration_ms / 1000).toFixed(1)}s)` : '';
-            return json.subtype === 'success'
+            const status = json.subtype === 'success'
                 ? `✅ Task completed${duration}`
                 : `⚠️ ${json.subtype || 'Unknown result'}${duration}`;
+            return { status, sessionId };
         }
 
         // Handle other system messages
         if (json.type === 'system' && json.message) {
-            return `ℹ️ ${json.message}`;
+            return { status: `ℹ️ ${json.message}`, sessionId };
         }
 
-        return null;
+        return { status: null, sessionId };
     } catch {
         // Not valid JSON, might be plain text output
         if (line.trim()) {
-            return line.trim().substring(0, 100);
+            return { status: line.trim().substring(0, 100) };
         }
-        return null;
+        return { status: null };
     }
 }
 
@@ -114,11 +128,17 @@ export async function executeClaudeHeadless(
         workingDir,
         allowedTools = ['Read', 'Edit', 'Write', 'Bash', 'Glob', 'Grep'],
         timeout = 5 * 60 * 1000, // 5 minutes default
-        onProgress
+        onProgress,
+        resumeSessionId
     } = options;
 
+    const isResume = !!resumeSessionId;
+
     logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
-    logger.debug(chalk.magenta('🚀 STARTING Claude Code HEADLESS execution'));
+    logger.debug(chalk.magenta(isResume ? '🔄 RESUMING Claude Code session' : '🚀 STARTING Claude Code HEADLESS execution'));
+    if (isResume) {
+        logger.debug(chalk.cyan('🔗 Session ID:'), resumeSessionId);
+    }
     logger.debug(chalk.cyan('📋 Prompt length:'), prompt.length, 'characters');
     logger.debug(chalk.cyan('📁 Working directory:'), workingDir || process.cwd());
     logger.debug(chalk.cyan('🔧 Allowed tools:'), allowedTools.join(', '));
@@ -126,12 +146,19 @@ export async function executeClaudeHeadless(
     logger.debug(chalk.magenta('═'.repeat(60)));
 
     return new Promise((resolve) => {
-        const args = [
+        // Build args - use --resume if we have a session ID
+        const args: string[] = [];
+
+        if (isResume) {
+            args.push('--resume', resumeSessionId);
+        }
+
+        args.push(
             '-p', prompt,
             '--allowedTools', allowedTools.join(','),
             '--output-format', 'stream-json',
             '--verbose'  // Required for stream-json to work
-        ];
+        );
 
         logger.debug(chalk.yellow('\n[Headless] Spawning claude CLI with streaming...'));
         logger.debug(chalk.dim(`  → claude ${args.map(a => a.length > 50 ? a.substring(0, 50) + '...' : a).join(' ')}`));
@@ -151,6 +178,7 @@ export async function executeClaudeHeadless(
         let stderr = '';
         let buffer = '';
         let lastStatus = '';
+        let capturedSessionId: string | undefined;
 
         console.log('[DEBUG] Setting up stdout handler...');
         proc.stdout.on('data', (data) => {
@@ -171,14 +199,21 @@ export async function executeClaudeHeadless(
             for (const line of lines) {
                 if (!line.trim()) continue;
 
-                const status = parseStreamMessage(line);
-                if (status && status !== lastStatus) {
-                    lastStatus = status;
-                    logger.debug(chalk.cyan(`  [Claude] ${status}`));
+                const parsed = parseStreamMessage(line);
+
+                // Capture session ID if we haven't yet
+                if (parsed.sessionId && !capturedSessionId) {
+                    capturedSessionId = parsed.sessionId;
+                    logger.debug(chalk.green(`  [Session] Captured session ID: ${capturedSessionId}`));
+                }
+
+                if (parsed.status && parsed.status !== lastStatus) {
+                    lastStatus = parsed.status;
+                    logger.debug(chalk.cyan(`  [Claude] ${parsed.status}`));
 
                     // Call progress callback if provided
                     if (onProgress) {
-                        onProgress(status);
+                        onProgress(parsed.status);
                     }
                 }
             }
@@ -211,12 +246,15 @@ export async function executeClaudeHeadless(
             if (code === 0) {
                 logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
                 logger.debug(chalk.green('✅ Claude Code headless execution COMPLETED'));
+                if (capturedSessionId) {
+                    logger.debug(chalk.green('📌 Session ID:'), capturedSessionId);
+                }
                 logger.debug(chalk.magenta('═'.repeat(60) + '\n'));
 
                 if (onProgress) {
                     onProgress('✅ Claude Code completed');
                 }
-                resolve({ success: true });
+                resolve({ success: true, sessionId: capturedSessionId });
             } else {
                 logger.debug(chalk.red(`\n❌ Claude CLI exited with code ${code}`));
                 if (stderr) {
@@ -228,7 +266,8 @@ export async function executeClaudeHeadless(
                 }
                 resolve({
                     success: false,
-                    error: `Claude CLI exited with code ${code}: ${stderr.substring(0, 200)}`
+                    error: `Claude CLI exited with code ${code}: ${stderr.substring(0, 200)}`,
+                    sessionId: capturedSessionId
                 });
             }
         });

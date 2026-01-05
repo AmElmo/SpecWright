@@ -116,6 +116,14 @@ export const startCursorFocusMonitoring = (): void => {
 };
 
 /**
+ * Result from openAIToolAndPaste
+ */
+export interface OpenAIToolResult {
+    success: boolean;
+    sessionId?: string; // Claude CLI session ID (only available in headless mode)
+}
+
+/**
  * Open AI coding tool and paste text into a new chat
  * This is the main automation function used by the web UI
  *
@@ -123,7 +131,7 @@ export const startCursorFocusMonitoring = (): void => {
  * and the CLI is available, we use headless mode for faster, more reliable execution.
  * Otherwise, we fall back to keyboard automation.
  */
-export const openAIToolAndPaste = async (text: string, workspacePath?: string, tool?: AITool): Promise<boolean> => {
+export const openAIToolAndPaste = async (text: string, workspacePath?: string, tool?: AITool): Promise<OpenAIToolResult> => {
     // Get the tool config - either from parameter or from saved settings
     const selectedTool = tool || getCurrentAITool();
     const config = getAIToolConfig(selectedTool);
@@ -151,15 +159,15 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
 
             if (result && result.success) {
                 logger.debug(chalk.green(`✅ Headless execution completed successfully for ${config.name}`));
-                broadcastHeadlessCompleted(config.name, true);
-                return true;
+                broadcastHeadlessCompleted(config.name, true, undefined, result.sessionId);
+                return { success: true, sessionId: result.sessionId };
             }
 
             // Headless failed, fall through to keyboard automation
             if (result && result.error) {
                 logger.debug(chalk.yellow(`⚠️ Headless execution failed: ${result.error}`));
                 logger.debug(chalk.yellow('Falling back to keyboard automation...'));
-                broadcastHeadlessCompleted(config.name, false);
+                broadcastHeadlessCompleted(config.name, false, undefined, result.sessionId);
             }
         }
     } catch (headlessError) {
@@ -258,7 +266,7 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
             } else {
                 logger.debug(chalk.yellow('⚠️  Auto-open only supported on macOS and Windows'));
                 logger.debug(chalk.dim(`Please switch to ${config.name} and paste manually`));
-                return false;
+                return { success: false };
             }
         }
         
@@ -330,19 +338,19 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
             
         } else {
             logger.debug(chalk.yellow(`📋 Prompt copied! Please paste manually into ${config.name}`));
-            return false;
+            return { success: false };
         }
         
         logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
         logger.debug(chalk.green(`✨ COMPLETED: Prompt pasted in ${config.name}! Review and press Enter.`));
         logger.debug(chalk.magenta('═'.repeat(60) + '\n'));
-        return true;
+        return { success: true }; // No sessionId for keyboard automation
         
     } catch (error) {
         logger.debug(chalk.red('\n❌ ERROR in openAIToolAndPaste():'));
         logger.debug(chalk.red(error));
         logger.debug(chalk.dim('Prompt is in clipboard - please paste manually'));
-        return false;
+        return { success: false };
     }
 };
 
@@ -350,7 +358,7 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
  * Open Cursor and paste text into a new chat
  * This is kept for backward compatibility - now uses the generic openAIToolAndPaste
  */
-export const openCursorAndPaste = async (text: string, workspacePath?: string): Promise<boolean> => {
+export const openCursorAndPaste = async (text: string, workspacePath?: string): Promise<OpenAIToolResult> => {
     return openAIToolAndPaste(text, workspacePath);
 };
 

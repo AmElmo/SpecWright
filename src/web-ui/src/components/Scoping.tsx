@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
 import { useAIToolName } from '../lib/use-ai-tool';
+import { RefinePanel } from './RefinePanel';
 
 type ScopingStatus = 'ready' | 'classifying' | 'generating' | 'complete';
 
@@ -61,6 +62,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
   const [isHeadlessMode, setIsHeadlessMode] = useState(false);
   const [logIdCounter, setLogIdCounter] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Use realtime hook to listen for file changes
   useRealtimeUpdates((event) => {
@@ -107,6 +109,10 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         timestamp: new Date()
       };
       setHeadlessLogs(prev => [...prev, finalEntry]);
+      // Capture session ID for refinement support
+      if (event.sessionId) {
+        setSessionId(event.sessionId);
+      }
       // Clear after a moment
       setTimeout(() => {
         setHeadlessLogs([]);
@@ -521,9 +527,11 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         </div>
       )}
       
-      {/* Complete State - Show Results */}
+      {/* Complete State - Show Results with Refine Panel */}
       {status === 'complete' && scopingPlan && (
-        <div className="space-y-5">
+        <div className="flex gap-6">
+          {/* Main Content */}
+          <div className="flex-1 space-y-5">
           {/* Scoping Complete Header */}
           <div 
             className="rounded-lg p-6"
@@ -859,6 +867,19 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
               </div>
             </div>
           )}
+          </div>
+
+          {/* Refine Panel - Right Side */}
+          {sessionId && (
+            <RefinePanel
+              phase="scoping"
+              sessionId={sessionId}
+              onRefineComplete={() => {
+                // Refresh scoping status after refinement
+                checkScopingStatus();
+              }}
+            />
+          )}
         </div>
       )}
     </>
@@ -871,7 +892,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   
   return (
     <div className="min-h-screen p-8" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
-      <div className="max-w-3xl mx-auto">
+      <div className={`mx-auto ${status === 'complete' && sessionId ? 'max-w-5xl' : 'max-w-3xl'}`}>
         {content}
       </div>
     </div>
