@@ -48,7 +48,8 @@ function parseStreamMessage(line: string): ParsedStreamMessage {
         logger.debug(chalk.dim(`  [Stream] type=${json.type}, subtype=${json.subtype || 'none'}`));
 
         // Extract session ID if present (appears in user/assistant messages)
-        const sessionId = json.sessionId;
+        // Claude CLI uses snake_case: session_id
+        const sessionId = json.session_id;
 
         // Handle system init message
         if (json.type === 'system' && json.subtype === 'init') {
