@@ -6,6 +6,7 @@ import { useAIToolName } from '../lib/use-ai-tool';
 import { QuestionForm } from './QuestionForm';
 import { DocumentReview } from './DocumentReview';
 import { CostWidget } from './CostWidget';
+import { RefinePanel } from './RefinePanel';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 interface SpecificationStatus {
@@ -76,6 +77,7 @@ export function Specification() {
   const [hasTasks, setHasTasks] = useState(false);
   const [taskCount, setTaskCount] = useState(0);
   const [isInReviewMode, setIsInReviewMode] = useState(false);
+  const [sessions, setSessions] = useState<{ pm?: string; ux?: string; engineer?: string }>({});
   
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
                            status?.currentPhase === 'ux-questions-answer' || 
@@ -223,7 +225,25 @@ export function Specification() {
   useEffect(() => {
     fetchStatus();
   }, [projectId]);
-  
+
+  // Fetch session IDs for refinement support
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!projectId) return;
+      try {
+        const response = await fetch(`/api/sessions/${projectId}`);
+        const data = await response.json();
+        if (data.sessions) {
+          setSessions(data.sessions);
+          logger.debug('Loaded sessions:', data.sessions);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch sessions:', err);
+      }
+    };
+    fetchSessions();
+  }, [projectId]);
+
   const checkIfWorkComplete = async () => {
     if (!triggeringPhase || !projectId) return;
     
@@ -861,6 +881,15 @@ export function Specification() {
       );
     }
     
+    // Determine current agent for session lookup
+    const getCurrentAgent = (): 'pm' | 'ux' | 'engineer' => {
+      if (status.currentPhase.startsWith('pm-')) return 'pm';
+      if (status.currentPhase.startsWith('ux-')) return 'ux';
+      return 'engineer';
+    };
+    const currentAgent = getCurrentAgent();
+    const currentSessionId = sessions[currentAgent];
+
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         <Sidebar />
@@ -874,16 +903,40 @@ export function Specification() {
               <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Review</span>
             </div>
           </header>
-          
+
           <div className="p-6">
-            <div className="max-w-4xl mx-auto">
-              <DocumentReview
-                projectId={projectId!}
-                documentPath={status.reviewDocument}
-                documentContent={reviewDocumentContent}
-                documentType={getDocumentType()}
-                onApprove={handleApproveDocument}
-              />
+            <div className="flex gap-6">
+              {/* Main content */}
+              <div className="flex-1 max-w-4xl">
+                <DocumentReview
+                  projectId={projectId!}
+                  documentPath={status.reviewDocument}
+                  documentContent={reviewDocumentContent}
+                  documentType={getDocumentType()}
+                  onApprove={handleApproveDocument}
+                />
+              </div>
+
+              {/* RefinePanel for feedback */}
+              {currentSessionId && (
+                <RefinePanel
+                  phase={currentAgent}
+                  sessionId={currentSessionId}
+                  onRefineComplete={() => {
+                    // Refresh sessions after refinement
+                    fetch(`/api/sessions/${projectId}`)
+                      .then(res => res.json())
+                      .then(data => {
+                        if (data.sessions) setSessions(data.sessions);
+                      })
+                      .catch(() => {});
+                    // Reload the document
+                    if (status.reviewDocument) {
+                      fetchDocumentForReview(status.reviewDocument);
+                    }
+                  }}
+                />
+              )}
             </div>
           </div>
         </main>

@@ -40,7 +40,7 @@ interface UploadedImage {
   preview: string;
 }
 
-type RefinePhase = 'scoping' | 'pm' | 'designer' | 'engineer' | 'breakdown';
+type RefinePhase = 'scoping' | 'pm' | 'designer' | 'ux' | 'engineer' | 'breakdown';
 
 interface RefinePanelProps {
   phase: RefinePhase;

@@ -125,6 +125,23 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   useEffect(() => {
     // Just set to ready on mount
   }, []);
+
+  // Fetch persisted session ID on mount (survives page reloads)
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/sessions/_scoping_active');
+        const data = await response.json();
+        if (data.sessions?.scoping) {
+          setSessionId(data.sessions.scoping);
+          logger.debug('Restored scoping session:', data.sessions.scoping);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch session:', err);
+      }
+    };
+    fetchSession();
+  }, []);
   
   // Poll for status updates when generating
   useEffect(() => {
@@ -168,7 +185,12 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       if (data.prompt) {
         setLastPrompt(data.prompt);
       }
-      
+
+      // Capture session ID if returned
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+      }
+
       if (data.success) {
         // Automation succeeded - keep "sent" visible at the top while showing generating
         setAutomationStatus('sent');

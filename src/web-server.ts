@@ -20,7 +20,7 @@ import { openCursorAndPaste, type OpenAIToolResult } from './utils/clipboard.js'
 import { finalizeScopingPlan } from './services/scoping-service.js';
 import { executeClaudeHeadless } from './services/headless-agent-service.js';
 import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted } from './services/websocket-service.js';
-import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, type AgentType } from './services/session-service.js';
+import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, type AgentType as SessionAgentType } from './services/session-service.js';
 import {
   getOrCreateStatus,
   markAIWorkStarted,
@@ -403,24 +403,24 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let result: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (result.success) {
           logger.debug('⏳ Waiting for AI to create: PLAYBOOK.md');
           logger.debug('   File watcher is active - changes will appear automatically');
         }
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: result.success,
         prompt,
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in your AI tool.'
-          : (success 
+          : (result.success
             ? 'AI tool opened and prompt pasted. Review and press Enter.'
             : 'Failed to open AI tool automatically. Prompt is in clipboard.')
       });
@@ -429,7 +429,7 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
       res.status(500).json({ error: 'Failed to generate playbook prompt' });
     }
   });
-  
+
   // Update playbook prompt
   app.post('/api/playbook/update', async (req, res) => {
     try {
@@ -455,24 +455,24 @@ Key points:
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let updateResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        updateResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (updateResult.success) {
           logger.debug('⏳ Waiting for AI to update: PLAYBOOK.md');
           logger.debug('   File watcher is active - changes will appear automatically');
         }
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: updateResult.success,
         prompt,
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in your AI tool.'
-          : (success 
+          : (updateResult.success
             ? 'AI tool opened and prompt pasted. Review and press Enter.'
             : 'Failed to open AI tool automatically. Prompt is in clipboard.')
       });
@@ -481,7 +481,7 @@ Key points:
       res.status(500).json({ error: 'Failed to generate update prompt' });
     }
   });
-  
+
   // Audit playbook prompt (no automation needed - just copy to clipboard)
   app.post('/api/playbook/audit', (req, res) => {
     try {
@@ -1974,7 +1974,7 @@ Please analyze this request and update the scoping_plan.json file.`;
       if (!skipAutomation) {
         // Determine which agent this phase belongs to
         const projectId = req.params.projectId;
-        const agent = mappedPhase.agent;
+        const agent = mappedPhase.agent as SessionAgentType;
         const isFirstPhaseOfAgent = mappedPhase.phase === 'questions-generate';
 
         // Check if we should resume an existing session
@@ -2286,23 +2286,23 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let breakdownResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');
           logger.debug('   File watcher is active - issues will appear automatically');
         }
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: breakdownResult.success,
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in Cursor.'
-          : (success 
+          : (breakdownResult.success
             ? 'Cursor opened with issue creation prompt'
             : 'Failed to open Cursor automatically'),
         prompt
@@ -2312,7 +2312,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       res.status(500).json({ error: 'Failed to create issues' });
     }
   });
-  
+
   // Check if issue creation is complete
   app.get('/api/specification/breakdown-status/:projectId', (req, res) => {
     try {
@@ -2573,25 +2573,25 @@ ${suggestion || 'Implement this change directly in your code editor.'}
 
       // Generate full contextual prompt with all project specs and completion instructions
       const prompt = generateIssuePrompt(issue, matchingFolder);
-      
+
       logger.debug(`[API] Generated prompt (${prompt.length} chars)`);
-      
+
       // Trigger automation and wait for result (with reduced timeouts it should be ~1-2s max)
-      let success = false;
+      let shipResult: OpenAIToolResult = { success: false };
       try {
         logger.debug('🚀 [API] Triggering AI tool automation...');
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        logger.debug(`[API] AI tool automation result: ${success}`);
+        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        logger.debug(`[API] AI tool automation result:`, shipResult);
       } catch (err) {
         logger.error('[API] Failed to trigger AI tool:', err);
         // Automation failed, but we still have the prompt for manual copy
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: shipResult.success,
         prompt,
-        message: success 
-          ? 'Prompt sent to AI tool successfully' 
+        message: shipResult.success
+          ? 'Prompt sent to AI tool successfully'
           : 'Prompt ready - paste manually if AI tool did not open'
       });
     } catch (error) {
