@@ -16,8 +16,11 @@ import { fileURLToPath } from 'url';
 import { getExistingProjects, enrichProjectsWithProgress, getAllIssues, isPMPRDComplete, isUXWireframesComplete, isArchitectComplete, isPMQuestionsGenerated, isPMQuestionsAnswered, isUXDesignBriefComplete, createProjectFolder } from './services/project-service.js';
 import { logger } from './utils/logger.js';
 import { OUTPUT_DIR, TEMPLATES_DIR } from './config/constants.js';
-import { openCursorAndPaste } from './utils/clipboard.js';
+import { openCursorAndPaste, type OpenAIToolResult } from './utils/clipboard.js';
 import { finalizeScopingPlan } from './services/scoping-service.js';
+import { executeClaudeHeadless } from './services/headless-agent-service.js';
+import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted } from './services/websocket-service.js';
+import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, saveRefinementImages, type AgentType as SessionAgentType } from './services/session-service.js';
 import {
   getOrCreateStatus,
   markAIWorkStarted,
@@ -85,6 +88,19 @@ import {
   invalidateOutputTokenCache
 } from './services/cost-tracking-service.js';
 import { formatCost, formatTokens } from './utils/cost-estimation.js';
+import { getHeadlessStatus } from './utils/cli-detection.js';
+import { initWebSocketService } from './services/websocket-service.js';
+import {
+  markScopingGenerating,
+  markScopingComplete,
+  isScopingGenerating,
+  markSpecPhaseGenerating,
+  markSpecPhaseComplete,
+  getSpecGeneratingPhase,
+  markBreakdownGenerating,
+  markBreakdownComplete,
+  isBreakdownGenerating
+} from './services/generation-tracker-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -398,24 +414,24 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let result: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (result.success) {
           logger.debug('⏳ Waiting for AI to create: PLAYBOOK.md');
           logger.debug('   File watcher is active - changes will appear automatically');
         }
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: result.success,
         prompt,
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in your AI tool.'
-          : (success 
+          : (result.success
             ? 'AI tool opened and prompt pasted. Review and press Enter.'
             : 'Failed to open AI tool automatically. Prompt is in clipboard.')
       });
@@ -424,7 +440,7 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
       res.status(500).json({ error: 'Failed to generate playbook prompt' });
     }
   });
-  
+
   // Update playbook prompt
   app.post('/api/playbook/update', async (req, res) => {
     try {
@@ -450,24 +466,24 @@ Key points:
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let updateResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        updateResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (updateResult.success) {
           logger.debug('⏳ Waiting for AI to update: PLAYBOOK.md');
           logger.debug('   File watcher is active - changes will appear automatically');
         }
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: updateResult.success,
         prompt,
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in your AI tool.'
-          : (success 
+          : (updateResult.success
             ? 'AI tool opened and prompt pasted. Review and press Enter.'
             : 'Failed to open AI tool automatically. Prompt is in clipboard.')
       });
@@ -476,7 +492,7 @@ Key points:
       res.status(500).json({ error: 'Failed to generate update prompt' });
     }
   });
-  
+
   // Audit playbook prompt (no automation needed - just copy to clipboard)
   app.post('/api/playbook/audit', (req, res) => {
     try {
@@ -676,7 +692,18 @@ Generate a comprehensive audit report showing:
       res.status(500).json({ error: 'Failed to get AI tool configurations' });
     }
   });
-  
+
+  // Get headless CLI status for all AI tools
+  app.get('/api/settings/headless-status', async (req, res) => {
+    try {
+      const status = await getHeadlessStatus();
+      res.json(status);
+    } catch (error) {
+      logger.error('Error getting headless status:', error);
+      res.status(500).json({ error: 'Failed to get headless status' });
+    }
+  });
+
   // Get cost estimation settings
   app.get('/api/settings/cost-estimation', (req, res) => {
     try {
@@ -882,7 +909,10 @@ Generate a comprehensive audit report showing:
       // RESET scoping_plan.json to placeholder state before starting
       // This ensures a clean slate regardless of previous user actions
       resetScopingPlanFile();
-      
+
+      // Mark scoping as generating (for page reload state restoration)
+      markScopingGenerating();
+
       // Build the scoping prompt
       const scopingPromptPath = path.join(TEMPLATES_DIR, 'scoping_prompt.md');
       let scopingPromptTemplate = '';
@@ -900,23 +930,30 @@ Please analyze this request and update the scoping_plan.json file.`;
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      let result: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+
+        if (result.success) {
           logger.debug('⏳ Waiting for AI to update: scoping_plan.json');
           logger.debug('   File watcher is active - changes will appear automatically');
+
+          // Save session ID if headless mode was used
+          if (result.sessionId) {
+            saveScopingSession(result.sessionId);
+            logger.debug(`📌 Saved scoping session ID: ${result.sessionId}`);
+          }
         }
       }
-      
-      res.json({ 
-        success,
-        message: skipAutomation 
+
+      res.json({
+        success: result.success,
+        sessionId: result.sessionId,
+        message: skipAutomation
           ? 'Prompt ready. Please paste manually in Cursor.'
-          : (success 
+          : (result.success
             ? 'Cursor opened and prompt pasted. Review and press Enter.'
             : 'Failed to open Cursor automatically. Prompt is in clipboard.'),
         prompt // Return the prompt so UI can offer to copy it
@@ -931,29 +968,58 @@ Please analyze this request and update the scoping_plan.json file.`;
   app.get('/api/scoping/status', (req, res) => {
     try {
       const scopingPlanFile = path.join(OUTPUT_DIR, 'scoping_plan.json');
-      
+
+      // Check if generation is actively in progress (for page reload restoration)
+      const generatingStatus = isScopingGenerating();
+
       if (!fs.existsSync(scopingPlanFile)) {
-        return res.json({ status: 'not_started' });
+        return res.json({
+          status: 'not_started',
+          isGenerating: generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
+        });
       }
-      
+
       const content = fs.readFileSync(scopingPlanFile, 'utf8');
       const plan = JSON.parse(content);
-      
+
       // Check if it's still a template (has placeholders)
-      const isTemplate = 
-        content.includes('[ANALYSIS_PLACEHOLDER]') || 
+      const isTemplate =
+        content.includes('[ANALYSIS_PLACEHOLDER]') ||
         content.includes('[SUGGESTION_PLACEHOLDER]');
-      
+
+      // If template has placeholders and we're actively generating, show generating status
+      // If template is complete, clear the generating status
+      if (!isTemplate) {
+        markScopingComplete();
+      }
+
       res.json({
         status: isTemplate ? 'generating' : 'complete',
-        plan
+        plan,
+        isGenerating: isTemplate && generatingStatus.isGenerating,
+        generatingStartedAt: generatingStatus.startedAt
       });
     } catch (error) {
       logger.error('Error getting scoping status:', error);
       res.status(500).json({ error: 'Failed to get scoping status' });
     }
   });
-  
+
+  // Get session IDs for a project or scoping
+  app.get('/api/sessions/:projectId?', (req, res) => {
+    try {
+      const projectId = req.params.projectId || '_scoping_active';
+      const sessions = getAllSessions(projectId);
+
+      logger.debug(`📌 Retrieved sessions for ${projectId}:`, sessions);
+      res.json({ sessions });
+    } catch (error) {
+      logger.error('Error getting sessions:', error);
+      res.status(500).json({ error: 'Failed to get sessions' });
+    }
+  });
+
   // Create projects from scoping plan
   app.post('/api/scoping/finalize', async (req, res) => {
     try {
@@ -991,7 +1057,101 @@ Please analyze this request and update the scoping_plan.json file.`;
       res.status(500).json({ error: 'Failed to finalize scope' });
     }
   });
-  
+
+  // Refine AI output with user feedback
+  // Uses --resume to continue a previous Claude session
+  app.post('/api/refine', async (req, res) => {
+    try {
+      const { phase, projectId, sessionId, feedback, images } = req.body;
+
+      if (!feedback || !feedback.trim()) {
+        return res.status(400).json({ error: 'Feedback is required' });
+      }
+
+      if (!sessionId) {
+        return res.status(400).json({ error: 'Session ID is required for refinement' });
+      }
+
+      logger.debug(chalk.magenta(`\n🔄 Starting refinement for phase: ${phase}`));
+      logger.debug(chalk.cyan(`  Session ID: ${sessionId}`));
+      logger.debug(chalk.cyan(`  Feedback: ${feedback.substring(0, 100)}...`));
+      logger.debug(chalk.cyan(`  Images: ${images?.length || 0}`));
+
+      // Build the refinement prompt
+      let prompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
+
+      // Save images to disk and reference them in the prompt
+      if (images && images.length > 0) {
+        // Determine project ID for image storage
+        const storageProjectId = projectId || '_scoping_active';
+        // Map phase to agent type
+        const agentType = (phase === 'scoping' ? 'scoping' :
+                          phase === 'pm' ? 'pm' :
+                          phase === 'ux' || phase === 'designer' ? 'ux' :
+                          phase === 'engineer' ? 'engineer' :
+                          'breakdown') as SessionAgentType;
+
+        // Convert base64 images to buffers and save to disk
+        const imagesToSave: { filename: string; data: Buffer }[] = [];
+        for (let i = 0; i < images.length; i++) {
+          const base64Data = images[i];
+          // Extract the actual base64 content (remove data:image/xxx;base64, prefix)
+          const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+          if (matches) {
+            const extension = matches[1];
+            const base64Content = matches[2];
+            const buffer = Buffer.from(base64Content, 'base64');
+            const filename = `feedback-image-${Date.now()}-${i}.${extension}`;
+            imagesToSave.push({ filename, data: buffer });
+          }
+        }
+
+        if (imagesToSave.length > 0) {
+          const savedPaths = saveRefinementImages(storageProjectId, agentType, imagesToSave);
+          logger.debug(chalk.cyan(`  📸 Saved ${savedPaths.length} images to disk`));
+
+          // Add image file references to prompt
+          // Claude CLI can read these files using the Read tool
+          prompt += `\n\nThe user has attached ${savedPaths.length} reference image(s). You can view them using the Read tool:`;
+          for (const imagePath of savedPaths) {
+            prompt += `\n- ${imagePath}`;
+          }
+          prompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
+        }
+      }
+
+      // Broadcast that refinement has started (with isRefinement=true)
+      broadcastHeadlessStarted('claude-code', phase, true);
+
+      // Execute with resume
+      const result = await executeClaudeHeadless(prompt, {
+        workingDir: WORKSPACE_PATH,
+        resumeSessionId: sessionId,
+        onProgress: (status: string) => {
+          broadcastHeadlessProgress(status, phase, true);
+        }
+      });
+
+      // Broadcast completion with session ID for frontend (with isRefinement=true)
+      broadcastHeadlessCompleted('claude-code', result.success, phase, result.sessionId, true);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          sessionId: result.sessionId || sessionId // Return new or same session ID
+        });
+      } else {
+        res.json({
+          success: false,
+          error: result.error || 'Refinement failed'
+        });
+      }
+    } catch (error) {
+      logger.error('Error during refinement:', error);
+      res.status(500).json({ error: 'Failed to refine output' });
+    }
+  });
+
   // Save project settings (stored in project_status.json)
   app.post('/api/projects/:projectId/settings', (req, res) => {
     try {
@@ -1461,7 +1621,18 @@ Please analyze this request and update the scoping_plan.json file.`;
       const finalPmComplete = status.agents.pm.status === 'complete';
       const finalUxComplete = status.agents.ux.status === 'complete';
       const finalEngineerComplete = status.agents.engineer.status === 'complete';
-      
+
+      // Check if generation is actively in progress (for page reload state restoration)
+      const generatingStatus = getSpecGeneratingPhase(req.params.projectId);
+
+      // If we've retroactively advanced the phase, clear the generating status
+      if (needsReview || (currentAgent !== 'complete' && status.agents[currentAgent].phases[status.agents[currentAgent].currentPhase || '']?.status !== 'ai-working')) {
+        // Phase is no longer in ai-working state, clear the generating tracker
+        if (generatingStatus.isGenerating) {
+          markSpecPhaseComplete(req.params.projectId);
+        }
+      }
+
       res.json({
         projectId: req.params.projectId,
         phases: {
@@ -1473,7 +1644,11 @@ Please analyze this request and update the scoping_plan.json file.`;
         nextPhase,
         needsReview,
         reviewDocument,
-        isComplete: finalPmComplete && finalUxComplete && finalEngineerComplete
+        isComplete: finalPmComplete && finalUxComplete && finalEngineerComplete,
+        // Include generation status for page reload restoration
+        isGenerating: generatingStatus.isGenerating,
+        generatingPhase: generatingStatus.phase,
+        generatingStartedAt: generatingStatus.startedAt
       });
       
       logger.debug(`📤 [API] Returning status:`);
@@ -1681,11 +1856,14 @@ Please analyze this request and update the scoping_plan.json file.`;
       if (mappedPhase) {
         // Update status to reflect that we're starting this phase
         const status = getOrCreateStatus(req.params.projectId);
-        if (status.currentAgent === mappedPhase.agent && 
+        if (status.currentAgent === mappedPhase.agent &&
             status.agents[mappedPhase.agent].currentPhase === mappedPhase.phase) {
           // Phase matches, mark as ai-working
           markAIWorkStarted(req.params.projectId);
-          
+
+          // Mark spec phase as generating (for page reload state restoration)
+          markSpecPhaseGenerating(req.params.projectId, phase);
+
           // Small delay to ensure status file is written to disk before we create any files
           // that might trigger the file watcher (prevents race condition)
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -1869,16 +2047,43 @@ Please analyze this request and update the scoping_plan.json file.`;
       
       logger.debug(`🔵 [DEBUG] skipAutomation = ${skipAutomation} (header value: ${req.headers['x-integrated-browser']})`);
       logger.debug(`🔵 [DEBUG] All headers:`, req.headers);
-      
-      let success = true;
+
+      let result: OpenAIToolResult = { success: true };
+      let sessionId: string | undefined = undefined;
+
       if (!skipAutomation) {
-        // Trigger Cursor automation with workspace targeting
-        logger.debug(`🔵 [DEBUG] Calling openCursorAndPaste with prompt length: ${prompt.length}`);
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        logger.debug(`🔵 [DEBUG] openCursorAndPaste returned: ${success}`);
-        
+        // Determine which agent this phase belongs to
+        const projectId = req.params.projectId;
+        const agent = mappedPhase.agent as SessionAgentType;
+        const isFirstPhaseOfAgent = mappedPhase.phase === 'questions-generate';
+
+        // Check if we should resume an existing session
+        const existingSessionId = getAgentSession(projectId, agent);
+
+        if (existingSessionId && !isFirstPhaseOfAgent) {
+          // Resume existing session for this agent
+          logger.debug(`📌 Resuming ${agent} agent session: ${existingSessionId}`);
+          sessionId = existingSessionId;
+          // TODO: For now, still using keyboard automation with session tracking
+          // When refine endpoint is called, it will use --resume
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase);
+        } else {
+          // Create new session (first phase of agent)
+          logger.debug(`🆕 Starting new ${agent} agent session`);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase);
+
+          // Save the session ID if headless mode was used
+          if (result.sessionId) {
+            saveAgentSession(projectId, agent, result.sessionId);
+            sessionId = result.sessionId;
+            logger.debug(`💾 Saved ${agent} session ID: ${result.sessionId}`);
+          }
+        }
+
+        logger.debug(`🔵 [DEBUG] openCursorAndPaste returned:`, result);
+
         // Determine which file we're waiting for based on phase
-        if (success) {
+        if (result.success) {
           let waitingFor = '';
           const cleanPhase = phase.replace('-generate', '');
           if (cleanPhase === 'pm-questions') {
@@ -1917,11 +2122,12 @@ Please analyze this request and update the scoping_plan.json file.`;
         logger.debug(`💰 [Cost] Input: ${formatTokens(inputTokens)} tokens → ${costInfo.inputCost}`);
       }
       
-      const responseData = { 
-        success,
+      const responseData = {
+        success: result.success,
+        sessionId, // Include session ID for frontend
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in Cursor.'
-          : (success 
+          : (result.success
             ? 'Cursor opened and prompt pasted. Review and press Enter.'
             : 'Failed to open Cursor automatically. Prompt is in clipboard.'),
         phase,
@@ -2132,13 +2338,15 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         });
       }
       
-      // Create project summary template for AI breakdown
+      // Prepare for AI breakdown - delete any existing issues.json so Claude can create fresh
+      // (Claude CLI's Write tool requires Read first for existing files, which causes errors)
       const projectSummaryFile = path.join(issuesDir, 'issues.json');
-      const projectSummaryTemplatePath = path.join(TEMPLATES_DIR, 'issues_template.json');
-      
-      if (fs.existsSync(projectSummaryTemplatePath)) {
-        const projectSummaryTemplateContent = fs.readFileSync(projectSummaryTemplatePath, 'utf8');
-        fs.writeFileSync(projectSummaryFile, projectSummaryTemplateContent);
+      if (fs.existsSync(projectSummaryFile)) {
+        try {
+          fs.unlinkSync(projectSummaryFile);
+        } catch (unlinkError) {
+          logger.debug('Failed to delete existing issues.json, continuing anyway:', unlinkError);
+        }
       }
       
       // Build the breakdown prompt with breakdown level
@@ -2160,23 +2368,28 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
-      
-      let success = true;
+
+      // Mark breakdown as generating (for page reload state restoration)
+      markBreakdownGenerating(req.params.projectId);
+
+      let breakdownResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
-        // Trigger Cursor automation
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        
-        if (success) {
+        // Trigger Cursor automation with phase for WebSocket streaming
+        // Use 15-minute timeout for breakdown (complex task with lots of context to analyze)
+        const BREAKDOWN_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT);
+
+        if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');
           logger.debug('   File watcher is active - issues will appear automatically');
         }
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: breakdownResult.success,
         message: skipAutomation
           ? 'Prompt ready. Please paste manually in Cursor.'
-          : (success 
+          : (breakdownResult.success
             ? 'Cursor opened with issue creation prompt'
             : 'Failed to open Cursor automatically'),
         prompt
@@ -2186,35 +2399,40 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       res.status(500).json({ error: 'Failed to create issues' });
     }
   });
-  
+
   // Check if issue creation is complete
   app.get('/api/specification/breakdown-status/:projectId', (req, res) => {
     try {
       const projectPath = path.join(OUTPUT_DIR, 'projects', req.params.projectId);
-      
+
       if (!fs.existsSync(projectPath)) {
         return res.status(404).json({ error: 'Project not found' });
       }
-      
+
+      // Check if generation is actively in progress (for page reload state restoration)
+      const generatingStatus = isBreakdownGenerating(req.params.projectId);
+
       const projectSummaryFile = path.join(projectPath, 'issues', 'issues.json');
-      
+
       // Initial check: issues.json must exist
       if (!fs.existsSync(projectSummaryFile)) {
         return res.json({
           isComplete: false,
-          issueCount: 0
+          issueCount: 0,
+          isGenerating: generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
         });
       }
-      
+
       // Check if issues.json has been properly filled (not just template)
       let projectSummary: any;
       try {
         const summaryContent = fs.readFileSync(projectSummaryFile, 'utf-8');
         projectSummary = JSON.parse(summaryContent);
-        
+
         // Handle both new (issues) and legacy (issues_list) field names
         const issuesList = projectSummary.issues || projectSummary.issues_list || [];
-        
+
         // Check if it still contains placeholder text (template not filled)
         if (
           projectSummary.project_name?.includes('PLACEHOLDER') ||
@@ -2223,30 +2441,41 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         ) {
           return res.json({
             isComplete: false,
-            issueCount: 0
+            issueCount: 0,
+            isGenerating: generatingStatus.isGenerating,
+            generatingStartedAt: generatingStatus.startedAt
           });
         }
-        
+
         // Check that issues have real content (not just placeholders)
-        const validIssues = issuesList.filter((issue: any) => 
-          issue.issue_id && 
+        const validIssues = issuesList.filter((issue: any) =>
+          issue.issue_id &&
           !issue.issue_id.includes('PLACEHOLDER') &&
           issue.title &&
           !issue.title.includes('PLACEHOLDER')
         );
-        
+
         const isComplete = validIssues.length > 0;
-        
+
+        // If complete, clear the generating status
+        if (isComplete && generatingStatus.isGenerating) {
+          markBreakdownComplete(req.params.projectId);
+        }
+
         res.json({
           isComplete,
           issueCount: validIssues.length,
-          expectedCount: issuesList.length
+          expectedCount: issuesList.length,
+          isGenerating: !isComplete && generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
         });
       } catch (error) {
         // If we can't parse the JSON or it's malformed, it's not complete
         return res.json({
           isComplete: false,
-          issueCount: 0
+          issueCount: 0,
+          isGenerating: generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
         });
       }
     } catch (error) {
@@ -2447,25 +2676,25 @@ ${suggestion || 'Implement this change directly in your code editor.'}
 
       // Generate full contextual prompt with all project specs and completion instructions
       const prompt = generateIssuePrompt(issue, matchingFolder);
-      
+
       logger.debug(`[API] Generated prompt (${prompt.length} chars)`);
-      
+
       // Trigger automation and wait for result (with reduced timeouts it should be ~1-2s max)
-      let success = false;
+      let shipResult: OpenAIToolResult = { success: false };
       try {
         logger.debug('🚀 [API] Triggering AI tool automation...');
-        success = await openCursorAndPaste(prompt, WORKSPACE_PATH);
-        logger.debug(`[API] AI tool automation result: ${success}`);
+        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        logger.debug(`[API] AI tool automation result:`, shipResult);
       } catch (err) {
         logger.error('[API] Failed to trigger AI tool:', err);
         // Automation failed, but we still have the prompt for manual copy
       }
-      
-      res.json({ 
-        success,
+
+      res.json({
+        success: shipResult.success,
         prompt,
-        message: success 
-          ? 'Prompt sent to AI tool successfully' 
+        message: shipResult.success
+          ? 'Prompt sent to AI tool successfully'
           : 'Prompt ready - paste manually if AI tool did not open'
       });
     } catch (error) {
@@ -2848,7 +3077,10 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   
   // Setup WebSocket for real-time updates
   const wss = new WebSocketServer({ server });
-  
+
+  // Initialize the WebSocket service for cross-module broadcasting
+  initWebSocketService(wss);
+
   // Track connected clients (silent - UI implementation detail)
   wss.on('connection', (ws) => {
     ws.on('close', () => {

@@ -4,7 +4,7 @@
 
 Analyze the user's request and determine if it needs a full project specification or if they should just implement it directly in Cursor.
 
-**CRITICAL**: Update the scoping plan file `outputs/scoping_plan.json` with your analysis using the exact JSON structure shown below.
+**CRITICAL**: Update the scoping plan file `specwright/outputs/scoping_plan.json` with your analysis using the exact JSON structure shown below.
 
 ## Analysis Steps
 

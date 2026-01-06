@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
 import { useAIToolName } from '../lib/use-ai-tool';
+import { getActionIcon } from '../lib/action-icons';
+import { RefinePanel } from './RefinePanel';
 
 type ScopingStatus = 'ready' | 'classifying' | 'generating' | 'complete';
 
@@ -11,6 +13,14 @@ interface ScopingPlan {
   scope_analysis?: string;
   direct_work_suggestion?: string;
   projects?: any[];
+}
+
+// Log entry for streaming progress
+interface HeadlessLogEntry {
+  id: number;
+  message: string;
+  icon: string;
+  timestamp: Date;
 }
 
 interface ScopingProps {
@@ -35,16 +45,120 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   const [lastPrompt, setLastPrompt] = useState<string>('');
   const [automationStatus, setAutomationStatus] = useState<'sending' | 'sent' | 'failed' | null>(null);
   const [copied, setCopied] = useState(false);
-  
+  const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
+  const [isHeadlessMode, setIsHeadlessMode] = useState(false);
+  const [logIdCounter, setLogIdCounter] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
+
+  // Track if we've ever reached 'complete' status - once complete, don't switch back for WebSocket events
+  const hasReachedComplete = useRef(false);
+
   // Use realtime hook to listen for file changes
-  useRealtimeUpdates(() => {
+  useRealtimeUpdates((event) => {
     // Check if scoping plan was updated
-    checkScopingStatus();
+    if (event.type === 'file_changed' || event.type === 'file_added') {
+      checkScopingStatus();
+    }
+
+    // Handle headless progress updates - but IGNORE refinement events
+    // Refinement events have isRefinement=true and are handled by RefinePanel
+    const isRefinementEvent = event.isRefinement === true;
+
+    // CRITICAL: Once we've reached 'complete' status, NEVER switch back to 'generating' from WebSocket events
+    // This prevents flickering when: 1) refinement runs, 2) old/stale headless events arrive
+    // Only the user clicking "Scope with AI" should reset this
+    if (hasReachedComplete.current && !isRefinementEvent) {
+      // Still capture session IDs, but don't change status or show headless mode
+      if (event.type === 'session_captured' && event.sessionId) {
+        logger.debug('Session captured (post-complete):', event.sessionId);
+        setSessionId(event.sessionId);
+      }
+      return;
+    }
+
+    if (event.type === 'headless_started' && !isRefinementEvent) {
+      // Only handle initial scoping execution, not refinement
+      setIsHeadlessMode(true);
+      setHeadlessLogs([]); // Clear previous logs
+      setLogIdCounter(0);
+      setLastProgressTime(Date.now());
+      // Add initial log entry
+      const startEntry: HeadlessLogEntry = {
+        id: 0,
+        message: 'Starting Claude CLI...',
+        icon: '🚀',
+        timestamp: new Date()
+      };
+      setHeadlessLogs([startEntry]);
+      setLogIdCounter(1);
+      // Transition to generating state immediately when headless starts
+      setStatus('generating');
+      setAutomationStatus('sent');
+      onStatusChange?.('generating');
+    }
+    if (event.type === 'headless_progress' && event.status && !isRefinementEvent) {
+      // Only handle initial scoping execution progress, not refinement
+      const message = event.status;
+      const newEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: getActionIcon(message),
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, newEntry]);
+      setLogIdCounter(prev => prev + 1);
+      // Reset thinking indicator timer
+      setLastProgressTime(Date.now());
+    }
+    // Handle early session capture - enables RefinePanel immediately
+    if (event.type === 'session_captured' && event.sessionId) {
+      logger.debug('Session captured early:', event.sessionId);
+      setSessionId(event.sessionId);
+    }
+    if (event.type === 'headless_completed' && !isRefinementEvent) {
+      // Only handle initial scoping execution completion, not refinement
+      const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
+      const finalEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: event.success ? '✅' : '⚠️',
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, finalEntry]);
+      setLastProgressTime(null);
+      // Capture session ID for refinement support (fallback if early capture didn't work)
+      if (event.sessionId && !sessionId) {
+        setSessionId(event.sessionId);
+      }
+      // Clear after a moment
+      setTimeout(() => {
+        setHeadlessLogs([]);
+        setIsHeadlessMode(false);
+      }, 3000);
+    }
   });
   
   // Initialize from URL params
   useEffect(() => {
     // Just set to ready on mount
+  }, []);
+
+  // Fetch persisted session ID on mount (survives page reloads)
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/sessions/_scoping_active');
+        const data = await response.json();
+        if (data.sessions?.scoping) {
+          setSessionId(data.sessions.scoping);
+          logger.debug('Restored scoping session:', data.sessions.scoping);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch session:', err);
+      }
+    };
+    fetchSession();
   }, []);
   
   // Poll for status updates when generating
@@ -53,10 +167,31 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       const interval = setInterval(() => {
         checkScopingStatus();
       }, 2000);
-      
+
       return () => clearInterval(interval);
     }
   }, [status]);
+
+  // Thinking indicator: show "thinking..." every 15 seconds if no progress
+  useEffect(() => {
+    if (!isHeadlessMode || !lastProgressTime) return;
+
+    // Show thinking indicator every 15 seconds of inactivity
+    const thinkingInterval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastProgressTime;
+      if (elapsed >= 15000) {
+        setHeadlessLogs(prev => [...prev, {
+          id: Date.now(),
+          message: 'Still thinking... (complex task in progress)',
+          icon: '🧠',
+          timestamp: new Date()
+        }]);
+      }
+    }, 15000);
+
+    return () => clearInterval(thinkingInterval);
+  }, [isHeadlessMode, lastProgressTime]);
   
   const handleRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +224,12 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       if (data.prompt) {
         setLastPrompt(data.prompt);
       }
-      
+
+      // Capture session ID if returned
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+      }
+
       if (data.success) {
         // Automation succeeded - keep "sent" visible at the top while showing generating
         setAutomationStatus('sent');
@@ -114,23 +254,36 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
     try {
       const response = await fetch('/api/scoping/status');
       const data = await response.json();
-      
+
       logger.debug('Status check:', data);
-      
+
       if (data.status === 'complete' && data.plan) {
         // Double-check that plan doesn't have placeholders
         const planStr = JSON.stringify(data.plan);
-        if (!planStr.includes('[ANALYSIS_PLACEHOLDER]') && 
+        if (!planStr.includes('[ANALYSIS_PLACEHOLDER]') &&
             !planStr.includes('[SUGGESTION_PLACEHOLDER]') &&
             !planStr.includes('PLACEHOLDER')) {
           setScopingPlan(data.plan);
           setStatus('complete');
+          hasReachedComplete.current = true; // Lock status to prevent flickering
           onStatusChange?.('complete');
         }
         // else: Still has placeholders, keep generating state
       } else if (data.status === 'generating') {
-        setStatus('generating');
-        onStatusChange?.('generating');
+        // IMPORTANT: Don't switch back to 'generating' if we're already 'complete'
+        // This prevents flickering during refinement when files are being updated
+        if (status !== 'complete') {
+          setStatus('generating');
+          onStatusChange?.('generating');
+
+          // Restore "working" state if generation is in progress (for page reload)
+          // Only restore if API confirms isGenerating is true
+          if (data.isGenerating && status === 'ready') {
+            logger.debug('Restoring scoping generation state from server');
+            setAutomationStatus('sent');
+            setIsHeadlessMode(true);
+          }
+        }
       }
     } catch (err) {
       logger.error('Failed to check status:', err);
@@ -278,15 +431,15 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
                 </div>
                 <div className="text-left">
                   <p className="text-[13px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>
-                    Sent to {aiToolName}!
+                    {isHeadlessMode ? 'Running via Claude CLI' : `Sent to ${aiToolName}!`}
                   </p>
                   <p className="text-[11px]" style={{ color: 'hsl(142 50% 40%)' }}>
-                    Check your editor - the prompt is ready
+                    {isHeadlessMode ? 'Executing in headless mode - no action needed' : 'Check your editor - the prompt is ready'}
                   </p>
                 </div>
               </div>
             )}
-            
+
             {/* Automation Failed Status */}
             {automationStatus === 'failed' && (
               <div 
@@ -345,16 +498,67 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
             
             <div className="text-4xl mb-4 animate-pulse">⏳</div>
             <h2 className="text-[15px] font-semibold mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
-              AI is Analyzing...
+              {isHeadlessMode ? 'Claude is Working...' : 'AI is Analyzing...'}
             </h2>
             <p className="text-[13px] mb-6" style={{ color: 'hsl(0 0% 46%)' }}>
-              Waiting for {aiToolName} to complete the classification...
+              {isHeadlessMode
+                ? 'Running in headless mode - no manual intervention needed'
+                : `Waiting for ${aiToolName} to complete the classification...`}
             </p>
+
+            {/* Headless Streaming Log Display */}
+            {isHeadlessMode && headlessLogs.length > 0 && (
+              <div
+                className="rounded-lg mb-6 overflow-hidden"
+                style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+              >
+                {/* Header */}
+                <div
+                  className="px-4 py-2 flex items-center gap-2"
+                  style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+                >
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
+                  <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
+                    Claude CLI
+                  </span>
+                </div>
+                {/* Log entries */}
+                <div
+                  className="p-3 max-h-[200px] overflow-y-auto"
+                  style={{ scrollBehavior: 'smooth' }}
+                  ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                >
+                  <div className="space-y-1.5">
+                    {headlessLogs.map((log, index) => (
+                      <div
+                        key={log.id}
+                        className="flex items-start gap-2 animate-fadeIn"
+                        style={{
+                          opacity: index === headlessLogs.length - 1 ? 1 : 0.7,
+                          animation: 'fadeIn 0.2s ease-out'
+                        }}
+                      >
+                        <span className="text-[12px] flex-shrink-0 w-5 text-center">{log.icon}</span>
+                        <span
+                          className="text-[12px] font-mono leading-relaxed"
+                          style={{ color: 'hsl(220 10% 75%)' }}
+                        >
+                          {log.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-center mb-6">
               <div className="linear-spinner" style={{ width: '28px', height: '28px' }}></div>
             </div>
             <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>
-              This may take a minute. The page will update automatically when complete.
+              {isHeadlessMode
+                ? 'Claude CLI is executing the task automatically.'
+                : 'This may take a minute. The page will update automatically when complete.'}
             </p>
             
             {/* Fallback: Copy Prompt Button (only show if automation status is null - meaning it succeeded before) */}
@@ -740,16 +944,34 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
     </>
   );
 
+  // RefinePanel component - rendered in both embedded and standalone modes
+  const refinePanelElement = status === 'complete' && sessionId && (
+    <RefinePanel
+      phase="scoping"
+      sessionId={sessionId}
+      floatingMode={true}
+      onRefineComplete={() => {
+        checkScopingStatus();
+      }}
+    />
+  );
+
   // Return with or without wrapper based on embedded prop
   if (embedded) {
-    return content;
+    return (
+      <>
+        {content}
+        {refinePanelElement}
+      </>
+    );
   }
-  
+
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen p-8 relative" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
+      <div className="mx-auto max-w-3xl">
         {content}
       </div>
+      {refinePanelElement}
     </div>
   );
 }

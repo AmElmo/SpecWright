@@ -3,9 +3,11 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
 import { useAIToolName } from '../lib/use-ai-tool';
+import { getActionIcon } from '../lib/action-icons';
 import { QuestionForm } from './QuestionForm';
 import { DocumentReview } from './DocumentReview';
 import { CostWidget } from './CostWidget';
+import { RefinePanel } from './RefinePanel';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 interface SpecificationStatus {
@@ -20,6 +22,14 @@ interface SpecificationStatus {
   needsReview: boolean;
   reviewDocument: string | null;
   isComplete: boolean;
+}
+
+// Log entry for streaming progress
+interface HeadlessLogEntry {
+  id: number;
+  message: string;
+  icon: string;
+  timestamp: Date;
 }
 
 type PhaseStatus = 'pending' | 'in-progress' | 'complete';
@@ -76,7 +86,12 @@ export function Specification() {
   const [hasTasks, setHasTasks] = useState(false);
   const [taskCount, setTaskCount] = useState(0);
   const [isInReviewMode, setIsInReviewMode] = useState(false);
-  
+  const [sessions, setSessions] = useState<{ pm?: string; ux?: string; engineer?: string }>({});
+  const [isHeadlessMode, setIsHeadlessMode] = useState(false);
+  const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
+  const [logIdCounter, setLogIdCounter] = useState(0);
+  const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
+
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
                            status?.currentPhase === 'ux-questions-answer' || 
                            status?.currentPhase === 'engineer-questions-answer';
@@ -85,7 +100,75 @@ export function Specification() {
     status?.currentPhase === 'ux-questions-answer' ? 'ux' :
     status?.currentPhase === 'engineer-questions-answer' ? 'engineer' : null;
   
-  useRealtimeUpdates(() => {
+  useRealtimeUpdates((event) => {
+    // Refinement events have isRefinement=true and are handled by RefinePanel
+    // We should ignore them here to avoid interfering with the main page state
+    const isRefinementEvent = event.isRefinement === true;
+
+    // Track headless mode and streaming logs - but not for refinement events
+    if (event.type === 'headless_started' && !isRefinementEvent) {
+      setIsHeadlessMode(true);
+      setHeadlessLogs([]); // Clear previous logs
+      setLogIdCounter(0);
+      setLastProgressTime(Date.now());
+      // Add initial log entry
+      const startEntry: HeadlessLogEntry = {
+        id: 0,
+        message: 'Starting Claude CLI...',
+        icon: '🚀',
+        timestamp: new Date()
+      };
+      setHeadlessLogs([startEntry]);
+      setLogIdCounter(1);
+      // Transition from "Sending..." to "Sent" when headless execution starts
+      setAutomationStatus('sent');
+    }
+    if (event.type === 'headless_progress' && event.status && !isRefinementEvent) {
+      // Accumulate progress messages for streaming display
+      const message = event.status;
+      const newEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: getActionIcon(message),
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, newEntry]);
+      setLogIdCounter(prev => prev + 1);
+      // Reset thinking indicator timer
+      setLastProgressTime(Date.now());
+    }
+    if (event.type === 'headless_completed' && !isRefinementEvent) {
+      // Add final log entry
+      const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
+      const finalEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: event.success ? '✅' : '⚠️',
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, finalEntry]);
+      setLastProgressTime(null);
+      // Clear logs after a moment
+      setTimeout(() => {
+        setHeadlessLogs([]);
+        setIsHeadlessMode(false);
+      }, 3000);
+    }
+    // Handle early session capture - enables RefinePanel immediately
+    // This should still work for refinement to capture updated session IDs
+    if (event.type === 'session_captured' && event.sessionId) {
+      logger.debug('Session captured early:', event.sessionId);
+      // Determine which agent this session belongs to based on current phase
+      if (status?.currentPhase) {
+        if (status.currentPhase.startsWith('pm-')) {
+          setSessions(prev => ({ ...prev, pm: event.sessionId }));
+        } else if (status.currentPhase.startsWith('ux-')) {
+          setSessions(prev => ({ ...prev, ux: event.sessionId }));
+        } else if (status.currentPhase.startsWith('engineer-')) {
+          setSessions(prev => ({ ...prev, engineer: event.sessionId }));
+        }
+      }
+    }
     fetchStatus(isInReviewMode);
     if (triggeringPhase) {
       checkIfWorkComplete();
@@ -106,18 +189,48 @@ export function Specification() {
       return () => clearInterval(interval);
     }
   }, [triggeringPhase, breakingDown]);
+
+  // Thinking indicator: show "thinking..." every 15 seconds if no progress
+  useEffect(() => {
+    if (!isHeadlessMode || !lastProgressTime) return;
+
+    // Show thinking indicator every 15 seconds of inactivity
+    const thinkingInterval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastProgressTime;
+      if (elapsed >= 15000) {
+        setHeadlessLogs(prev => [...prev, {
+          id: Date.now(),
+          message: 'Still thinking... (complex task in progress)',
+          icon: '🧠',
+          timestamp: new Date()
+        }]);
+      }
+    }, 15000);
+
+    return () => clearInterval(thinkingInterval);
+  }, [isHeadlessMode, lastProgressTime]);
   
   const fetchStatus = async (skipDocumentReload = false) => {
     if (!projectId) return;
-    
+
     try {
       const response = await fetch(`/api/specification/status/${projectId}`);
       if (!response.ok) throw new Error('Failed to fetch status');
       const data = await response.json();
-      
+
       setStatus(data);
       setError('');
-      
+
+      // Restore "working" state if generation is in progress (for page reload)
+      // Only restore if we're not already tracking a phase (prevents overriding user-initiated triggers)
+      if (data.isGenerating && data.generatingPhase && !triggeringPhase) {
+        logger.debug('Restoring generation state from server:', data.generatingPhase);
+        setTriggeringPhase(data.generatingPhase);
+        setAutomationStatus('sent');
+        setIsHeadlessMode(true);
+      }
+
       if (data.needsReview && data.reviewDocument) {
         if (!skipDocumentReload) {
           await fetchDocumentForReview(data.reviewDocument);
@@ -127,7 +240,7 @@ export function Specification() {
         setReviewDocumentContent('');
         setIsInReviewMode(false);
       }
-      
+
       if (data.isComplete) {
         checkBreakdownStatus();
       }
@@ -140,17 +253,21 @@ export function Specification() {
   
   const checkBreakdownStatus = async () => {
     if (!projectId) return;
-    
+
     try {
       const response = await fetch(`/api/specification/breakdown-status/${projectId}`);
       if (!response.ok) return;
-      
+
       const data = await response.json();
-      
+
       if (data.isComplete && data.issueCount > 0) {
         setHasTasks(true);
         setTaskCount(data.issueCount);
         setBreakingDown(false);
+      } else if (data.isGenerating && !breakingDown) {
+        // Restore breakdown "working" state if generation is in progress (for page reload)
+        logger.debug('Restoring breakdown generation state from server');
+        setBreakingDown(true);
       }
     } catch (err) {
       logger.error('Error checking breakdown status:', err);
@@ -159,18 +276,22 @@ export function Specification() {
   
   const triggerBreakdown = async () => {
     if (!projectId) return;
-    
+
     try {
       setBreakingDown(true);
       setError('');
-      
+      // Clear previous headless logs and reset state for streaming
+      setHeadlessLogs([]);
+      setLogIdCounter(0);
+      setIsHeadlessMode(false);
+
       const response = await fetch(`/api/specification/breakdown/${projectId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         if (data.prompt) {
           setLastPrompt(data.prompt);
@@ -223,7 +344,25 @@ export function Specification() {
   useEffect(() => {
     fetchStatus();
   }, [projectId]);
-  
+
+  // Fetch session IDs for refinement support
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!projectId) return;
+      try {
+        const response = await fetch(`/api/sessions/${projectId}`);
+        const data = await response.json();
+        if (data.sessions) {
+          setSessions(data.sessions);
+          logger.debug('Loaded sessions:', data.sessions);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch sessions:', err);
+      }
+    };
+    fetchSessions();
+  }, [projectId]);
+
   const checkIfWorkComplete = async () => {
     if (!triggeringPhase || !projectId) return;
     
@@ -659,10 +798,10 @@ export function Specification() {
                   </div>
                   <div className="text-left">
                     <p className="text-[13px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>
-                      Sent to {aiToolName}!
+                      {isHeadlessMode ? 'Running via Claude CLI' : `Sent to ${aiToolName}!`}
                     </p>
                     <p className="text-[11px]" style={{ color: 'hsl(142 50% 40%)' }}>
-                      Check your editor - the prompt is ready
+                      {isHeadlessMode ? 'Executing in headless mode - no action needed' : 'Check your editor - the prompt is ready'}
                     </p>
                   </div>
                 </div>
@@ -799,7 +938,53 @@ export function Specification() {
                     </div>
                   );
                 })()}
-                
+
+                {/* Headless Streaming Log Display */}
+                {isHeadlessMode && headlessLogs.length > 0 && (
+                  <div
+                    className="rounded-lg mt-6 overflow-hidden text-left relative"
+                    style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+                  >
+                    {/* Header */}
+                    <div
+                      className="px-4 py-2 flex items-center gap-2"
+                      style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+                    >
+                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
+                      <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
+                        Claude CLI
+                      </span>
+                    </div>
+                    {/* Log entries */}
+                    <div
+                      className="p-3 max-h-[200px] overflow-y-auto"
+                      style={{ scrollBehavior: 'smooth' }}
+                      ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                    >
+                      <div className="space-y-1.5">
+                        {headlessLogs.map((log, index) => (
+                          <div
+                            key={log.id}
+                            className="flex items-start gap-2 animate-fadeIn"
+                            style={{
+                              opacity: index === headlessLogs.length - 1 ? 1 : 0.7,
+                              animation: 'fadeIn 0.2s ease-out'
+                            }}
+                          >
+                            <span className="text-[12px] flex-shrink-0 w-5 text-center">{log.icon}</span>
+                            <span
+                              className="text-[12px] font-mono leading-relaxed"
+                              style={{ color: 'hsl(220 10% 75%)' }}
+                            >
+                              {log.message}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* CSS animations */}
                 <style>{`
                   @keyframes ping {
@@ -814,10 +999,14 @@ export function Specification() {
                     0%, 100% { opacity: 0.3; }
                     50% { opacity: 0.5; }
                   }
+                  @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
                 `}</style>
-                
+
                 <p className="text-[11px] mt-4" style={{ color: 'hsl(0 0% 60%)' }}>
-                  This may take a minute. The page will update automatically.
+                  {isHeadlessMode ? 'Claude CLI is executing the task automatically.' : 'This may take a minute. The page will update automatically.'}
                 </p>
                 
                 {lastPrompt && (
@@ -861,6 +1050,15 @@ export function Specification() {
       );
     }
     
+    // Determine current agent for session lookup
+    const getCurrentAgent = (): 'pm' | 'ux' | 'engineer' => {
+      if (status.currentPhase.startsWith('pm-')) return 'pm';
+      if (status.currentPhase.startsWith('ux-')) return 'ux';
+      return 'engineer';
+    };
+    const currentAgent = getCurrentAgent();
+    const currentSessionId = sessions[currentAgent];
+
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         <Sidebar />
@@ -874,9 +1072,10 @@ export function Specification() {
               <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Review</span>
             </div>
           </header>
-          
+
           <div className="p-6">
-            <div className="max-w-4xl mx-auto">
+            {/* Main content - full width without flex squeeze */}
+            <div className="max-w-4xl">
               <DocumentReview
                 projectId={projectId!}
                 documentPath={status.reviewDocument}
@@ -885,6 +1084,28 @@ export function Specification() {
                 onApprove={handleApproveDocument}
               />
             </div>
+
+            {/* Floating RefinePanel for feedback - in right margin */}
+            {currentSessionId && (
+              <RefinePanel
+                phase={currentAgent}
+                sessionId={currentSessionId}
+                floatingMode={true}
+                onRefineComplete={() => {
+                  // Refresh sessions after refinement
+                  fetch(`/api/sessions/${projectId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.sessions) setSessions(data.sessions);
+                    })
+                    .catch(() => {});
+                  // Reload the document
+                  if (status.reviewDocument) {
+                    fetchDocumentForReview(status.reviewDocument);
+                  }
+                }}
+              />
+            )}
           </div>
         </main>
       </div>
@@ -1042,16 +1263,152 @@ export function Specification() {
 
             {/* Breakdown in Progress */}
             {status.isComplete && breakingDown && (
-              <div className="rounded-lg p-6 text-center" style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px solid hsl(0 0% 92%)' }}>
-                <div className="linear-spinner mx-auto mb-4" style={{ width: '28px', height: '28px' }}></div>
-                <h2 className="text-[15px] font-semibold mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
+              <div className="rounded-lg p-6 text-center relative overflow-hidden" style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px solid hsl(0 0% 92%)' }}>
+                {/* Animated background gradient */}
+                <div
+                  className="absolute inset-0 opacity-30"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 0%, hsl(235 69% 61% / 0.15) 0%, transparent 50%)',
+                    animation: 'pulse 3s ease-in-out infinite'
+                  }}
+                />
+
+                {/* Agent icon with animated rings */}
+                <div className="relative mx-auto mb-6" style={{ width: '80px', height: '80px' }}>
+                  {/* Outer pulsing ring */}
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: '2px solid hsl(235 69% 61% / 0.2)',
+                      animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+                    }}
+                  />
+                  {/* Middle ring */}
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      inset: '8px',
+                      border: '2px solid hsl(235 69% 61% / 0.3)',
+                      animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s'
+                    }}
+                  />
+                  {/* Inner icon container */}
+                  <div
+                    className="absolute rounded-full flex items-center justify-center"
+                    style={{
+                      inset: '16px',
+                      backgroundColor: 'hsl(235 69% 61%)',
+                      color: 'white',
+                      boxShadow: '0 4px 20px hsl(235 69% 61% / 0.4)'
+                    }}
+                  >
+                    <IssuesIcon />
+                  </div>
+                </div>
+
+                <h2 className="text-[17px] font-semibold mb-2 relative" style={{ color: 'hsl(0 0% 9%)' }}>
                   Generating Issues...
                 </h2>
-                <p className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>
-                  SpecWright is breaking down the specification into implementation tasks.
+                <p className="text-[13px] mb-4 relative" style={{ color: 'hsl(0 0% 46%)' }}>
+                  Breaking down the specification into implementation tasks
                 </p>
-                <p className="text-[11px] mt-3" style={{ color: 'hsl(0 0% 60%)' }}>
-                  This typically takes 2-3 minutes.
+
+                {/* Animated progress bar */}
+                <div
+                  className="w-48 h-1 mx-auto rounded-full mb-4 overflow-hidden relative"
+                  style={{ backgroundColor: 'hsl(0 0% 92%)' }}
+                >
+                  <div
+                    className="h-full rounded-full absolute"
+                    style={{
+                      width: '30%',
+                      backgroundColor: 'hsl(235 69% 61%)',
+                      animation: 'shimmer 1.5s ease-in-out infinite'
+                    }}
+                  />
+                </div>
+
+                {/* Document being generated */}
+                <div className="flex justify-center gap-2 relative mb-4">
+                  <div
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
+                    style={{ backgroundColor: 'hsl(235 69% 97%)', border: '1px solid hsl(235 69% 90%)' }}
+                  >
+                    <div className="linear-spinner" style={{ width: '14px', height: '14px' }}></div>
+                    <span className="text-[12px] font-mono font-medium" style={{ color: 'hsl(235 69% 50%)' }}>
+                      issues.json
+                    </span>
+                  </div>
+                </div>
+
+                {/* Headless Streaming Log Display */}
+                {isHeadlessMode && headlessLogs.length > 0 && (
+                  <div
+                    className="rounded-lg mt-4 overflow-hidden text-left relative"
+                    style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+                  >
+                    {/* Header */}
+                    <div
+                      className="px-4 py-2 flex items-center gap-2"
+                      style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+                    >
+                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
+                      <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
+                        Claude CLI
+                      </span>
+                    </div>
+                    {/* Log entries */}
+                    <div
+                      className="p-3 max-h-[200px] overflow-y-auto"
+                      style={{ scrollBehavior: 'smooth' }}
+                      ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                    >
+                      <div className="space-y-1.5">
+                        {headlessLogs.map((log, index) => (
+                          <div
+                            key={log.id}
+                            className="flex items-start gap-2 animate-fadeIn"
+                            style={{
+                              opacity: index === headlessLogs.length - 1 ? 1 : 0.7,
+                              animation: 'fadeIn 0.2s ease-out'
+                            }}
+                          >
+                            <span className="text-[12px] flex-shrink-0 w-5 text-center">{log.icon}</span>
+                            <span
+                              className="text-[12px] font-mono leading-relaxed"
+                              style={{ color: 'hsl(220 10% 75%)' }}
+                            >
+                              {log.message}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CSS animations */}
+                <style>{`
+                  @keyframes ping {
+                    0% { transform: scale(1); opacity: 1; }
+                    75%, 100% { transform: scale(1.3); opacity: 0; }
+                  }
+                  @keyframes shimmer {
+                    0% { left: -30%; }
+                    100% { left: 100%; }
+                  }
+                  @keyframes pulse {
+                    0%, 100% { opacity: 0.3; }
+                    50% { opacity: 0.5; }
+                  }
+                  @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                `}</style>
+
+                <p className="text-[11px] mt-4 relative" style={{ color: 'hsl(0 0% 60%)' }}>
+                  {isHeadlessMode ? 'Claude CLI is executing the task automatically.' : 'This typically takes 2-3 minutes.'}
                 </p>
               </div>
             )}

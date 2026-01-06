@@ -1,13 +1,16 @@
 import { execSync, exec } from 'child_process';
 import { promisify } from 'util';
 import chalk from 'chalk';
-import { 
+import {
     getCurrentAITool,
-    getAIToolConfig, 
-    type AITool, 
-    type AIToolConfig 
+    getAIToolConfig,
+    type AITool,
+    type AIToolConfig
 } from '../services/settings-service.js';
 import { logger } from './logger.js';
+import { canUseHeadless } from './cli-detection.js';
+import { executeHeadless } from '../services/headless-agent-service.js';
+import { broadcastHeadlessProgress, broadcastHeadlessStarted, broadcastHeadlessCompleted, broadcastSessionCaptured } from '../services/websocket-service.js';
 
 const execAsync = promisify(exec);
 
@@ -113,17 +116,96 @@ export const startCursorFocusMonitoring = (): void => {
 };
 
 /**
+ * Result from openAIToolAndPaste
+ */
+export interface OpenAIToolResult {
+    success: boolean;
+    sessionId?: string; // Claude CLI session ID (only available in headless mode)
+}
+
+/**
+ * Options for openAIToolAndPaste
+ */
+export interface OpenAIToolOptions {
+    workspacePath?: string;
+    tool?: AITool;
+    phase?: string; // Phase identifier for WebSocket broadcasts (e.g., 'pm-questions', 'engineer-spec')
+    timeout?: number; // Custom timeout in ms (default: 5 minutes, use 15 minutes for breakdown)
+}
+
+/**
  * Open AI coding tool and paste text into a new chat
  * This is the main automation function used by the web UI
+ *
+ * HEADLESS MODE: If the tool supports headless execution (Claude Code, Cursor)
+ * and the CLI is available, we use headless mode for faster, more reliable execution.
+ * Otherwise, we fall back to keyboard automation.
  */
-export const openAIToolAndPaste = async (text: string, workspacePath?: string, tool?: AITool): Promise<boolean> => {
+export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptions | string, tool?: AITool): Promise<OpenAIToolResult> => {
+    // Handle backwards compatibility: second param can be workspacePath string or options object
+    const opts: OpenAIToolOptions = typeof options === 'string'
+        ? { workspacePath: options, tool }
+        : (options || {});
+
+    const workspacePath = opts.workspacePath;
+    const phase = opts.phase;
+
     // Get the tool config - either from parameter or from saved settings
-    const selectedTool = tool || getCurrentAITool();
+    const selectedTool = opts.tool || tool || getCurrentAITool();
     const config = getAIToolConfig(selectedTool);
-    
+
+    // Try headless mode first if available
+    try {
+        const headlessAvailable = await canUseHeadless(selectedTool);
+
+        if (headlessAvailable) {
+            logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
+            logger.debug(chalk.magenta(`🚀 HEADLESS MODE available for ${config.name}`));
+            logger.debug(chalk.cyan('📋 Using CLI instead of keyboard automation'));
+            if (phase) {
+                logger.debug(chalk.cyan('📍 Phase:'), phase);
+            }
+            logger.debug(chalk.magenta('═'.repeat(60)));
+
+            // Broadcast that headless execution is starting (with phase if provided)
+            broadcastHeadlessStarted(config.name, phase);
+
+            const result = await executeHeadless(selectedTool, text, {
+                workingDir: workspacePath,
+                timeout: opts.timeout, // Pass custom timeout if provided
+                onProgress: (status: string) => {
+                    // Broadcast progress to WebSocket clients (with phase if provided)
+                    broadcastHeadlessProgress(status, phase);
+                },
+                onSessionId: (sessionId: string) => {
+                    // Broadcast session ID immediately when captured (before completion)
+                    logger.debug(chalk.green(`📌 Session ID captured early: ${sessionId}`));
+                    broadcastSessionCaptured(sessionId, phase);
+                }
+            });
+
+            if (result && result.success) {
+                logger.debug(chalk.green(`✅ Headless execution completed successfully for ${config.name}`));
+                broadcastHeadlessCompleted(config.name, true, phase, result.sessionId);
+                return { success: true, sessionId: result.sessionId };
+            }
+
+            // Headless failed, fall through to keyboard automation
+            if (result && result.error) {
+                logger.debug(chalk.yellow(`⚠️ Headless execution failed: ${result.error}`));
+                logger.debug(chalk.yellow('Falling back to keyboard automation...'));
+                broadcastHeadlessCompleted(config.name, false, phase, result.sessionId);
+            }
+        }
+    } catch (headlessError) {
+        logger.debug(chalk.yellow('⚠️ Error checking headless availability, using keyboard automation'));
+        logger.debug(chalk.dim(String(headlessError)));
+    }
+
+    // Keyboard automation fallback
     try {
         logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
-        logger.debug(chalk.magenta(`🚀 STARTING openAIToolAndPaste() for ${config.name}`));
+        logger.debug(chalk.magenta(`🚀 STARTING openAIToolAndPaste() for ${config.name} (keyboard automation)`));
         logger.debug(chalk.cyan('📋 Text length:'), text.length, 'characters');
         logger.debug(chalk.cyan('📁 Workspace path:'), workspacePath || 'none');
         logger.debug(chalk.cyan('💻 Platform:'), process.platform);
@@ -211,7 +293,7 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
             } else {
                 logger.debug(chalk.yellow('⚠️  Auto-open only supported on macOS and Windows'));
                 logger.debug(chalk.dim(`Please switch to ${config.name} and paste manually`));
-                return false;
+                return { success: false };
             }
         }
         
@@ -283,19 +365,19 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
             
         } else {
             logger.debug(chalk.yellow(`📋 Prompt copied! Please paste manually into ${config.name}`));
-            return false;
+            return { success: false };
         }
         
         logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
         logger.debug(chalk.green(`✨ COMPLETED: Prompt pasted in ${config.name}! Review and press Enter.`));
         logger.debug(chalk.magenta('═'.repeat(60) + '\n'));
-        return true;
+        return { success: true }; // No sessionId for keyboard automation
         
     } catch (error) {
         logger.debug(chalk.red('\n❌ ERROR in openAIToolAndPaste():'));
         logger.debug(chalk.red(error));
         logger.debug(chalk.dim('Prompt is in clipboard - please paste manually'));
-        return false;
+        return { success: false };
     }
 };
 
@@ -303,8 +385,8 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
  * Open Cursor and paste text into a new chat
  * This is kept for backward compatibility - now uses the generic openAIToolAndPaste
  */
-export const openCursorAndPaste = async (text: string, workspacePath?: string): Promise<boolean> => {
-    return openAIToolAndPaste(text, workspacePath);
+export const openCursorAndPaste = async (text: string, workspacePath?: string, phase?: string, timeout?: number): Promise<OpenAIToolResult> => {
+    return openAIToolAndPaste(text, { workspacePath, phase, timeout });
 };
 
 /**
