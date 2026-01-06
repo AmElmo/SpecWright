@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "setup": "nvm use || nvm install && npm install",
+    "run": "npm run dev"
+  }
+}
