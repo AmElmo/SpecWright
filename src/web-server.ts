@@ -2305,13 +2305,11 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         });
       }
       
-      // Create project summary template for AI breakdown
+      // Prepare for AI breakdown - delete any existing issues.json so Claude can create fresh
+      // (Claude CLI's Write tool requires Read first for existing files, which causes errors)
       const projectSummaryFile = path.join(issuesDir, 'issues.json');
-      const projectSummaryTemplatePath = path.join(TEMPLATES_DIR, 'issues_template.json');
-      
-      if (fs.existsSync(projectSummaryTemplatePath)) {
-        const projectSummaryTemplateContent = fs.readFileSync(projectSummaryTemplatePath, 'utf8');
-        fs.writeFileSync(projectSummaryFile, projectSummaryTemplateContent);
+      if (fs.existsSync(projectSummaryFile)) {
+        fs.unlinkSync(projectSummaryFile);
       }
       
       // Build the breakdown prompt with breakdown level
@@ -2340,7 +2338,9 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       let breakdownResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with phase for WebSocket streaming
-        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown');
+        // Use 15-minute timeout for breakdown (complex task with lots of context to analyze)
+        const BREAKDOWN_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT);
 
         if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');

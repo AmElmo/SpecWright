@@ -130,6 +130,7 @@ export interface OpenAIToolOptions {
     workspacePath?: string;
     tool?: AITool;
     phase?: string; // Phase identifier for WebSocket broadcasts (e.g., 'pm-questions', 'engineer-spec')
+    timeout?: number; // Custom timeout in ms (default: 5 minutes, use 15 minutes for breakdown)
 }
 
 /**
@@ -171,6 +172,7 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
 
             const result = await executeHeadless(selectedTool, text, {
                 workingDir: workspacePath,
+                timeout: opts.timeout, // Pass custom timeout if provided
                 onProgress: (status: string) => {
                     // Broadcast progress to WebSocket clients (with phase if provided)
                     broadcastHeadlessProgress(status, phase);
@@ -383,8 +385,8 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
  * Open Cursor and paste text into a new chat
  * This is kept for backward compatibility - now uses the generic openAIToolAndPaste
  */
-export const openCursorAndPaste = async (text: string, workspacePath?: string, phase?: string): Promise<OpenAIToolResult> => {
-    return openAIToolAndPaste(text, { workspacePath, phase });
+export const openCursorAndPaste = async (text: string, workspacePath?: string, phase?: string, timeout?: number): Promise<OpenAIToolResult> => {
+    return openAIToolAndPaste(text, { workspacePath, phase, timeout });
 };
 
 /**
