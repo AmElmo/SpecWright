@@ -352,6 +352,4 @@ These frameworks inform SpecWright's AI-powered approach to specification-driven
 
 **[⭐ Star us on GitHub](https://github.com/amelmo/specwright)** • **[📦 View on npm](https://www.npmjs.com/package/specwright)**
 
-Made with TypeScript • Powered by AI • Built for Developers
-
 </div>
