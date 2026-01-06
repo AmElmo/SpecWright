@@ -166,7 +166,7 @@ export async function executeClaudeHeadless(
         logger.debug(chalk.yellow('\n[Headless] Spawning claude CLI with streaming...'));
         logger.debug(chalk.dim(`  → claude ${args.map(a => a.length > 50 ? a.substring(0, 50) + '...' : a).join(' ')}`));
 
-        console.log('[DEBUG] About to spawn claude process...');
+        logger.debug(chalk.yellow('[Headless] About to spawn claude process...'));
         const proc = spawn('claude', args, {
             cwd: workingDir || process.cwd(),
             env: process.env,
@@ -175,7 +175,6 @@ export async function executeClaudeHeadless(
             stdio: ['inherit', 'pipe', 'pipe']
         });
 
-        console.log(`[DEBUG] spawn() returned, PID: ${proc.pid}`);
         logger.debug(chalk.green(`  [Process] spawn() returned, PID: ${proc.pid}`));
 
         let stderr = '';
@@ -183,14 +182,11 @@ export async function executeClaudeHeadless(
         let lastStatus = '';
         let capturedSessionId: string | undefined;
 
-        console.log('[DEBUG] Setting up stdout handler...');
         proc.stdout.on('data', (data) => {
-            console.log('[DEBUG] stdout data received!');
             const chunk = data.toString();
             buffer += chunk;
 
             // Log raw data received (truncated)
-            console.log(`[DEBUG] Raw stdout: ${chunk.substring(0, 100)}`);
             logger.debug(chalk.dim(`  [Raw stdout] ${chunk.length} bytes: ${chunk.substring(0, 100)}...`));
 
             // Process complete lines (stream-json outputs one JSON object per line)

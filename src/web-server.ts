@@ -2309,7 +2309,11 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       // (Claude CLI's Write tool requires Read first for existing files, which causes errors)
       const projectSummaryFile = path.join(issuesDir, 'issues.json');
       if (fs.existsSync(projectSummaryFile)) {
-        fs.unlinkSync(projectSummaryFile);
+        try {
+          fs.unlinkSync(projectSummaryFile);
+        } catch (unlinkError) {
+          logger.debug('Failed to delete existing issues.json, continuing anyway:', unlinkError);
+        }
       }
       
       // Build the breakdown prompt with breakdown level

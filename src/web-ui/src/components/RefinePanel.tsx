@@ -10,6 +10,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useRealtimeUpdates, type WebSocketEvent } from '../lib/use-realtime';
+import { getActionIcon } from '../lib/action-icons';
 
 // Log entry for streaming progress
 interface HeadlessLogEntry {
@@ -17,21 +18,6 @@ interface HeadlessLogEntry {
   message: string;
   icon: string;
   timestamp: Date;
-}
-
-// Map action types to icons
-function getActionIcon(message: string): string {
-  const lowerMessage = message.toLowerCase();
-  if (lowerMessage.includes('reading') || lowerMessage.includes('read file')) return '📖';
-  if (lowerMessage.includes('writing') || lowerMessage.includes('write file') || lowerMessage.includes('wrote')) return '✏️';
-  if (lowerMessage.includes('searching') || lowerMessage.includes('search') || lowerMessage.includes('glob') || lowerMessage.includes('grep')) return '🔍';
-  if (lowerMessage.includes('running') || lowerMessage.includes('command') || lowerMessage.includes('bash') || lowerMessage.includes('execute')) return '⚡';
-  if (lowerMessage.includes('thinking') || lowerMessage.includes('analyzing') || lowerMessage.includes('processing')) return '🧠';
-  if (lowerMessage.includes('starting') || lowerMessage.includes('resuming')) return '🚀';
-  if (lowerMessage.includes('completed') || lowerMessage.includes('success') || lowerMessage.includes('✅')) return '✅';
-  if (lowerMessage.includes('failed') || lowerMessage.includes('error') || lowerMessage.includes('⚠️')) return '⚠️';
-  if (lowerMessage.includes('initialized') || lowerMessage.includes('init')) return '⚙️';
-  return '💭';
 }
 
 interface UploadedImage {
@@ -156,8 +142,9 @@ export function RefinePanel({
       const imageData: string[] = [];
       for (const img of uploadedImages) {
         const reader = new FileReader();
-        const base64 = await new Promise<string>((resolve) => {
+        const base64 = await new Promise<string>((resolve, reject) => {
           reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error(`Failed to read image: ${img.file.name}`));
           reader.readAsDataURL(img.file);
         });
         imageData.push(base64);

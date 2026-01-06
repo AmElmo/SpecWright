@@ -23,10 +23,7 @@ export function initWebSocketService(wsServer: WebSocketServer): void {
  * Broadcast a message to all connected clients
  */
 export function broadcast(type: string, data: Record<string, unknown>): void {
-    console.log(`[WS Broadcast] type=${type}, wss initialized=${!!wss}`);
-
     if (!wss) {
-        console.log('[WS Broadcast] ⚠️ WebSocket service not initialized, cannot broadcast');
         logger.debug('⚠️ WebSocket service not initialized, cannot broadcast');
         return;
     }
@@ -41,7 +38,6 @@ export function broadcast(type: string, data: Record<string, unknown>): void {
         }
     });
 
-    console.log(`[WS Broadcast] Sent ${type} to ${clientCount} client(s)`);
     if (clientCount > 0) {
         logger.debug(`📡 [WebSocket] Broadcasted ${type} to ${clientCount} client(s)`);
     }

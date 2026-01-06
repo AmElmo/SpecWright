@@ -20,7 +20,16 @@ interface GenerationEntry {
 // Keys are: 'scoping', 'breakdown:{projectId}', or 'spec:{projectId}'
 const activeGenerations = new Map<string, GenerationEntry>();
 
-// Maximum time a generation can be "active" before auto-expiring (30 minutes)
+/**
+ * Maximum time a generation can be "active" before auto-expiring.
+ * Set to 30 minutes to accommodate:
+ * - Complex breakdown tasks that analyze large codebases
+ * - Multi-phase specification generation with slow network
+ * - Edge cases where completion events are missed
+ *
+ * After this timeout, the generation is considered stale and will be
+ * cleaned up on the next status check, preventing indefinite "generating" states.
+ */
 const GENERATION_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**

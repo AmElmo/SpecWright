@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
 import { useAIToolName } from '../lib/use-ai-tool';
+import { getActionIcon } from '../lib/action-icons';
 import { QuestionForm } from './QuestionForm';
 import { DocumentReview } from './DocumentReview';
 import { CostWidget } from './CostWidget';
@@ -29,21 +30,6 @@ interface HeadlessLogEntry {
   message: string;
   icon: string;
   timestamp: Date;
-}
-
-// Map action types to icons (same as Scoping.tsx)
-function getActionIcon(message: string): string {
-  const lowerMessage = message.toLowerCase();
-  if (lowerMessage.includes('reading') || lowerMessage.includes('read file')) return '📖';
-  if (lowerMessage.includes('writing') || lowerMessage.includes('write file') || lowerMessage.includes('wrote')) return '✏️';
-  if (lowerMessage.includes('searching') || lowerMessage.includes('search') || lowerMessage.includes('glob') || lowerMessage.includes('grep')) return '🔍';
-  if (lowerMessage.includes('running') || lowerMessage.includes('command') || lowerMessage.includes('bash') || lowerMessage.includes('execute')) return '⚡';
-  if (lowerMessage.includes('thinking') || lowerMessage.includes('analyzing') || lowerMessage.includes('processing')) return '🧠';
-  if (lowerMessage.includes('starting')) return '🚀';
-  if (lowerMessage.includes('completed') || lowerMessage.includes('success') || lowerMessage.includes('✅')) return '✅';
-  if (lowerMessage.includes('failed') || lowerMessage.includes('error') || lowerMessage.includes('⚠️')) return '⚠️';
-  if (lowerMessage.includes('initialized') || lowerMessage.includes('init')) return '⚙️';
-  return '💭';
 }
 
 type PhaseStatus = 'pending' | 'in-progress' | 'complete';
