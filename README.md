@@ -34,11 +34,11 @@ Starting a new project or feature often means:
 - ❌ Inconsistent documentation
 - ❌ Technical debt from rushed decisions
 
-You can download the CLI here: https://www.npmjs.com/package/specwright
-
 ### The Solution
 
 SpecWright is a **Web UI for Specification-Driven Development** that automates the spec workflow for AI coding tools.
+
+You can download the CLI here: https://www.npmjs.com/package/specwright
 
 **How it works:**
 - 🌐 **Web interface** for browsing and managing specifications
