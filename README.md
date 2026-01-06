@@ -9,7 +9,6 @@
 Transform ideas into implementation-ready specifications using an AI squad of specialists.
 
 ![SpecWright Interface](./docs/screenshots/issues_page.png)
-*[Screenshot: Main interface showing the specification workflow]*
 
 [![npm version](https://img.shields.io/npm/v/specwright.svg)](https://www.npmjs.com/package/specwright)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
