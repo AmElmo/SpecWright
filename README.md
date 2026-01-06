@@ -330,9 +330,7 @@ SpecWright builds upon proven methodologies and tools:
   - Making trade-offs explicit
   - Clear boundaries on No-Gos when writing specs
 
-- **[Linear](https://linear.app/)** - The gold standard for issue tracking, inspiring our:
-- Project and Issues hierarchy of information
-
+- **[Linear](https://linear.app/)** - The gold standard for issue tracking, inspiring our Project and Issues hierarchy of information:
   - Clean, fast interface design
   - Vertical slice organization
 
