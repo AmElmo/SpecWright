@@ -25,7 +25,7 @@ Transform ideas into implementation-ready specifications using an AI squad of sp
 
 ## 🎯 What is SpecWright?
 
-SpecWright implements **Specification-Driven Development (SDD)** - a methodology where AI specialists collaborate to transform your project ideas into detailed, structured specifications before you write a single line of code.
+SpecWright implements **Specification-Driven Development (SDD)**, a methodology where AI specialists collaborate to transform your project ideas into detailed, structured specifications before you write a single line of code.
 
 ### The Problem
 
@@ -34,6 +34,8 @@ Starting a new project or feature often means:
 - ❌ Missing edge cases and user needs
 - ❌ Inconsistent documentation
 - ❌ Technical debt from rushed decisions
+
+You can download the CLI here: https://www.npmjs.com/package/specwright
 
 ### The Solution
 
