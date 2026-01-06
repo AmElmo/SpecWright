@@ -263,6 +263,14 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         if (status !== 'complete') {
           setStatus('generating');
           onStatusChange?.('generating');
+
+          // Restore "working" state if generation is in progress (for page reload)
+          // Only restore if API confirms isGenerating is true
+          if (data.isGenerating && status === 'ready') {
+            logger.debug('Restoring scoping generation state from server');
+            setAutomationStatus('sent');
+            setIsHeadlessMode(true);
+          }
         }
       }
     } catch (err) {

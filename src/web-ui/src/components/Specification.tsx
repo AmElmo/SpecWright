@@ -201,15 +201,24 @@ export function Specification() {
   
   const fetchStatus = async (skipDocumentReload = false) => {
     if (!projectId) return;
-    
+
     try {
       const response = await fetch(`/api/specification/status/${projectId}`);
       if (!response.ok) throw new Error('Failed to fetch status');
       const data = await response.json();
-      
+
       setStatus(data);
       setError('');
-      
+
+      // Restore "working" state if generation is in progress (for page reload)
+      // Only restore if we're not already tracking a phase (prevents overriding user-initiated triggers)
+      if (data.isGenerating && data.generatingPhase && !triggeringPhase) {
+        logger.debug('Restoring generation state from server:', data.generatingPhase);
+        setTriggeringPhase(data.generatingPhase);
+        setAutomationStatus('sent');
+        setIsHeadlessMode(true);
+      }
+
       if (data.needsReview && data.reviewDocument) {
         if (!skipDocumentReload) {
           await fetchDocumentForReview(data.reviewDocument);
@@ -219,7 +228,7 @@ export function Specification() {
         setReviewDocumentContent('');
         setIsInReviewMode(false);
       }
-      
+
       if (data.isComplete) {
         checkBreakdownStatus();
       }
@@ -232,17 +241,21 @@ export function Specification() {
   
   const checkBreakdownStatus = async () => {
     if (!projectId) return;
-    
+
     try {
       const response = await fetch(`/api/specification/breakdown-status/${projectId}`);
       if (!response.ok) return;
-      
+
       const data = await response.json();
-      
+
       if (data.isComplete && data.issueCount > 0) {
         setHasTasks(true);
         setTaskCount(data.issueCount);
         setBreakingDown(false);
+      } else if (data.isGenerating && !breakingDown) {
+        // Restore breakdown "working" state if generation is in progress (for page reload)
+        logger.debug('Restoring breakdown generation state from server');
+        setBreakingDown(true);
       }
     } catch (err) {
       logger.error('Error checking breakdown status:', err);

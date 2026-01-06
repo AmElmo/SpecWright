@@ -90,6 +90,17 @@ import {
 import { formatCost, formatTokens } from './utils/cost-estimation.js';
 import { getHeadlessStatus } from './utils/cli-detection.js';
 import { initWebSocketService } from './services/websocket-service.js';
+import {
+  markScopingGenerating,
+  markScopingComplete,
+  isScopingGenerating,
+  markSpecPhaseGenerating,
+  markSpecPhaseComplete,
+  getSpecGeneratingPhase,
+  markBreakdownGenerating,
+  markBreakdownComplete,
+  isBreakdownGenerating
+} from './services/generation-tracker-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -898,7 +909,10 @@ Generate a comprehensive audit report showing:
       // RESET scoping_plan.json to placeholder state before starting
       // This ensures a clean slate regardless of previous user actions
       resetScopingPlanFile();
-      
+
+      // Mark scoping as generating (for page reload state restoration)
+      markScopingGenerating();
+
       // Build the scoping prompt
       const scopingPromptPath = path.join(TEMPLATES_DIR, 'scoping_prompt.md');
       let scopingPromptTemplate = '';
@@ -955,8 +969,15 @@ Please analyze this request and update the scoping_plan.json file.`;
     try {
       const scopingPlanFile = path.join(OUTPUT_DIR, 'scoping_plan.json');
 
+      // Check if generation is actively in progress (for page reload restoration)
+      const generatingStatus = isScopingGenerating();
+
       if (!fs.existsSync(scopingPlanFile)) {
-        return res.json({ status: 'not_started' });
+        return res.json({
+          status: 'not_started',
+          isGenerating: generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
+        });
       }
 
       const content = fs.readFileSync(scopingPlanFile, 'utf8');
@@ -967,9 +988,17 @@ Please analyze this request and update the scoping_plan.json file.`;
         content.includes('[ANALYSIS_PLACEHOLDER]') ||
         content.includes('[SUGGESTION_PLACEHOLDER]');
 
+      // If template has placeholders and we're actively generating, show generating status
+      // If template is complete, clear the generating status
+      if (!isTemplate) {
+        markScopingComplete();
+      }
+
       res.json({
         status: isTemplate ? 'generating' : 'complete',
-        plan
+        plan,
+        isGenerating: isTemplate && generatingStatus.isGenerating,
+        generatingStartedAt: generatingStatus.startedAt
       });
     } catch (error) {
       logger.error('Error getting scoping status:', error);
@@ -1559,7 +1588,18 @@ Please analyze this request and update the scoping_plan.json file.`;
       const finalPmComplete = status.agents.pm.status === 'complete';
       const finalUxComplete = status.agents.ux.status === 'complete';
       const finalEngineerComplete = status.agents.engineer.status === 'complete';
-      
+
+      // Check if generation is actively in progress (for page reload state restoration)
+      const generatingStatus = getSpecGeneratingPhase(req.params.projectId);
+
+      // If we've retroactively advanced the phase, clear the generating status
+      if (needsReview || (currentAgent !== 'complete' && status.agents[currentAgent].phases[status.agents[currentAgent].currentPhase || '']?.status !== 'ai-working')) {
+        // Phase is no longer in ai-working state, clear the generating tracker
+        if (generatingStatus.isGenerating) {
+          markSpecPhaseComplete(req.params.projectId);
+        }
+      }
+
       res.json({
         projectId: req.params.projectId,
         phases: {
@@ -1571,7 +1611,11 @@ Please analyze this request and update the scoping_plan.json file.`;
         nextPhase,
         needsReview,
         reviewDocument,
-        isComplete: finalPmComplete && finalUxComplete && finalEngineerComplete
+        isComplete: finalPmComplete && finalUxComplete && finalEngineerComplete,
+        // Include generation status for page reload restoration
+        isGenerating: generatingStatus.isGenerating,
+        generatingPhase: generatingStatus.phase,
+        generatingStartedAt: generatingStatus.startedAt
       });
       
       logger.debug(`📤 [API] Returning status:`);
@@ -1779,11 +1823,14 @@ Please analyze this request and update the scoping_plan.json file.`;
       if (mappedPhase) {
         // Update status to reflect that we're starting this phase
         const status = getOrCreateStatus(req.params.projectId);
-        if (status.currentAgent === mappedPhase.agent && 
+        if (status.currentAgent === mappedPhase.agent &&
             status.agents[mappedPhase.agent].currentPhase === mappedPhase.phase) {
           // Phase matches, mark as ai-working
           markAIWorkStarted(req.params.projectId);
-          
+
+          // Mark spec phase as generating (for page reload state restoration)
+          markSpecPhaseGenerating(req.params.projectId, phase);
+
           // Small delay to ensure status file is written to disk before we create any files
           // that might trigger the file watcher (prevents race condition)
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -2287,6 +2334,9 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       // Check if request is from integrated browser (skip automation)
       const skipAutomation = req.headers['x-integrated-browser'] === 'true';
 
+      // Mark breakdown as generating (for page reload state restoration)
+      markBreakdownGenerating(req.params.projectId);
+
       let breakdownResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with phase for WebSocket streaming
@@ -2317,30 +2367,35 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   app.get('/api/specification/breakdown-status/:projectId', (req, res) => {
     try {
       const projectPath = path.join(OUTPUT_DIR, 'projects', req.params.projectId);
-      
+
       if (!fs.existsSync(projectPath)) {
         return res.status(404).json({ error: 'Project not found' });
       }
-      
+
+      // Check if generation is actively in progress (for page reload state restoration)
+      const generatingStatus = isBreakdownGenerating(req.params.projectId);
+
       const projectSummaryFile = path.join(projectPath, 'issues', 'issues.json');
-      
+
       // Initial check: issues.json must exist
       if (!fs.existsSync(projectSummaryFile)) {
         return res.json({
           isComplete: false,
-          issueCount: 0
+          issueCount: 0,
+          isGenerating: generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
         });
       }
-      
+
       // Check if issues.json has been properly filled (not just template)
       let projectSummary: any;
       try {
         const summaryContent = fs.readFileSync(projectSummaryFile, 'utf-8');
         projectSummary = JSON.parse(summaryContent);
-        
+
         // Handle both new (issues) and legacy (issues_list) field names
         const issuesList = projectSummary.issues || projectSummary.issues_list || [];
-        
+
         // Check if it still contains placeholder text (template not filled)
         if (
           projectSummary.project_name?.includes('PLACEHOLDER') ||
@@ -2349,30 +2404,41 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         ) {
           return res.json({
             isComplete: false,
-            issueCount: 0
+            issueCount: 0,
+            isGenerating: generatingStatus.isGenerating,
+            generatingStartedAt: generatingStatus.startedAt
           });
         }
-        
+
         // Check that issues have real content (not just placeholders)
-        const validIssues = issuesList.filter((issue: any) => 
-          issue.issue_id && 
+        const validIssues = issuesList.filter((issue: any) =>
+          issue.issue_id &&
           !issue.issue_id.includes('PLACEHOLDER') &&
           issue.title &&
           !issue.title.includes('PLACEHOLDER')
         );
-        
+
         const isComplete = validIssues.length > 0;
-        
+
+        // If complete, clear the generating status
+        if (isComplete && generatingStatus.isGenerating) {
+          markBreakdownComplete(req.params.projectId);
+        }
+
         res.json({
           isComplete,
           issueCount: validIssues.length,
-          expectedCount: issuesList.length
+          expectedCount: issuesList.length,
+          isGenerating: !isComplete && generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
         });
       } catch (error) {
         // If we can't parse the JSON or it's malformed, it's not complete
         return res.json({
           isComplete: false,
-          issueCount: 0
+          issueCount: 0,
+          isGenerating: generatingStatus.isGenerating,
+          generatingStartedAt: generatingStatus.startedAt
         });
       }
     } catch (error) {
