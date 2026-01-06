@@ -1986,11 +1986,11 @@ Please analyze this request and update the scoping_plan.json file.`;
           sessionId = existingSessionId;
           // TODO: For now, still using keyboard automation with session tracking
           // When refine endpoint is called, it will use --resume
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase);
         } else {
           // Create new session (first phase of agent)
           logger.debug(`🆕 Starting new ${agent} agent session`);
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase);
 
           // Save the session ID if headless mode was used
           if (result.sessionId) {
@@ -2289,8 +2289,8 @@ ${suggestion || 'Implement this change directly in your code editor.'}
 
       let breakdownResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
-        // Trigger Cursor automation
-        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        // Trigger Cursor automation with phase for WebSocket streaming
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown');
 
         if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');

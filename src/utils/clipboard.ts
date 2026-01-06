@@ -124,6 +124,15 @@ export interface OpenAIToolResult {
 }
 
 /**
+ * Options for openAIToolAndPaste
+ */
+export interface OpenAIToolOptions {
+    workspacePath?: string;
+    tool?: AITool;
+    phase?: string; // Phase identifier for WebSocket broadcasts (e.g., 'pm-questions', 'engineer-spec')
+}
+
+/**
  * Open AI coding tool and paste text into a new chat
  * This is the main automation function used by the web UI
  *
@@ -131,9 +140,17 @@ export interface OpenAIToolResult {
  * and the CLI is available, we use headless mode for faster, more reliable execution.
  * Otherwise, we fall back to keyboard automation.
  */
-export const openAIToolAndPaste = async (text: string, workspacePath?: string, tool?: AITool): Promise<OpenAIToolResult> => {
+export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptions | string, tool?: AITool): Promise<OpenAIToolResult> => {
+    // Handle backwards compatibility: second param can be workspacePath string or options object
+    const opts: OpenAIToolOptions = typeof options === 'string'
+        ? { workspacePath: options, tool }
+        : (options || {});
+
+    const workspacePath = opts.workspacePath;
+    const phase = opts.phase;
+
     // Get the tool config - either from parameter or from saved settings
-    const selectedTool = tool || getCurrentAITool();
+    const selectedTool = opts.tool || tool || getCurrentAITool();
     const config = getAIToolConfig(selectedTool);
 
     // Try headless mode first if available
@@ -144,27 +161,30 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
             logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
             logger.debug(chalk.magenta(`🚀 HEADLESS MODE available for ${config.name}`));
             logger.debug(chalk.cyan('📋 Using CLI instead of keyboard automation'));
+            if (phase) {
+                logger.debug(chalk.cyan('📍 Phase:'), phase);
+            }
             logger.debug(chalk.magenta('═'.repeat(60)));
 
-            // Broadcast that headless execution is starting
-            broadcastHeadlessStarted(config.name);
+            // Broadcast that headless execution is starting (with phase if provided)
+            broadcastHeadlessStarted(config.name, phase);
 
             const result = await executeHeadless(selectedTool, text, {
                 workingDir: workspacePath,
                 onProgress: (status: string) => {
-                    // Broadcast progress to WebSocket clients
-                    broadcastHeadlessProgress(status);
+                    // Broadcast progress to WebSocket clients (with phase if provided)
+                    broadcastHeadlessProgress(status, phase);
                 },
                 onSessionId: (sessionId: string) => {
                     // Broadcast session ID immediately when captured (before completion)
                     logger.debug(chalk.green(`📌 Session ID captured early: ${sessionId}`));
-                    broadcastSessionCaptured(sessionId);
+                    broadcastSessionCaptured(sessionId, phase);
                 }
             });
 
             if (result && result.success) {
                 logger.debug(chalk.green(`✅ Headless execution completed successfully for ${config.name}`));
-                broadcastHeadlessCompleted(config.name, true, undefined, result.sessionId);
+                broadcastHeadlessCompleted(config.name, true, phase, result.sessionId);
                 return { success: true, sessionId: result.sessionId };
             }
 
@@ -172,7 +192,7 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
             if (result && result.error) {
                 logger.debug(chalk.yellow(`⚠️ Headless execution failed: ${result.error}`));
                 logger.debug(chalk.yellow('Falling back to keyboard automation...'));
-                broadcastHeadlessCompleted(config.name, false, undefined, result.sessionId);
+                broadcastHeadlessCompleted(config.name, false, phase, result.sessionId);
             }
         }
     } catch (headlessError) {
@@ -363,8 +383,8 @@ export const openAIToolAndPaste = async (text: string, workspacePath?: string, t
  * Open Cursor and paste text into a new chat
  * This is kept for backward compatibility - now uses the generic openAIToolAndPaste
  */
-export const openCursorAndPaste = async (text: string, workspacePath?: string): Promise<OpenAIToolResult> => {
-    return openAIToolAndPaste(text, workspacePath);
+export const openCursorAndPaste = async (text: string, workspacePath?: string, phase?: string): Promise<OpenAIToolResult> => {
+    return openAIToolAndPaste(text, { workspacePath, phase });
 };
 
 /**
