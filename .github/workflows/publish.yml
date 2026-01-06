@@ -1,0 +1,87 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches: [main]
+
+# Prevent concurrent releases
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # First, run the same checks as CI
+  build:
+    name: Build and Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for semantic-release to analyze commits
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build CLI
+        run: npm run build:cli
+
+      - name: Build Web UI
+        run: npm run build:ui
+
+      - name: Make CLI executable
+        run: chmod +x dist/cli.js
+
+      - name: Verify build artifacts
+        run: |
+          test -f dist/specwright.js || exit 1
+          test -d dist/web-ui || exit 1
+
+  # Publish after build succeeds
+  publish:
+    name: Publish to NPM
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Required for pushing tags and releases
+      issues: write # Required for commenting on issues
+      pull-requests: write # Required for commenting on PRs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
