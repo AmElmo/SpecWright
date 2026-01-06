@@ -20,7 +20,7 @@ import { openCursorAndPaste, type OpenAIToolResult } from './utils/clipboard.js'
 import { finalizeScopingPlan } from './services/scoping-service.js';
 import { executeClaudeHeadless } from './services/headless-agent-service.js';
 import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted } from './services/websocket-service.js';
-import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, type AgentType as SessionAgentType } from './services/session-service.js';
+import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, saveRefinementImages, type AgentType as SessionAgentType } from './services/session-service.js';
 import {
   getOrCreateStatus,
   markAIWorkStarted,
@@ -1080,11 +1080,44 @@ Please analyze this request and update the scoping_plan.json file.`;
       // Build the refinement prompt
       let prompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
 
-      // Add image references if provided
+      // Save images to disk and reference them in the prompt
       if (images && images.length > 0) {
-        prompt += `\n\nThe user has attached ${images.length} image(s) for reference.`;
-        // Note: Claude CLI image support would need to be added here
-        // For now, we mention that images were attached
+        // Determine project ID for image storage
+        const storageProjectId = projectId || '_scoping_active';
+        // Map phase to agent type
+        const agentType = (phase === 'scoping' ? 'scoping' :
+                          phase === 'pm' ? 'pm' :
+                          phase === 'ux' || phase === 'designer' ? 'ux' :
+                          phase === 'engineer' ? 'engineer' :
+                          'breakdown') as SessionAgentType;
+
+        // Convert base64 images to buffers and save to disk
+        const imagesToSave: { filename: string; data: Buffer }[] = [];
+        for (let i = 0; i < images.length; i++) {
+          const base64Data = images[i];
+          // Extract the actual base64 content (remove data:image/xxx;base64, prefix)
+          const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+          if (matches) {
+            const extension = matches[1];
+            const base64Content = matches[2];
+            const buffer = Buffer.from(base64Content, 'base64');
+            const filename = `feedback-image-${Date.now()}-${i}.${extension}`;
+            imagesToSave.push({ filename, data: buffer });
+          }
+        }
+
+        if (imagesToSave.length > 0) {
+          const savedPaths = saveRefinementImages(storageProjectId, agentType, imagesToSave);
+          logger.debug(chalk.cyan(`  📸 Saved ${savedPaths.length} images to disk`));
+
+          // Add image file references to prompt
+          // Claude CLI can read these files using the Read tool
+          prompt += `\n\nThe user has attached ${savedPaths.length} reference image(s). You can view them using the Read tool:`;
+          for (const imagePath of savedPaths) {
+            prompt += `\n- ${imagePath}`;
+          }
+          prompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
+        }
       }
 
       // Broadcast that refinement has started (with isRefinement=true)
