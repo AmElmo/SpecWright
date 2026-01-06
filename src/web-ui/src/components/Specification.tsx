@@ -23,6 +23,29 @@ interface SpecificationStatus {
   isComplete: boolean;
 }
 
+// Log entry for streaming progress
+interface HeadlessLogEntry {
+  id: number;
+  message: string;
+  icon: string;
+  timestamp: Date;
+}
+
+// Map action types to icons (same as Scoping.tsx)
+function getActionIcon(message: string): string {
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('reading') || lowerMessage.includes('read file')) return '📖';
+  if (lowerMessage.includes('writing') || lowerMessage.includes('write file') || lowerMessage.includes('wrote')) return '✏️';
+  if (lowerMessage.includes('searching') || lowerMessage.includes('search') || lowerMessage.includes('glob') || lowerMessage.includes('grep')) return '🔍';
+  if (lowerMessage.includes('running') || lowerMessage.includes('command') || lowerMessage.includes('bash') || lowerMessage.includes('execute')) return '⚡';
+  if (lowerMessage.includes('thinking') || lowerMessage.includes('analyzing') || lowerMessage.includes('processing')) return '🧠';
+  if (lowerMessage.includes('starting')) return '🚀';
+  if (lowerMessage.includes('completed') || lowerMessage.includes('success') || lowerMessage.includes('✅')) return '✅';
+  if (lowerMessage.includes('failed') || lowerMessage.includes('error') || lowerMessage.includes('⚠️')) return '⚠️';
+  if (lowerMessage.includes('initialized') || lowerMessage.includes('init')) return '⚙️';
+  return '💭';
+}
+
 type PhaseStatus = 'pending' | 'in-progress' | 'complete';
 
 // Icons
@@ -79,7 +102,9 @@ export function Specification() {
   const [isInReviewMode, setIsInReviewMode] = useState(false);
   const [sessions, setSessions] = useState<{ pm?: string; ux?: string; engineer?: string }>({});
   const [isHeadlessMode, setIsHeadlessMode] = useState(false);
-  
+  const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
+  const [logIdCounter, setLogIdCounter] = useState(0);
+
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
                            status?.currentPhase === 'ux-questions-answer' || 
                            status?.currentPhase === 'engineer-questions-answer';
@@ -93,13 +118,48 @@ export function Specification() {
     // We should ignore them here to avoid interfering with the main page state
     const isRefinementEvent = event.isRefinement === true;
 
-    // Track headless mode - but not for refinement events
+    // Track headless mode and streaming logs - but not for refinement events
     if (event.type === 'headless_started' && !isRefinementEvent) {
       setIsHeadlessMode(true);
+      setHeadlessLogs([]); // Clear previous logs
+      setLogIdCounter(0);
+      // Add initial log entry
+      const startEntry: HeadlessLogEntry = {
+        id: 0,
+        message: 'Starting Claude CLI...',
+        icon: '🚀',
+        timestamp: new Date()
+      };
+      setHeadlessLogs([startEntry]);
+      setLogIdCounter(1);
+    }
+    if (event.type === 'headless_progress' && event.status && !isRefinementEvent) {
+      // Accumulate progress messages for streaming display
+      const message = event.status;
+      const newEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: getActionIcon(message),
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, newEntry]);
+      setLogIdCounter(prev => prev + 1);
     }
     if (event.type === 'headless_completed' && !isRefinementEvent) {
-      // Keep headless mode true for a moment so success banner shows correct message
-      setTimeout(() => setIsHeadlessMode(false), 3000);
+      // Add final log entry
+      const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
+      const finalEntry: HeadlessLogEntry = {
+        id: logIdCounter,
+        message,
+        icon: event.success ? '✅' : '⚠️',
+        timestamp: new Date()
+      };
+      setHeadlessLogs(prev => [...prev, finalEntry]);
+      // Clear logs after a moment
+      setTimeout(() => {
+        setHeadlessLogs([]);
+        setIsHeadlessMode(false);
+      }, 3000);
     }
     // Handle early session capture - enables RefinePanel immediately
     // This should still work for refinement to capture updated session IDs
@@ -847,7 +907,53 @@ export function Specification() {
                     </div>
                   );
                 })()}
-                
+
+                {/* Headless Streaming Log Display */}
+                {isHeadlessMode && headlessLogs.length > 0 && (
+                  <div
+                    className="rounded-lg mt-6 overflow-hidden text-left relative"
+                    style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+                  >
+                    {/* Header */}
+                    <div
+                      className="px-4 py-2 flex items-center gap-2"
+                      style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+                    >
+                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
+                      <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
+                        Claude CLI
+                      </span>
+                    </div>
+                    {/* Log entries */}
+                    <div
+                      className="p-3 max-h-[200px] overflow-y-auto"
+                      style={{ scrollBehavior: 'smooth' }}
+                      ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                    >
+                      <div className="space-y-1.5">
+                        {headlessLogs.map((log, index) => (
+                          <div
+                            key={log.id}
+                            className="flex items-start gap-2 animate-fadeIn"
+                            style={{
+                              opacity: index === headlessLogs.length - 1 ? 1 : 0.7,
+                              animation: 'fadeIn 0.2s ease-out'
+                            }}
+                          >
+                            <span className="text-[12px] flex-shrink-0 w-5 text-center">{log.icon}</span>
+                            <span
+                              className="text-[12px] font-mono leading-relaxed"
+                              style={{ color: 'hsl(220 10% 75%)' }}
+                            >
+                              {log.message}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* CSS animations */}
                 <style>{`
                   @keyframes ping {
@@ -862,10 +968,14 @@ export function Specification() {
                     0%, 100% { opacity: 0.3; }
                     50% { opacity: 0.5; }
                   }
+                  @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
                 `}</style>
-                
+
                 <p className="text-[11px] mt-4" style={{ color: 'hsl(0 0% 60%)' }}>
-                  This may take a minute. The page will update automatically.
+                  {isHeadlessMode ? 'Claude CLI is executing the task automatically.' : 'This may take a minute. The page will update automatically.'}
                 </p>
                 
                 {lastPrompt && (
