@@ -132,6 +132,8 @@ export function Specification() {
       };
       setHeadlessLogs([startEntry]);
       setLogIdCounter(1);
+      // Transition from "Sending..." to "Sent" when headless execution starts
+      setAutomationStatus('sent');
     }
     if (event.type === 'headless_progress' && event.status && !isRefinementEvent) {
       // Accumulate progress messages for streaming display
