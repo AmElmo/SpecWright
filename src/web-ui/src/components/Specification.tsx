@@ -104,6 +104,8 @@ export function Specification() {
   const [isHeadlessMode, setIsHeadlessMode] = useState(false);
   const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
   const [logIdCounter, setLogIdCounter] = useState(0);
+  const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
+  const [isShowingThinking, setIsShowingThinking] = useState(false);
 
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
                            status?.currentPhase === 'ux-questions-answer' || 
@@ -123,6 +125,8 @@ export function Specification() {
       setIsHeadlessMode(true);
       setHeadlessLogs([]); // Clear previous logs
       setLogIdCounter(0);
+      setLastProgressTime(Date.now());
+      setIsShowingThinking(false);
       // Add initial log entry
       const startEntry: HeadlessLogEntry = {
         id: 0,
@@ -146,6 +150,9 @@ export function Specification() {
       };
       setHeadlessLogs(prev => [...prev, newEntry]);
       setLogIdCounter(prev => prev + 1);
+      // Reset thinking indicator timer
+      setLastProgressTime(Date.now());
+      setIsShowingThinking(false);
     }
     if (event.type === 'headless_completed' && !isRefinementEvent) {
       // Add final log entry
@@ -157,6 +164,8 @@ export function Specification() {
         timestamp: new Date()
       };
       setHeadlessLogs(prev => [...prev, finalEntry]);
+      setLastProgressTime(null);
+      setIsShowingThinking(false);
       // Clear logs after a moment
       setTimeout(() => {
         setHeadlessLogs([]);
@@ -198,6 +207,36 @@ export function Specification() {
       return () => clearInterval(interval);
     }
   }, [triggeringPhase, breakingDown]);
+
+  // Thinking indicator: show "thinking..." if no progress for 15 seconds
+  useEffect(() => {
+    if (!isHeadlessMode || !lastProgressTime) return;
+
+    const checkThinking = () => {
+      const now = Date.now();
+      const elapsed = now - lastProgressTime;
+      if (elapsed >= 15000 && !isShowingThinking) {
+        // Add thinking indicator to logs
+        setHeadlessLogs(prev => {
+          // Don't add duplicate thinking entries
+          const lastEntry = prev[prev.length - 1];
+          if (lastEntry?.message.includes('Still thinking')) return prev;
+          return [...prev, {
+            id: Date.now(),
+            message: 'Still thinking... (complex task in progress)',
+            icon: '🧠',
+            timestamp: new Date()
+          }];
+        });
+        setIsShowingThinking(true);
+      }
+    };
+
+    // Check immediately and then every 5 seconds
+    checkThinking();
+    const interval = setInterval(checkThinking, 5000);
+    return () => clearInterval(interval);
+  }, [isHeadlessMode, lastProgressTime, isShowingThinking]);
   
   const fetchStatus = async (skipDocumentReload = false) => {
     if (!projectId) return;

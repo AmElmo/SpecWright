@@ -63,6 +63,8 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   const [isHeadlessMode, setIsHeadlessMode] = useState(false);
   const [logIdCounter, setLogIdCounter] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
+  const [isShowingThinking, setIsShowingThinking] = useState(false);
 
   // Track if we've ever reached 'complete' status - once complete, don't switch back for WebSocket events
   const hasReachedComplete = useRef(false);
@@ -95,6 +97,8 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       setIsHeadlessMode(true);
       setHeadlessLogs([]); // Clear previous logs
       setLogIdCounter(0);
+      setLastProgressTime(Date.now());
+      setIsShowingThinking(false);
       // Add initial log entry
       const startEntry: HeadlessLogEntry = {
         id: 0,
@@ -120,6 +124,9 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       };
       setHeadlessLogs(prev => [...prev, newEntry]);
       setLogIdCounter(prev => prev + 1);
+      // Reset thinking indicator timer
+      setLastProgressTime(Date.now());
+      setIsShowingThinking(false);
     }
     // Handle early session capture - enables RefinePanel immediately
     if (event.type === 'session_captured' && event.sessionId) {
@@ -136,6 +143,8 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         timestamp: new Date()
       };
       setHeadlessLogs(prev => [...prev, finalEntry]);
+      setLastProgressTime(null);
+      setIsShowingThinking(false);
       // Capture session ID for refinement support (fallback if early capture didn't work)
       if (event.sessionId && !sessionId) {
         setSessionId(event.sessionId);
@@ -176,10 +185,40 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       const interval = setInterval(() => {
         checkScopingStatus();
       }, 2000);
-      
+
       return () => clearInterval(interval);
     }
   }, [status]);
+
+  // Thinking indicator: show "thinking..." if no progress for 15 seconds
+  useEffect(() => {
+    if (!isHeadlessMode || !lastProgressTime) return;
+
+    const checkThinking = () => {
+      const now = Date.now();
+      const elapsed = now - lastProgressTime;
+      if (elapsed >= 15000 && !isShowingThinking) {
+        // Add thinking indicator to logs
+        setHeadlessLogs(prev => {
+          // Don't add duplicate thinking entries
+          const lastEntry = prev[prev.length - 1];
+          if (lastEntry?.message.includes('Still thinking')) return prev;
+          return [...prev, {
+            id: Date.now(),
+            message: 'Still thinking... (complex task in progress)',
+            icon: '🧠',
+            timestamp: new Date()
+          }];
+        });
+        setIsShowingThinking(true);
+      }
+    };
+
+    // Check immediately and then every 5 seconds
+    checkThinking();
+    const interval = setInterval(checkThinking, 5000);
+    return () => clearInterval(interval);
+  }, [isHeadlessMode, lastProgressTime, isShowingThinking]);
   
   const handleRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
