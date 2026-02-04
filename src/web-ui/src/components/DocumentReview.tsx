@@ -219,7 +219,7 @@ export function DocumentReview({
       {/* Tabs for Engineer Review */}
       {hasTechnologyChoices && (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'main' | 'technology' | 'screens')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 sticky top-0 z-10 bg-white">
             <TabsTrigger value="main">
               <span>📄</span>
               <span className="ml-2">Technical Specification</span>
@@ -267,7 +267,7 @@ export function DocumentReview({
       {/* Tabs for PM Review (PRD + Acceptance Criteria) */}
       {hasAcceptanceCriteria && (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'main' | 'technology' | 'screens' | 'criteria')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 sticky top-0 z-10 bg-white">
             <TabsTrigger value="main">
               <span>📋</span>
               <span className="ml-2">PRD</span>
@@ -307,7 +307,7 @@ export function DocumentReview({
       {/* Tabs for Designer Review */}
       {hasScreens && !hasTechnologyChoices && !hasAcceptanceCriteria && (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'main' | 'technology' | 'screens')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 sticky top-0 z-10 bg-white">
             <TabsTrigger value="main">
               <span>📋</span>
               <span className="ml-2">Design Brief</span>
@@ -378,20 +378,24 @@ export function DocumentReview({
           <Card className="bg-white border-0 shadow-none rounded-none">
             <CardContent className="pt-6 pb-6">
               <div className="flex flex-col gap-4">
-                <div className="text-slate-900">
-                  <h3 className="font-semibold mb-2">Ready to proceed?</h3>
-                  <p className="text-slate-600 text-sm">
-                    {hasAcceptanceCriteria
-                      ? 'Review both tabs above. The PRD is read-only, but you can edit acceptance criteria (add, edit, delete). All changes are automatically saved. Once you approve, we\'ll move to the Designer phase.'
-                      : hasTechnologyChoices 
-                      ? 'Review both tabs above. The technical specification is read-only, but you can make technology choices. All changes are automatically saved. Once you approve, we\'ll complete the specification.'
-                      : hasScreens
-                      ? 'Review both tabs above: Design Brief and Screens. The design documents are read-only. The Screens tab shows the component structure for implementation. Once you approve, we\'ll move to the Engineer phase.'
-                      : documentType === 'technology-choices' 
-                      ? 'You can edit the content above. All changes are automatically saved. Once you approve, we\'ll move to the next phase.'
-                      : 'Review the document above. Once you approve, we\'ll move to the next phase of the specification process.'
-                    }
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">
+                      {hasAcceptanceCriteria
+                        ? 'Review PRD & Acceptance Criteria'
+                        : hasTechnologyChoices
+                        ? 'Review Tech Spec & Select Technologies'
+                        : hasScreens
+                        ? 'Review Design Brief & Screens'
+                        : 'Review Document'
+                      }
+                    </h3>
+                    <p className="text-slate-500 text-sm">
+                      {hasAcceptanceCriteria || hasTechnologyChoices || hasScreens
+                        ? 'Check both tabs. Changes auto-save.'
+                        : 'Approve to continue to the next phase.'}
+                    </p>
+                  </div>
                 </div>
                 
                 {/* Warning message when tech choices not complete */}

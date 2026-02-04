@@ -120,12 +120,6 @@ export function IssueModal({
             >
               {issue.status}
             </span>
-            <span 
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1"
-              style={{ backgroundColor: 'hsl(0 0% 96%)', color: 'hsl(0 0% 46%)' }}
-            >
-              <ClockIcon /> {issue.estimatedHours}h
-            </span>
           </div>
         </div>
 

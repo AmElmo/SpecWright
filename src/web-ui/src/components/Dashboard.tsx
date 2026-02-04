@@ -275,19 +275,21 @@ export function Dashboard() {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-colors"
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-all duration-150"
                   style={{
-                    backgroundColor: item.active ? 'hsl(0 0% 96%)' : 'transparent',
-                    color: item.active ? 'hsl(0 0% 9%)' : 'hsl(0 0% 46%)',
+                    backgroundColor: item.active ? 'hsl(235 69% 97%)' : 'transparent',
+                    color: item.active ? 'hsl(235 69% 50%)' : 'hsl(0 0% 46%)',
                   }}
                   onMouseEnter={(e) => {
                     if (!item.active) {
-                      e.currentTarget.style.backgroundColor = 'hsl(0 0% 97%)';
+                      e.currentTarget.style.backgroundColor = 'hsl(0 0% 94%)';
+                      e.currentTarget.style.color = 'hsl(0 0% 20%)';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!item.active) {
                       e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'hsl(0 0% 46%)';
                     }
                   }}
                 >
@@ -307,19 +309,21 @@ export function Dashboard() {
             <div className="p-2 border-t" style={{ borderColor: 'hsl(0 0% 92%)' }}>
               <Link
                 to={settingsItem.path}
-                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-colors"
+                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-all duration-150"
                 style={{
-                  backgroundColor: settingsItem.active ? 'hsl(0 0% 96%)' : 'transparent',
-                  color: settingsItem.active ? 'hsl(0 0% 9%)' : 'hsl(0 0% 46%)',
+                  backgroundColor: settingsItem.active ? 'hsl(235 69% 97%)' : 'transparent',
+                  color: settingsItem.active ? 'hsl(235 69% 50%)' : 'hsl(0 0% 46%)',
                 }}
                 onMouseEnter={(e) => {
                   if (!settingsItem.active) {
-                    e.currentTarget.style.backgroundColor = 'hsl(0 0% 97%)';
+                    e.currentTarget.style.backgroundColor = 'hsl(0 0% 94%)';
+                    e.currentTarget.style.color = 'hsl(0 0% 20%)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!settingsItem.active) {
                     e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'hsl(0 0% 46%)';
                   }
                 }}
               >
