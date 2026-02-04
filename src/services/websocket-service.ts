@@ -47,6 +47,10 @@ export function broadcast(type: string, data: Record<string, unknown>): void {
  * Broadcast headless progress update
  */
 export function broadcastHeadlessProgress(status: string, phase?: string, isRefinement?: boolean): void {
+    // Debug logging for ship phase
+    if (phase === 'ship') {
+        console.log('[WS DEBUG] Broadcasting headless_progress with phase=ship:', status.substring(0, 50));
+    }
     broadcast('headless_progress', { status, phase, isRefinement: isRefinement ?? false });
 }
 
@@ -54,6 +58,10 @@ export function broadcastHeadlessProgress(status: string, phase?: string, isRefi
  * Broadcast headless execution started
  */
 export function broadcastHeadlessStarted(tool: string, phase?: string, isRefinement?: boolean): void {
+    // Debug logging for ship phase
+    if (phase === 'ship') {
+        console.log('[WS DEBUG] Broadcasting headless_started with phase=ship, tool:', tool);
+    }
     broadcast('headless_started', { tool, phase, isRefinement: isRefinement ?? false });
 }
 
@@ -61,6 +69,10 @@ export function broadcastHeadlessStarted(tool: string, phase?: string, isRefinem
  * Broadcast headless execution completed
  */
 export function broadcastHeadlessCompleted(tool: string, success: boolean, phase?: string, sessionId?: string, isRefinement?: boolean): void {
+    // Debug logging for ship phase
+    if (phase === 'ship') {
+        console.log('[WS DEBUG] Broadcasting headless_completed with phase=ship, success:', success);
+    }
     broadcast('headless_completed', { tool, success, phase, sessionId, isRefinement: isRefinement ?? false });
 }
 
