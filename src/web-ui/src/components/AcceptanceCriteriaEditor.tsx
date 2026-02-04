@@ -4,6 +4,18 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 
+// Strips common prefixes from acceptance criteria text to avoid duplication with labels
+function stripPrefix(text: string, ...prefixes: string[]): string {
+  const trimmed = text.trim();
+  for (const prefix of prefixes) {
+    const regex = new RegExp(`^${prefix}\\s*`, 'i');
+    if (regex.test(trimmed)) {
+      return trimmed.replace(regex, '').trim();
+    }
+  }
+  return trimmed;
+}
+
 interface AcceptanceCriterion {
   id: string;
   given: string;
@@ -223,9 +235,9 @@ export function AcceptanceCriteriaEditor({ content, projectId, onSave, readOnly 
               
               {/* Job Story Details (always visible) */}
               <div className="mt-3 pl-9 text-sm text-slate-700 space-y-1">
-                <p><span className="font-medium text-slate-500">When</span> {story.situation}</p>
-                <p><span className="font-medium text-slate-500">I want to</span> {story.motivation}</p>
-                <p><span className="font-medium text-slate-500">So that</span> {story.outcome}</p>
+                <p><span className="font-medium text-slate-500">When</span> {stripPrefix(story.situation, 'when')}</p>
+                <p><span className="font-medium text-slate-500">I want to</span> {stripPrefix(story.motivation, 'I want to', 'I want')}</p>
+                <p><span className="font-medium text-slate-500">So that</span> {stripPrefix(story.outcome, 'so that')}</p>
               </div>
             </div>
 
@@ -333,15 +345,15 @@ export function AcceptanceCriteriaEditor({ content, projectId, onSave, readOnly 
                             <div className="space-y-2 text-sm">
                               <div className="flex items-start gap-2">
                                 <span className="font-bold text-green-700 w-14 flex-shrink-0">GIVEN</span>
-                                <span className="text-slate-700">{criterion.given}</span>
+                                <span className="text-slate-700">{stripPrefix(criterion.given, 'given')}</span>
                               </div>
                               <div className="flex items-start gap-2">
                                 <span className="font-bold text-blue-700 w-14 flex-shrink-0">WHEN</span>
-                                <span className="text-slate-700">{criterion.when}</span>
+                                <span className="text-slate-700">{stripPrefix(criterion.when, 'when')}</span>
                               </div>
                               <div className="flex items-start gap-2">
                                 <span className="font-bold text-purple-700 w-14 flex-shrink-0">THEN</span>
-                                <span className="text-slate-700">{criterion.then}</span>
+                                <span className="text-slate-700">{stripPrefix(criterion.then, 'then')}</span>
                               </div>
                             </div>
                             
