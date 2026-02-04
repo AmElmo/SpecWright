@@ -653,10 +653,16 @@ export function Specification() {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-colors"
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-all duration-150"
                   style={{ backgroundColor: 'transparent', color: 'hsl(0 0% 46%)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(0 0% 97%)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'hsl(0 0% 94%)';
+                    e.currentTarget.style.color = 'hsl(0 0% 20%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'hsl(0 0% 46%)';
+                  }}
                 >
                   <item.icon />
                   <span className="text-[13px] font-medium">{item.label}</span>
@@ -679,10 +685,16 @@ export function Specification() {
             <div className="p-2 border-t" style={{ borderColor: 'hsl(0 0% 92%)' }}>
               <Link
                 to={settingsItem.path}
-                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-colors"
+                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md no-underline transition-all duration-150"
                 style={{ backgroundColor: 'transparent', color: 'hsl(0 0% 46%)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(0 0% 97%)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'hsl(0 0% 94%)';
+                  e.currentTarget.style.color = 'hsl(0 0% 20%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'hsl(0 0% 46%)';
+                }}
               >
                 <settingsItem.icon />
                 <span className="text-[13px] font-medium">{settingsItem.label}</span>
@@ -737,19 +749,35 @@ export function Specification() {
   // AI Working state
   if (triggeringPhase) {
     const phaseInfo = getPhaseInfo(triggeringPhase);
-    
+
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         <Sidebar />
         <main className="flex-1">
           <header className="sticky top-0 z-10 px-6 py-3 border-b" style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}>
             <div className="flex items-center gap-2">
-              <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Specification</span>
+              <Link
+                to="/"
+                className="text-[13px] no-underline hover:underline transition-colors"
+                style={{ color: 'hsl(0 0% 46%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(0 0% 20%)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 46%)'; }}
+              >
+                Specification
+              </Link>
               <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
-              <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>{projectId}</span>
+              <Link
+                to={`/project/${projectId}`}
+                className="text-[13px] font-medium no-underline hover:underline transition-colors"
+                style={{ color: 'hsl(0 0% 9%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(235 69% 50%)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 9%)'; }}
+              >
+                {projectId}
+              </Link>
             </div>
           </header>
-          
+
           <div className="p-6">
             <div className="max-w-4xl mx-auto">
               {/* Progress indicator */}
@@ -1065,9 +1093,25 @@ export function Specification() {
         <main className="flex-1">
           <header className="sticky top-0 z-10 px-6 py-3 border-b" style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}>
             <div className="flex items-center gap-2">
-              <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Specification</span>
+              <Link
+                to="/"
+                className="text-[13px] no-underline hover:underline transition-colors"
+                style={{ color: 'hsl(0 0% 46%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(0 0% 20%)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 46%)'; }}
+              >
+                Specification
+              </Link>
               <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
-              <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>{projectId}</span>
+              <Link
+                to={`/project/${projectId}`}
+                className="text-[13px] font-medium no-underline hover:underline transition-colors"
+                style={{ color: 'hsl(0 0% 9%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(235 69% 50%)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 9%)'; }}
+              >
+                {projectId}
+              </Link>
               <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
               <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Review</span>
             </div>
@@ -1127,19 +1171,35 @@ export function Specification() {
   // Ready to Generate state
   if (!triggeringPhase && !status.needsReview && !showQuestionForm && nextActionPhase) {
     const info = getReadyInfo(nextActionPhase);
-    
+
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         <Sidebar />
         <main className="flex-1">
           <header className="sticky top-0 z-10 px-6 py-3 border-b" style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}>
             <div className="flex items-center gap-2">
-              <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Specification</span>
+              <Link
+                to="/"
+                className="text-[13px] no-underline hover:underline transition-colors"
+                style={{ color: 'hsl(0 0% 46%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(0 0% 20%)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 46%)'; }}
+              >
+                Specification
+              </Link>
               <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
-              <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>{projectId}</span>
+              <Link
+                to={`/project/${projectId}`}
+                className="text-[13px] font-medium no-underline hover:underline transition-colors"
+                style={{ color: 'hsl(0 0% 9%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(235 69% 50%)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 9%)'; }}
+              >
+                {projectId}
+              </Link>
             </div>
           </header>
-          
+
           <div className="p-6">
             <div className="max-w-4xl mx-auto">
               {/* Progress indicator */}
@@ -1204,12 +1264,28 @@ export function Specification() {
       <main className="flex-1">
         <header className="sticky top-0 z-10 px-6 py-3 border-b" style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}>
           <div className="flex items-center gap-2">
-            <span className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>Specification</span>
+            <Link
+              to="/"
+              className="text-[13px] no-underline hover:underline transition-colors"
+              style={{ color: 'hsl(0 0% 46%)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(0 0% 20%)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 46%)'; }}
+            >
+              Specification
+            </Link>
             <span style={{ color: 'hsl(0 0% 80%)' }}>/</span>
-            <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>{projectId}</span>
+            <Link
+              to={`/project/${projectId}`}
+              className="text-[13px] font-medium no-underline hover:underline transition-colors"
+              style={{ color: 'hsl(0 0% 9%)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(235 69% 50%)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 9%)'; }}
+            >
+              {projectId}
+            </Link>
           </div>
         </header>
-        
+
         <div className="p-6">
           <div className="max-w-4xl mx-auto">
             {/* Progress indicator */}

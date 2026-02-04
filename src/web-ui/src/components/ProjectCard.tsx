@@ -123,6 +123,9 @@ export function ProjectCard({ project, onIconChange }: ProjectCardProps) {
   const status = project.status || 'ready_to_spec';
   const config = statusConfig[status] || statusConfig['ready_to_spec'];
 
+  // Determine if project has issues based on progress data
+  const hasIssues = project.progressData && project.progressData.total > 0;
+
   // Fetch Linear sync status
   useEffect(() => {
     const fetchSyncStatus = async () => {
@@ -162,9 +165,14 @@ export function ProjectCard({ project, onIconChange }: ProjectCardProps) {
     }
   };
 
+  // Link to issues page if project has issues, otherwise to docs/request
+  const linkDestination = hasIssues
+    ? `/project/${project.fullId}/issues`
+    : `/project/${project.fullId}/docs/request`;
+
   return (
-    <Link 
-      to={`/project/${project.fullId}`}
+    <Link
+      to={linkDestination}
       className="block no-underline group"
     >
       <div 

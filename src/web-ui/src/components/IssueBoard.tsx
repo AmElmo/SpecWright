@@ -349,10 +349,6 @@ export function IssueBoard() {
           <span className="font-mono text-[11px]" style={{ color: 'hsl(0 0% 46%)' }}>
             {issue.issueId}
           </span>
-          <div className="flex items-center gap-1" style={{ color: 'hsl(0 0% 46%)' }}>
-            <ClockIcon />
-            <span className="text-[11px]">{issue.estimatedHours}h</span>
-          </div>
         </div>
         
         {/* Ship button */}
@@ -866,9 +862,6 @@ export function IssueBoard() {
                     )}
                     <span className="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: config.bgColor, color: config.color }}>
                       {config.label}
-                    </span>
-                    <span className="text-[11px] flex-shrink-0 flex items-center gap-1" style={{ color: 'hsl(0 0% 46%)' }}>
-                      <ClockIcon /> {issue.estimatedHours}h
                     </span>
                     {isReady && (
                       <button

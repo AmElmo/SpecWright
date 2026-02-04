@@ -1083,10 +1083,6 @@ export function ProjectDetail() {
               <span className="font-mono text-[11px]" style={{ color: 'hsl(0 0% 46%)' }}>
                 {issue.issueId}
               </span>
-              <div className="flex items-center gap-1" style={{ color: 'hsl(0 0% 46%)' }}>
-                <ClockIcon />
-                <span className="text-[11px]">{issue.estimatedHours}h</span>
-              </div>
             </div>
             
             {/* Ship button */}
@@ -1313,9 +1309,6 @@ export function ProjectDetail() {
                     <span className="text-[13px] flex-1 truncate" style={{ color: 'hsl(0 0% 9%)' }}>{issue.title}</span>
                     <span className="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: config.bgColor, color: config.color }}>
                       {config.label}
-                    </span>
-                    <span className="text-[11px] flex-shrink-0 flex items-center gap-1" style={{ color: 'hsl(0 0% 46%)' }}>
-                      <ClockIcon /> {issue.estimatedHours}h
                     </span>
                     {isReady && (
                       <button
@@ -1965,7 +1958,7 @@ export function ProjectDetail() {
             </button>
           )}
           
-          {isPartiallySpecced && (
+          {isPartiallySpecced && !hasIssues && (
             <button
               onClick={() => navigate(`/specification/${id}`)}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium transition-all mb-2"
