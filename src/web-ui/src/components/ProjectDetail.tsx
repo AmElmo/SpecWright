@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useRealtimeUpdates } from '@/lib/use-realtime';
 import { useAIToolName } from '@/lib/use-ai-tool';
 import { IconPicker, IconSVG } from './IconPicker';
-import { ShipModal } from './ShipModal';
+import { useShipModal } from '@/lib/ship-modal-context';
 import { IssueModal } from './IssueModal';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
@@ -295,10 +295,9 @@ export function ProjectDetail() {
   const [fullIssues, setFullIssues] = useState<FullIssue[]>([]);
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<FullIssue | null>(null);
-  
-  // Ship modal state
-  const [shipModalOpen, setShipModalOpen] = useState(false);
-  const [shipModalIssue, setShipModalIssue] = useState<FullIssue | null>(null);
+
+  // Use context for ShipModal - modal is rendered at App level
+  const { openShipModal } = useShipModal();
 
   // Linear sync status
   const [linearSyncStatus, setLinearSyncStatus] = useState<{
@@ -669,8 +668,12 @@ export function ProjectDetail() {
 
   const handleShip = (issue: FullIssue, e: React.MouseEvent) => {
     e.stopPropagation();
-    setShipModalIssue(issue);
-    setShipModalOpen(true);
+    openShipModal({
+      issueId: issue.issueId,
+      title: issue.title,
+      projectId: issue.projectId,
+      projectName: project?.name || project?.id || ''
+    });
     setSelectedIssue(null); // Close issue detail modal if open
   };
 
@@ -2206,22 +2209,6 @@ export function ProjectDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Ship Modal */}
-      <ShipModal 
-        isOpen={shipModalOpen}
-        onClose={() => {
-          setShipModalOpen(false);
-          setShipModalIssue(null);
-          fetchFullIssues(); // Refresh issues in case status changed
-        }}
-        issue={shipModalIssue ? {
-          issueId: shipModalIssue.issueId,
-          title: shipModalIssue.title,
-          projectId: shipModalIssue.projectId,
-          projectName: project?.id || ''
-        } : null}
-      />
     </div>
   );
 }

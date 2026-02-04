@@ -5,7 +5,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useRealtimeUpdates } from '../lib/use-realtime';
-import { ShipModal } from './ShipModal';
+import { useShipModal } from '../lib/ship-modal-context';
 import { IssueModal } from './IssueModal';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
@@ -125,8 +125,9 @@ export function TaskBoard() {
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [repositoryName, setRepositoryName] = useState<string>('');
-  const [shipModalOpen, setShipModalOpen] = useState(false);
-  const [shipModalIssue, setShipModalIssue] = useState<Issue | null>(null);
+
+  // Use context for ShipModal - modal is rendered at App level
+  const { openShipModal } = useShipModal();
 
   useRealtimeUpdates(() => {
     fetchIssues();
@@ -226,8 +227,7 @@ export function TaskBoard() {
 
   const handleShip = (issue: Issue, e: React.MouseEvent) => {
     e.stopPropagation();
-    setShipModalIssue(issue);
-    setShipModalOpen(true);
+    openShipModal(issue);
     setSelectedIssue(null); // Close issue detail modal if open
   };
 
@@ -876,17 +876,6 @@ export function TaskBoard() {
             statusConfig={statusConfig}
           />
         )}
-
-        {/* Ship Modal */}
-        <ShipModal 
-          isOpen={shipModalOpen}
-          onClose={() => {
-            setShipModalOpen(false);
-            setShipModalIssue(null);
-            fetchIssues(); // Refresh issues in case status changed
-          }}
-          issue={shipModalIssue}
-        />
       </main>
     </div>
   );

@@ -1,6 +1,52 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAIToolName } from '../lib/use-ai-tool';
+import { useRealtimeUpdates, waitForWebSocketConnection, type WebSocketEvent } from '../lib/use-realtime';
 import { logger } from '../utils/logger';
+
+// MODULE-LEVEL guard - survives component remounts (React Strict Mode)
+// Maps issueId -> timestamp of when ship started
+const activeShipRequests = new Map<string, number>();
+const SHIP_REQUEST_TIMEOUT = 5 * 60 * 1000; // 5 minutes - match headless timeout
+
+// Log entry for streaming progress
+interface HeadlessLogEntry {
+  id: number;
+  message: string;
+  icon: string;
+  timestamp: Date;
+}
+
+// MODULE-LEVEL streaming state - survives component remounts
+// This is critical because parent components cause ShipModal to remount during streaming
+interface StreamingState {
+  isHeadlessMode: boolean;
+  logs: HeadlessLogEntry[];
+  logIdCounter: number;
+  forIssueId: string | null;
+}
+
+const streamingState: StreamingState = {
+  isHeadlessMode: false,
+  logs: [],
+  logIdCounter: 0,
+  forIssueId: null,
+};
+
+// Helper to get icon from status message
+function getIconFromStatus(status: string): string {
+  if (status.includes('✅')) return '✅';
+  if (status.includes('❌')) return '❌';
+  if (status.includes('📖')) return '📖';
+  if (status.includes('✏️')) return '✏️';
+  if (status.includes('📝')) return '📝';
+  if (status.includes('💻')) return '💻';
+  if (status.includes('🔍')) return '🔍';
+  if (status.includes('🔎')) return '🔎';
+  if (status.includes('🔧')) return '🔧';
+  if (status.includes('💭')) return '💭';
+  return '⚙️';
+}
 
 interface ShipModalProps {
   isOpen: boolean;
@@ -23,8 +69,81 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
   const [copied, setCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Force update counter to trigger re-renders when module-level state changes
+  const [, forceUpdate] = useState(0);
+  const triggerUpdate = () => forceUpdate(n => n + 1);
+
+  // Read from module-level state (survives remounts)
+  const isHeadlessMode = streamingState.isHeadlessMode;
+  const headlessLogs = streamingState.logs;
+
+  // Listen for WebSocket events for streaming progress
+  useRealtimeUpdates((event: WebSocketEvent) => {
+    // Only handle events for the 'ship' phase
+    if (event.phase !== 'ship') {
+      return;
+    }
+
+    if (event.type === 'headless_started') {
+      // Update module-level state
+      streamingState.isHeadlessMode = true;
+      streamingState.logs = [{
+        id: 0,
+        message: `Starting ${aiToolName}...`,
+        icon: '🚀',
+        timestamp: new Date()
+      }];
+      streamingState.logIdCounter = 1;
+      streamingState.forIssueId = issue?.issueId || null;
+      triggerUpdate();
+    }
+
+    if (event.type === 'headless_progress' && event.status) {
+      // Update module-level state
+      const newEntry: HeadlessLogEntry = {
+        id: streamingState.logIdCounter,
+        message: event.status,
+        icon: getIconFromStatus(event.status),
+        timestamp: new Date()
+      };
+      streamingState.logs = [...streamingState.logs, newEntry];
+      streamingState.logIdCounter++;
+      triggerUpdate();
+    }
+
+    if (event.type === 'headless_completed') {
+      // Update module-level state
+      const message = event.success ? 'Task completed successfully!' : 'Task failed';
+      const finalEntry: HeadlessLogEntry = {
+        id: streamingState.logIdCounter,
+        message,
+        icon: event.success ? '✅' : '❌',
+        timestamp: new Date()
+      };
+      streamingState.logs = [...streamingState.logs, finalEntry];
+      streamingState.logIdCounter++;
+
+      // Update status based on completion
+      if (event.success) {
+        setStatus('success');
+      }
+      triggerUpdate();
+    }
+  }, false); // Disable tab notifications for ship events
+
   useEffect(() => {
-    if (isOpen && issue) {
+    const issueId = issue?.issueId;
+
+    if (isOpen && issue && issueId) {
+      // Check module-level guard
+      const existingRequest = activeShipRequests.get(issueId);
+      const now = Date.now();
+
+      if (existingRequest && (now - existingRequest) < SHIP_REQUEST_TIMEOUT) {
+        // Don't call shipIssue, just show loading state
+        return;
+      }
+
       shipIssue();
     } else {
       // Reset state when modal closes
@@ -32,35 +151,73 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
       setPrompt('');
       setCopied(false);
       setErrorMessage('');
+      // Reset module-level headless streaming state
+      streamingState.isHeadlessMode = false;
+      streamingState.logs = [];
+      streamingState.logIdCounter = 0;
+      streamingState.forIssueId = null;
+      // Note: We do NOT clear activeShipRequests here - let them expire naturally
     }
   }, [isOpen, issue?.issueId]);
 
   const shipIssue = async () => {
-    if (!issue) return;
+    const issueId = issue?.issueId;
+
+    if (!issue || !issueId) {
+      return;
+    }
+
+    // Double-check module-level guard (in case of race condition)
+    const existingRequest = activeShipRequests.get(issueId);
+    const now = Date.now();
+    if (existingRequest && (now - existingRequest) < SHIP_REQUEST_TIMEOUT) {
+      return;
+    }
+
+    // Set the module-level guard
+    activeShipRequests.set(issueId, now);
 
     setStatus('loading');
+
     try {
+      // Wait for WebSocket connection before making ship request
+      // This ensures we receive streaming events
+      try {
+        await waitForWebSocketConnection(3000);
+      } catch {
+        // WebSocket connection timeout - proceed anyway (streaming may not work)
+      }
+
+      const url = `/api/issues/${issue.projectId}/${issue.issueId}/ship`;
+
       // Use the combined ship endpoint for speed (single network call)
-      const response = await fetch(`/api/issues/${issue.projectId}/${issue.issueId}/ship`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!response.ok) throw new Error('Failed to ship issue');
+      if (!response.ok) {
+        throw new Error(`Failed to ship issue: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
       setPrompt(data.prompt);
-      
+
       if (data.success) {
         setStatus('success');
       } else {
         // Automation didn't work, but we have the prompt
         setStatus('working');
       }
+
+      // Mark shipping as complete - remove from active requests
+      activeShipRequests.delete(issueId);
     } catch (err) {
       logger.error('Failed to ship issue:', err);
       setErrorMessage(err instanceof Error ? err.message : 'Failed to ship issue');
       setStatus('error');
+      // Remove from active requests on error so retry works
+      activeShipRequests.delete(issueId);
     }
   };
 
@@ -76,10 +233,14 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
     }
   };
 
-  if (!isOpen || !issue) return null;
+  if (!isOpen || !issue) {
+    return null;
+  }
 
-  return (
-    <div 
+  // Use portal to render modal directly into document.body
+  // This isolates the modal from parent re-renders that cause flickering
+  return createPortal(
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
       onClick={onClose}
@@ -141,18 +302,66 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
           {status === 'loading' && (
             <div className="text-center">
               <div className="flex justify-center mb-4">
-                <div 
+                <div
                   className="w-12 h-12 border-3 rounded-full animate-spin"
-                  style={{ 
+                  style={{
                     borderColor: 'hsl(0 0% 92%)',
                     borderTopColor: 'hsl(235 69% 61%)',
                     borderWidth: '3px'
                   }}
                 />
               </div>
-              <p className="text-[14px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>
-                Sending to {aiToolName}...
+              <p className="text-[14px] font-medium mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
+                {isHeadlessMode ? `Running via ${aiToolName}...` : `Sending to ${aiToolName}...`}
               </p>
+              {isHeadlessMode && (
+                <p className="text-[11px] mb-4" style={{ color: 'hsl(0 0% 46%)' }}>
+                  Executing in headless mode - no action needed
+                </p>
+              )}
+
+              {/* Streaming Log Display */}
+              {isHeadlessMode && headlessLogs.length > 0 && (
+                <div
+                  className="rounded-lg mt-4 overflow-hidden text-left relative"
+                  style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+                >
+                  <div
+                    className="px-3 py-2 flex items-center justify-between"
+                    style={{ backgroundColor: 'hsl(220 13% 15%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+                  >
+                    <span className="text-[11px] font-medium" style={{ color: 'hsl(0 0% 60%)' }}>
+                      LIVE OUTPUT
+                    </span>
+                    <span className="text-[10px] animate-pulse" style={{ color: 'hsl(142 70% 50%)' }}>
+                      ● Running
+                    </span>
+                  </div>
+                  <div
+                    className="p-3 max-h-40 overflow-y-auto font-mono text-[11px]"
+                    style={{ scrollBehavior: 'smooth' }}
+                    ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                  >
+                    <div className="space-y-1.5">
+                      {headlessLogs.map((log, index) => (
+                        <div
+                          key={log.id}
+                          className="flex items-start gap-2 animate-fadeIn"
+                          style={{
+                            opacity: index === headlessLogs.length - 1 ? 1 : 0.7,
+                            animation: 'fadeIn 0.2s ease-out'
+                          }}
+                        >
+                          <span>{log.icon}</span>
+                          <span style={{ color: 'hsl(0 0% 80%)' }}>
+                            {log.message.replace(/^[^\s]+\s*/, '')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -325,6 +534,7 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

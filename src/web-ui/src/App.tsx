@@ -12,6 +12,8 @@ import { InitializationSuccess } from './components/InitializationSuccess';
 import { HowItWorks } from './components/HowItWorks';
 import { Playbook } from './components/Playbook';
 import Canvas from './__Canvas';
+import { ShipModalProvider, useShipModal } from './lib/ship-modal-context';
+import { ShipModal } from './components/ShipModal';
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -24,9 +26,15 @@ function ScrollToTop() {
   return null;
 }
 
+// App-level ShipModal that's isolated from route component re-renders
+function AppShipModal() {
+  const { isOpen, issue, closeShipModal } = useShipModal();
+  return <ShipModal isOpen={isOpen} issue={issue} onClose={closeShipModal} />;
+}
+
 export default function App() {
   return (
-    <>
+    <ShipModalProvider>
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -46,7 +54,9 @@ export default function App() {
         <Route path="/playbook" element={<Playbook />} />
         <Route path="/__preview" element={<Canvas />} />
       </Routes>
-    </>
+      {/* ShipModal rendered at App level, isolated from route re-renders */}
+      <AppShipModal />
+    </ShipModalProvider>
   );
 }
 

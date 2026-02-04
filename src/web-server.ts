@@ -2650,54 +2650,88 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   
   // Combined ship endpoint - generates prompt AND triggers Cursor in one call (faster)
   app.post('/api/issues/:projectId/:issueId/ship', async (req, res) => {
+    // Always log ship requests for debugging (bypasses DEBUG flag)
+    console.log('\n' + '='.repeat(60));
+    console.log('🚀 [SHIP DEBUG] Ship endpoint called');
+    console.log('  projectId:', req.params.projectId);
+    console.log('  issueId:', req.params.issueId);
+    console.log('  timestamp:', new Date().toISOString());
+    console.log('='.repeat(60));
+
     try {
       const { projectId, issueId } = req.params;
       logger.debug(`\n🚀 [API] Shipping issue ${issueId} in project ${projectId}`);
 
       // Find the actual project folder (could be "002" or "002-project-name")
       const projectsDir = path.join(OUTPUT_DIR, 'projects');
+      console.log('[SHIP DEBUG] Looking for projects in:', projectsDir);
+
       const projectFolders = fs.readdirSync(projectsDir);
+      console.log('[SHIP DEBUG] Available project folders:', projectFolders);
+
       const matchingFolder = projectFolders.find(f =>
         f === projectId || f.startsWith(`${projectId}-`)
       );
+      console.log('[SHIP DEBUG] Matching folder:', matchingFolder);
 
       if (!matchingFolder) {
+        console.log('[SHIP DEBUG] ERROR: Project folder not found');
         logger.error(`[API] Project folder not found for ID: ${projectId}`);
         return res.status(404).json({ error: 'Project not found' });
       }
 
       // Get issue from issues.json (issues are stored in JSON, not separate .md files)
+      console.log('[SHIP DEBUG] Getting issue by ID...');
       const issue = getIssueById(projectId, issueId);
+      console.log('[SHIP DEBUG] Issue found:', issue ? 'YES' : 'NO', issue ? `(${issue.title})` : '');
 
       if (!issue) {
+        console.log('[SHIP DEBUG] ERROR: Issue not found');
         logger.error(`[API] Issue not found: ${issueId} in project ${projectId}`);
         return res.status(404).json({ error: 'Issue not found' });
       }
 
       // Generate full contextual prompt with all project specs and completion instructions
+      console.log('[SHIP DEBUG] Generating prompt...');
       const prompt = generateIssuePrompt(issue, matchingFolder);
+      console.log('[SHIP DEBUG] Prompt generated, length:', prompt.length, 'chars');
 
       logger.debug(`[API] Generated prompt (${prompt.length} chars)`);
 
       // Trigger automation and wait for result (with reduced timeouts it should be ~1-2s max)
+      // Pass phase='ship' so WebSocket broadcasts are tagged for ShipModal to receive
       let shipResult: OpenAIToolResult = { success: false };
       try {
+        console.log('[SHIP DEBUG] Triggering AI tool automation with phase=ship...');
         logger.debug('🚀 [API] Triggering AI tool automation...');
-        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship');
+        console.log('[SHIP DEBUG] AI tool automation result:', shipResult);
         logger.debug(`[API] AI tool automation result:`, shipResult);
       } catch (err) {
+        console.log('[SHIP DEBUG] AI tool automation error:', err);
         logger.error('[API] Failed to trigger AI tool:', err);
         // Automation failed, but we still have the prompt for manual copy
       }
 
-      res.json({
+      const response = {
         success: shipResult.success,
         prompt,
         message: shipResult.success
           ? 'Prompt sent to AI tool successfully'
           : 'Prompt ready - paste manually if AI tool did not open'
+      };
+
+      console.log('[SHIP DEBUG] Sending response:', {
+        success: response.success,
+        message: response.message,
+        promptLength: response.prompt.length
       });
+      console.log('='.repeat(60) + '\n');
+
+      res.json(response);
     } catch (error) {
+      console.log('[SHIP DEBUG] UNHANDLED ERROR:', error);
+      console.log('='.repeat(60) + '\n');
       logger.error('Error shipping issue:', error);
       res.status(500).json({ error: 'Failed to ship issue' });
     }
