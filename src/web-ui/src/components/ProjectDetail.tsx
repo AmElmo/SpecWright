@@ -296,6 +296,11 @@ export function ProjectDetail() {
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<FullIssue | null>(null);
 
+  // Drag and drop state
+  const [draggedIssue, setDraggedIssue] = useState<FullIssue | null>(null);
+  const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
   // Use context for ShipModal - modal is rendered at App level
   const { openShipModal } = useShipModal();
 
@@ -682,13 +687,33 @@ export function ProjectDetail() {
       const response = await fetch(`/api/issues/${issue.projectId}/${issue.issueId}/approve`, {
         method: 'POST'
       });
-      
+
       if (!response.ok) throw new Error('Failed to approve');
-      
+
       await fetchFullIssues();
       setSelectedIssue(null);
     } catch (err) {
       logger.error('Failed to approve:', err);
+    }
+  };
+
+  const handleStatusChange = async (issue: FullIssue, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/issues/${issue.projectId}/${issue.issueId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update status');
+      }
+
+      await fetchFullIssues();
+      setSelectedIssue(null);
+    } catch (err) {
+      logger.error('Failed to update status:', err);
     }
   };
 
@@ -1036,19 +1061,72 @@ export function ProjectDetail() {
         );
       }
 
+      // Drag and drop logic
+      const columnToStatus: Record<string, string> = {
+        ready: 'pending',
+        inReview: 'in-review',
+        approved: 'approved'
+      };
+      const isValidDrop = (targetColumn: string): boolean => {
+        if (!draggedFromColumn || draggedFromColumn === targetColumn) return false;
+        if (targetColumn === 'blocked') return false;
+        return true;
+      };
+      const handleDragStart = (e: React.DragEvent, issue: FullIssue, fromColumn: string) => {
+        setDraggedIssue(issue);
+        setDraggedFromColumn(fromColumn);
+        e.dataTransfer.effectAllowed = 'move';
+        if (e.currentTarget instanceof HTMLElement) e.currentTarget.style.opacity = '0.5';
+      };
+      const handleDragEnd = (e: React.DragEvent) => {
+        if (e.currentTarget instanceof HTMLElement) e.currentTarget.style.opacity = '1';
+        setDraggedIssue(null);
+        setDraggedFromColumn(null);
+        setDragOverColumn(null);
+      };
+      const handleDragOver = (e: React.DragEvent, column: string) => {
+        if (isValidDrop(column)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+      };
+      const handleDragEnter = (e: React.DragEvent, column: string) => {
+        e.preventDefault();
+        if (isValidDrop(column)) setDragOverColumn(column);
+      };
+      const handleDragLeave = (e: React.DragEvent, column: string) => {
+        const relatedTarget = e.relatedTarget as Node | null;
+        if (relatedTarget && e.currentTarget.contains(relatedTarget)) return;
+        if (dragOverColumn === column) setDragOverColumn(null);
+      };
+      const handleDrop = (e: React.DragEvent, targetColumn: string) => {
+        e.preventDefault();
+        setDragOverColumn(null);
+        if (draggedIssue && isValidDrop(targetColumn)) {
+          const newStatus = columnToStatus[targetColumn];
+          if (newStatus) handleStatusChange(draggedIssue, newStatus);
+        }
+        setDraggedIssue(null);
+        setDraggedFromColumn(null);
+      };
+      const isDraggable = (columnType: string): boolean => {
+        return columnType !== 'blocked';
+      };
+
       // Issue card renderer
       const renderIssueCard = (issue: FullIssue, columnType: keyof typeof boardStatusConfig) => {
         const isBlocked = columnType === 'blocked';
         const isReady = columnType === 'ready';
-        
+        const canDrag = isDraggable(columnType);
+
         return (
-          <div 
+          <div
             key={issue.issueId}
             className="rounded-lg p-4 cursor-pointer transition-all duration-150"
             style={{
               backgroundColor: 'white',
               border: '1px solid hsl(0 0% 92%)',
             }}
+            draggable={canDrag}
+            onDragStart={canDrag ? (e) => handleDragStart(e, issue, columnType) : undefined}
+            onDragEnd={canDrag ? handleDragEnd : undefined}
             onClick={() => setSelectedIssue(issue)}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'hsl(0 0% 99%)';
@@ -1185,97 +1263,57 @@ export function ProjectDetail() {
           {/* Board View */}
           {!loadingIssues && issuesViewMode === 'board' && (
             <div className="grid grid-cols-4 gap-4">
-              {/* Blocked */}
-              <div className="min-h-[200px]">
-                <div className="flex items-center gap-2 mb-3 px-1">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: boardStatusConfig.blocked.color }} />
-                  <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>Blocked</span>
-                  <span className="text-[12px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(0 0% 96%)', color: 'hsl(0 0% 46%)' }}>
-                    {taskCounts.blocked}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {categorizedIssues.blocked.length > 0 ? (
-                    categorizedIssues.blocked.map(issue => renderIssueCard(issue, 'blocked'))
-                  ) : (
-                    <div 
-                      className="rounded-lg p-4 text-center"
-                      style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px dashed hsl(0 0% 88%)' }}
-                    >
-                      <p className="text-[12px]" style={{ color: 'hsl(0 0% 60%)' }}>No blocked issues</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {(Object.entries({
+                blocked: { label: 'Blocked', issues: categorizedIssues.blocked, emptyText: 'No blocked issues' },
+                ready: { label: 'Ready', issues: categorizedIssues.ready, emptyText: 'No issues ready' },
+                inReview: { label: 'In Review', issues: categorizedIssues.inReview, emptyText: 'No issues in review' },
+                approved: { label: 'Completed', issues: categorizedIssues.approved, emptyText: 'No completed issues' },
+              }) as [keyof typeof boardStatusConfig, { label: string; issues: FullIssue[]; emptyText: string }][]).map(([columnKey, { label, issues: columnIssues, emptyText }]) => {
+                const config = boardStatusConfig[columnKey];
+                const isDropTarget = draggedIssue && isValidDrop(columnKey);
+                const isDraggedOver = dragOverColumn === columnKey;
 
-              {/* Ready */}
-              <div className="min-h-[200px]">
-                <div className="flex items-center gap-2 mb-3 px-1">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: boardStatusConfig.ready.color }} />
-                  <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>Ready</span>
-                  <span className="text-[12px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(0 0% 96%)', color: 'hsl(0 0% 46%)' }}>
-                    {taskCounts.ready}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {categorizedIssues.ready.length > 0 ? (
-                    categorizedIssues.ready.map(issue => renderIssueCard(issue, 'ready'))
-                  ) : (
-                    <div 
-                      className="rounded-lg p-4 text-center"
-                      style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px dashed hsl(0 0% 88%)' }}
-                    >
-                      <p className="text-[12px]" style={{ color: 'hsl(0 0% 60%)' }}>No issues ready</p>
+                return (
+                  <div
+                    key={columnKey}
+                    className="min-h-[200px] rounded-lg p-2 transition-all duration-200"
+                    style={{
+                      backgroundColor: isDraggedOver ? config.bgColor : 'transparent',
+                      border: isDropTarget ? `2px dashed ${config.color}` : '2px dashed transparent',
+                      opacity: draggedIssue && !isDropTarget && columnKey !== draggedFromColumn ? 0.5 : 1,
+                    }}
+                    onDragOver={(e) => handleDragOver(e, columnKey)}
+                    onDragEnter={(e) => handleDragEnter(e, columnKey)}
+                    onDragLeave={(e) => handleDragLeave(e, columnKey)}
+                    onDrop={(e) => handleDrop(e, columnKey)}
+                  >
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config.color }} />
+                      <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>{label}</span>
+                      <span className="text-[12px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(0 0% 96%)', color: 'hsl(0 0% 46%)' }}>
+                        {columnIssues.length}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* In Review */}
-              <div className="min-h-[200px]">
-                <div className="flex items-center gap-2 mb-3 px-1">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: boardStatusConfig.inReview.color }} />
-                  <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>In Review</span>
-                  <span className="text-[12px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(0 0% 96%)', color: 'hsl(0 0% 46%)' }}>
-                    {taskCounts.inReview}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {categorizedIssues.inReview.length > 0 ? (
-                    categorizedIssues.inReview.map(issue => renderIssueCard(issue, 'inReview'))
-                  ) : (
-                    <div 
-                      className="rounded-lg p-4 text-center"
-                      style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px dashed hsl(0 0% 88%)' }}
-                    >
-                      <p className="text-[12px]" style={{ color: 'hsl(0 0% 60%)' }}>No issues in review</p>
+                    <div className="space-y-3">
+                      {columnIssues.length > 0 ? (
+                        columnIssues.map(issue => renderIssueCard(issue, columnKey))
+                      ) : (
+                        <div
+                          className="rounded-lg p-4 text-center"
+                          style={{
+                            backgroundColor: isDraggedOver ? 'rgba(255,255,255,0.7)' : 'hsl(0 0% 100%)',
+                            border: '1px dashed hsl(0 0% 88%)'
+                          }}
+                        >
+                          <p className="text-[12px]" style={{ color: 'hsl(0 0% 60%)' }}>
+                            {isDraggedOver ? 'Drop here' : emptyText}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Completed */}
-              <div className="min-h-[200px]">
-                <div className="flex items-center gap-2 mb-3 px-1">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: boardStatusConfig.approved.color }} />
-                  <span className="text-[13px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>Completed</span>
-                  <span className="text-[12px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(0 0% 96%)', color: 'hsl(0 0% 46%)' }}>
-                    {taskCounts.approved}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {categorizedIssues.approved.length > 0 ? (
-                    categorizedIssues.approved.map(issue => renderIssueCard(issue, 'approved'))
-                  ) : (
-                    <div 
-                      className="rounded-lg p-4 text-center"
-                      style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px dashed hsl(0 0% 88%)' }}
-                    >
-                      <p className="text-[12px]" style={{ color: 'hsl(0 0% 60%)' }}>No completed issues</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1335,7 +1373,9 @@ export function ProjectDetail() {
               onClose={() => setSelectedIssue(null)}
               onShip={handleShip}
               onApprove={handleApprove}
+              onStatusChange={handleStatusChange}
               canShip={getIssueDependenciesMet(selectedIssue)}
+              isBlocked={!getIssueDependenciesMet(selectedIssue)}
               statusConfig={boardStatusConfig}
             />
           )}

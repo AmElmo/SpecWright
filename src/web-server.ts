@@ -2744,24 +2744,24 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       
       logger.debug(`\n✅ [API] Approving issue ${issueId} in project ${projectId}`);
       
-      // Find the actual project folder (handles both "002" and "002-project-name")
+      // Find the actual project folder - prefer full name (e.g. "001-project-name") over short (e.g. "001")
       const projectsDir = path.join(OUTPUT_DIR, 'projects');
       const projectFolders = fs.readdirSync(projectsDir);
-      const matchingFolder = projectFolders.find(f => f === projectId || f.startsWith(`${projectId}-`));
-      
+      const matchingFolder = projectFolders.find(f => f.startsWith(`${projectId}-`)) || projectFolders.find(f => f === projectId);
+
       if (!matchingFolder) {
         logger.error(`❌ Project folder not found for: ${projectId}`);
         return res.status(404).json({ error: 'Project not found' });
       }
-      
+
       const projectPath = path.join(projectsDir, matchingFolder);
       const summaryPath = path.join(projectPath, 'issues', 'issues.json');
-      
+
       if (!fs.existsSync(summaryPath)) {
         logger.error(`❌ issues.json not found in: ${projectPath}`);
         return res.status(404).json({ error: 'Project summary not found' });
       }
-      
+
       logger.debug(`📄 Reading: ${summaryPath}`);
       
       // Read and parse issues.json
@@ -2795,6 +2795,80 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   });
   
   // Request changes on task
+
+  // Update issue status manually
+  app.patch('/api/issues/:projectId/:issueId/status', (req, res) => {
+    try {
+      const { projectId, issueId } = req.params;
+      const { status } = req.body;
+
+      if (!status || !['pending', 'in-review', 'approved'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Must be pending, in-review, or approved.' });
+      }
+
+      logger.debug(`\n📝 [API] Updating issue ${issueId} status in project ${projectId} to ${status}`);
+
+      // Find the actual project folder - prefer full name over short
+      const projectsDir = path.join(OUTPUT_DIR, 'projects');
+      const projectFolders = fs.readdirSync(projectsDir);
+      const matchingFolder = projectFolders.find(f => f.startsWith(`${projectId}-`)) || projectFolders.find(f => f === projectId);
+
+      if (!matchingFolder) {
+        logger.error(`❌ Project folder not found for: ${projectId}`);
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const projectPath = path.join(projectsDir, matchingFolder);
+      const summaryPath = path.join(projectPath, 'issues', 'issues.json');
+
+      if (!fs.existsSync(summaryPath)) {
+        logger.error(`❌ issues.json not found in: ${projectPath}`);
+        return res.status(404).json({ error: 'Project summary not found' });
+      }
+
+      const summaryData = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+      const issuesList = summaryData.issues || summaryData.issues_list || [];
+
+      const issue = issuesList.find((i: any) => i.issue_id === issueId);
+
+      if (!issue) {
+        logger.error(`❌ Issue ${issueId} not found in project summary`);
+        return res.status(404).json({ error: 'Issue not found' });
+      }
+
+      // Validate transition
+      const currentStatus = issue.status;
+      if (currentStatus === status) {
+        return res.status(400).json({ error: 'Issue is already in that status.' });
+      }
+
+      // If issue is pending, check that dependencies are satisfied before allowing transition
+      if (currentStatus === 'pending') {
+        const dependencies = issue.dependencies || [];
+        for (const depId of dependencies) {
+          const depIssue = issuesList.find((i: any) => i.issue_id === depId);
+          if (!depIssue || depIssue.status !== 'approved') {
+            return res.status(400).json({
+              error: `Issue is blocked. Dependency "${depId}" must be completed first.`
+            });
+          }
+        }
+      }
+
+      logger.debug(`📝 Updating status: ${currentStatus} → ${status}`);
+
+      issue.status = status;
+
+      fs.writeFileSync(summaryPath, JSON.stringify(summaryData, null, 2));
+
+      logger.debug(`✅ Successfully updated ${issueId} to ${status}\n`);
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('❌ Error updating issue status:', error);
+      res.status(500).json({ error: 'Failed to update issue status' });
+    }
+  });
 
   // ============================================================================
   // Linear Integration Endpoints
