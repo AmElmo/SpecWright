@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const ClockIcon = () => (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -44,29 +44,81 @@ interface IssueModalProps {
   onClose: () => void;
   onShip?: (issue: IssueData, e: React.MouseEvent) => void;
   onApprove?: (issue: IssueData) => void;
+  onStatusChange?: (issue: IssueData, newStatus: string) => void;
   canShip?: boolean;
+  isBlocked?: boolean;
   statusConfig: {
+    blocked?: StatusConfig;
     ready: StatusConfig;
     inReview: StatusConfig;
     approved: StatusConfig;
   };
 }
 
-export function IssueModal({ 
-  issue, 
-  onClose, 
-  onShip, 
-  onApprove, 
+export function IssueModal({
+  issue,
+  onClose,
+  onShip,
+  onApprove,
+  onStatusChange,
   canShip = true,
-  statusConfig 
+  isBlocked = false,
+  statusConfig
 }: IssueModalProps) {
   const [showFullDetails, setShowFullDetails] = useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target as Node)) {
+        setStatusDropdownOpen(false);
+      }
+    };
+    if (statusDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [statusDropdownOpen]);
 
   const getStatusStyle = () => {
     if (issue.status === 'approved') return statusConfig.approved;
     if (issue.status === 'in-review') return statusConfig.inReview;
+    if (issue.status === 'pending' && isBlocked && statusConfig.blocked) return statusConfig.blocked;
     return statusConfig.ready;
   };
+
+  const getStatusLabel = () => {
+    if (issue.status === 'approved') return 'Completed';
+    if (issue.status === 'in-review') return 'In Review';
+    if (issue.status === 'pending' && isBlocked) return 'Blocked';
+    return 'Ready';
+  };
+
+  const getNextStatuses = (): { label: string; value: string; style: StatusConfig }[] => {
+    if (issue.status === 'pending' && !isBlocked) {
+      return [
+        { label: 'In Review', value: 'in-review', style: statusConfig.inReview },
+        { label: 'Completed', value: 'approved', style: statusConfig.approved }
+      ];
+    }
+    if (issue.status === 'in-review') {
+      return [
+        { label: 'Ready', value: 'pending', style: statusConfig.ready },
+        { label: 'Completed', value: 'approved', style: statusConfig.approved }
+      ];
+    }
+    if (issue.status === 'approved') {
+      return [
+        { label: 'Ready', value: 'pending', style: statusConfig.ready },
+        { label: 'In Review', value: 'in-review', style: statusConfig.inReview }
+      ];
+    }
+    return [];
+  };
+
+  const nextStatuses = getNextStatuses();
+  const hasTransitions = nextStatuses.length > 0 && onStatusChange;
 
   const statusStyle = getStatusStyle();
 
@@ -110,16 +162,67 @@ export function IssueModal({
               </svg>
             </button>
           </div>
-          <div className="flex gap-2 mt-3">
-            <span 
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full"
-              style={{ 
-                backgroundColor: statusStyle.bgColor,
-                color: statusStyle.color
-              }}
-            >
-              {issue.status}
-            </span>
+          <div className="flex items-center gap-2 mt-3">
+            {/* Status badge / dropdown */}
+            <div className="relative" ref={statusDropdownRef}>
+              <button
+                className="text-[12px] font-medium px-3 py-1 rounded-md inline-flex items-center gap-1.5 transition-all duration-150"
+                style={{
+                  backgroundColor: statusStyle.bgColor,
+                  color: statusStyle.color,
+                  border: hasTransitions ? `1px solid ${statusStyle.color}` : '1px solid transparent',
+                  cursor: hasTransitions ? 'pointer' : 'default',
+                }}
+                onClick={() => hasTransitions && setStatusDropdownOpen(!statusDropdownOpen)}
+                onMouseEnter={(e) => {
+                  if (hasTransitions) {
+                    e.currentTarget.style.boxShadow = `0 0 0 2px ${statusStyle.bgColor}`;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: statusStyle.color }} />
+                {getStatusLabel()}
+                {hasTransitions && (
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ marginLeft: '2px', transform: statusDropdownOpen ? 'rotate(180deg)' : undefined, transition: 'transform 150ms' }}>
+                    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+              {statusDropdownOpen && (
+                <div
+                  className="absolute top-full left-0 mt-1.5 rounded-lg shadow-lg border py-1 z-10"
+                  style={{ backgroundColor: 'white', borderColor: 'hsl(0 0% 88%)', minWidth: '140px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                >
+                  <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider" style={{ color: 'hsl(0 0% 60%)' }}>
+                    Move to
+                  </div>
+                  {nextStatuses.map((next) => (
+                    <button
+                      key={next.value}
+                      className="w-full text-left px-3 py-2 text-[12px] font-medium flex items-center gap-2 transition-colors"
+                      style={{ color: 'hsl(0 0% 20%)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = next.style.bgColor; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      onClick={() => {
+                        setStatusDropdownOpen(false);
+                        onStatusChange!(issue, next.value);
+                      }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: next.style.color }} />
+                      {next.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {hasTransitions && !statusDropdownOpen && (
+              <span className="text-[11px]" style={{ color: 'hsl(0 0% 60%)' }}>
+                Click to change status
+              </span>
+            )}
           </div>
         </div>
 
