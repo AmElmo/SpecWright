@@ -84,4 +84,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release@24 @semantic-release/changelog @semantic-release/git conventional-changelog-conventionalcommits
+        run: npx --package semantic-release@24 --package @semantic-release/changelog --package @semantic-release/git --package conventional-changelog-conventionalcommits semantic-release
