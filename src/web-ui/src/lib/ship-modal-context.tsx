@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import type { AITool } from './use-ai-tool';
 
 interface Issue {
   issueId: string;
@@ -10,7 +11,8 @@ interface Issue {
 interface ShipModalContextType {
   isOpen: boolean;
   issue: Issue | null;
-  openShipModal: (issue: Issue) => void;
+  aiToolOverride: AITool | null;
+  openShipModal: (issue: Issue, aiToolOverride?: AITool) => void;
   closeShipModal: () => void;
 }
 
@@ -19,19 +21,22 @@ const ShipModalContext = createContext<ShipModalContextType | null>(null);
 export function ShipModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [issue, setIssue] = useState<Issue | null>(null);
+  const [aiToolOverride, setAiToolOverride] = useState<AITool | null>(null);
 
-  const openShipModal = (issueToShip: Issue) => {
+  const openShipModal = (issueToShip: Issue, toolOverride?: AITool) => {
     setIssue(issueToShip);
+    setAiToolOverride(toolOverride || null);
     setIsOpen(true);
   };
 
   const closeShipModal = () => {
     setIsOpen(false);
     setIssue(null);
+    setAiToolOverride(null);
   };
 
   return (
-    <ShipModalContext.Provider value={{ isOpen, issue, openShipModal, closeShipModal }}>
+    <ShipModalContext.Provider value={{ isOpen, issue, aiToolOverride, openShipModal, closeShipModal }}>
       {children}
     </ShipModalContext.Provider>
   );

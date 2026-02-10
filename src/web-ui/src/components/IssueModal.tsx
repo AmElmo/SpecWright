@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AIActionSplitButton } from './AIActionSplitButton';
+import type { AITool } from '@/lib/use-ai-tool';
 
 const ClockIcon = () => (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -42,7 +44,7 @@ interface StatusConfig {
 interface IssueModalProps {
   issue: IssueData;
   onClose: () => void;
-  onShip?: (issue: IssueData, e: React.MouseEvent) => void;
+  onShip?: (issue: IssueData, aiToolOverride?: AITool) => void;
   onApprove?: (issue: IssueData) => void;
   onStatusChange?: (issue: IssueData, newStatus: string) => void;
   canShip?: boolean;
@@ -414,13 +416,11 @@ export function IssueModal({
               </button>
             )}
             {issue.status === 'pending' && canShip && onShip && (
-              <button 
-                className="px-3 py-1.5 rounded-md text-[13px] font-medium"
-                style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
-                onClick={(e) => onShip(issue, e)}
-              >
-                Ship
-              </button>
+              <AIActionSplitButton
+                label="Ship"
+                onRun={(toolOverride) => onShip(issue, toolOverride)}
+                size="sm"
+              />
             )}
           </div>
         </div>
@@ -428,4 +428,3 @@ export function IssueModal({
     </div>
   );
 }
-

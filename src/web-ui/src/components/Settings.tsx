@@ -16,7 +16,8 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Input } from './ui/input';
-import { CursorLogo, ClaudeCodeLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
+import { CursorLogo, ClaudeCodeLogo, CodexLogo, GeminiLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
+import { invalidateAIToolPreferenceCache } from '@/lib/use-ai-tool';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 interface GitPreferences {
@@ -24,7 +25,7 @@ interface GitPreferences {
   strategy: 'none' | 'branch-per-issue' | 'branch-per-project';
 }
 
-type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code';
+type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code' | 'codex' | 'gemini';
 
 interface AIToolPreferences {
   tool: AITool;
@@ -45,6 +46,16 @@ const AI_TOOL_INFO: Record<AITool, { name: string; logo: ReactNode; description:
     name: 'Claude Code',
     logo: <ClaudeCodeLogo size={20} />,
     description: 'Claude\'s coding assistant in VS Code'
+  },
+  'codex': {
+    name: 'Codex CLI',
+    logo: <CodexLogo size={20} />,
+    description: 'OpenAI coding agent CLI (headless)'
+  },
+  'gemini': {
+    name: 'Gemini CLI',
+    logo: <GeminiLogo size={20} />,
+    description: 'Google Gemini coding CLI (headless)'
   },
   'github-copilot': {
     name: 'GitHub Copilot',
@@ -542,6 +553,7 @@ export function Settings() {
       });
       
       if (response.ok) {
+        invalidateAIToolPreferenceCache();
         setInitialAIToolPreferences(aiToolPreferences);
         setHasAIToolChanges(false);
       }
@@ -1303,6 +1315,18 @@ export function Settings() {
                             <span>Claude Code</span>
                           </div>
                         </SelectItem>
+                        <SelectItem value="codex">
+                          <div className="flex items-center gap-2">
+                            <CodexLogo size={18} />
+                            <span>Codex CLI</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gemini">
+                          <div className="flex items-center gap-2">
+                            <GeminiLogo size={18} />
+                            <span>Gemini CLI</span>
+                          </div>
+                        </SelectItem>
                         <SelectItem value="github-copilot">
                           <div className="flex items-center gap-2">
                             <GitHubCopilotLogo size={18} />
@@ -1341,6 +1365,13 @@ export function Settings() {
                             <>
                               <span style={{ color: 'hsl(0 0% 60%)' }}>○</span>
                               <span style={{ color: 'hsl(0 0% 60%)' }}>Keyboard automation</span>
+                            </>
+                          ) : (aiToolPreferences.tool === 'codex' || aiToolPreferences.tool === 'gemini') ? (
+                            <>
+                              <span style={{ color: 'hsl(0 84% 45%)' }}>!</span>
+                              <span style={{ color: 'hsl(0 84% 45%)' }}>
+                                CLI setup required
+                              </span>
                             </>
                           ) : null}
                         </div>

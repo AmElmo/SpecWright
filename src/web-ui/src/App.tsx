@@ -28,8 +28,8 @@ function ScrollToTop() {
 
 // App-level ShipModal that's isolated from route component re-renders
 function AppShipModal() {
-  const { isOpen, issue, closeShipModal } = useShipModal();
-  return <ShipModal isOpen={isOpen} issue={issue} onClose={closeShipModal} />;
+  const { isOpen, issue, aiToolOverride, closeShipModal } = useShipModal();
+  return <ShipModal isOpen={isOpen} issue={issue} aiToolOverride={aiToolOverride} onClose={closeShipModal} />;
 }
 
 export default function App() {
@@ -59,4 +59,3 @@ export default function App() {
     </ShipModalProvider>
   );
 }
-

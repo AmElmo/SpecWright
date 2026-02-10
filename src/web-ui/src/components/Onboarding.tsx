@@ -1,10 +1,10 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
-import { CursorLogo, ClaudeCodeLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
+import { CursorLogo, ClaudeCodeLogo, CodexLogo, GeminiLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
-type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code';
+type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code' | 'codex' | 'gemini';
 
 interface HeadlessStatus {
   available: boolean;
@@ -33,6 +33,20 @@ const AI_TOOLS: AIToolOption[] = [
     logo: <ClaudeCodeLogo size={48} />,
     description: 'VS Code Extension',
     color: '#D97757'
+  },
+  {
+    id: 'codex',
+    name: 'Codex CLI',
+    logo: <CodexLogo size={48} />,
+    description: 'Headless CLI',
+    color: '#111827'
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini CLI',
+    logo: <GeminiLogo size={48} />,
+    description: 'Headless CLI',
+    color: '#2563eb'
   },
   {
     id: 'github-copilot',
@@ -368,6 +382,11 @@ export function Onboarding() {
                       <>
                         <span style={{ color: '#94a3b8' }}>○</span>
                         <span style={{ color: '#94a3b8' }}>Keyboard automation</span>
+                      </>
+                    ) : (tool.id === 'codex' || tool.id === 'gemini') ? (
+                      <>
+                        <span style={{ color: '#ef4444' }}>!</span>
+                        <span style={{ color: '#ef4444' }}>CLI setup required</span>
                       </>
                     ) : null}
                   </div>

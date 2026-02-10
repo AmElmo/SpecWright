@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
-import { useAIToolName } from '../lib/use-ai-tool';
+import { useAIToolName, AI_TOOL_NAMES, type AITool } from '../lib/use-ai-tool';
 import { getActionIcon } from '../lib/action-icons';
 import { RefinePanel } from './RefinePanel';
+import { AIActionSplitButton } from './AIActionSplitButton';
 
 type ScopingStatus = 'ready' | 'classifying' | 'generating' | 'complete';
 
@@ -50,6 +51,9 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
   const [logIdCounter, setLogIdCounter] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
+  const [currentRunTool, setCurrentRunTool] = useState<AITool | null>(null);
+
+  const activeToolName = currentRunTool ? AI_TOOL_NAMES[currentRunTool] : aiToolName;
 
   // Track if we've ever reached 'complete' status - once complete, don't switch back for WebSocket events
   const hasReachedComplete = useRef(false);
@@ -86,7 +90,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
       // Add initial log entry
       const startEntry: HeadlessLogEntry = {
         id: 0,
-        message: 'Starting Claude CLI...',
+        message: `Starting ${activeToolName}...`,
         icon: '🚀',
         timestamp: new Date()
       };
@@ -198,13 +202,14 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
     triggerClassification();
   };
   
-  const triggerClassification = async () => {
+  const triggerClassification = async (toolOverride?: AITool) => {
     if (!userRequest.trim()) {
       setError('Please enter a request');
       return;
     }
     
     try {
+      setCurrentRunTool(toolOverride || null);
       setStatus('classifying');
       setAutomationStatus('sending');
       onStatusChange?.('classifying');
@@ -215,7 +220,10 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userRequest })
+        body: JSON.stringify({
+          userRequest,
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
       
       const data = await response.json();
@@ -237,6 +245,9 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
         onStatusChange?.('generating');
       } else {
         // Automation failed - show copy prompt button prominently
+        if (data.message || data.error) {
+          setError(data.message || data.error);
+        }
         setAutomationStatus('failed');
         setStatus('generating'); // Still go to generating state, just show failed automation
         onStatusChange?.('generating');
@@ -327,27 +338,14 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
               onChange={(e) => setUserRequest(e.target.value)}
               autoFocus
             />
-            <button
-              type="submit"
+            <AIActionSplitButton
+              label="✨ Scope with AI"
+              onRun={triggerClassification}
               disabled={!userRequest.trim()}
-              className="w-full px-4 py-2.5 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: 'hsl(235 69% 61%)',
-                color: 'white',
-              }}
-              onMouseEnter={(e) => {
-                if (userRequest.trim()) {
-                  e.currentTarget.style.backgroundColor = 'hsl(235 69% 55%)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'hsl(235 69% 61%)';
-              }}
-            >
-              ✨ Scope with AI
-            </button>
+              fullWidth
+            />
             <p className="text-[12px] mt-3 text-center" style={{ color: 'hsl(0 0% 46%)' }}>
-              This will open {aiToolName}, create a new chat, and paste the scoping prompt.
+              Default tool: {aiToolName}. Use the arrow to run with another tool.
             </p>
           </form>
         </div>
@@ -400,7 +398,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
             />
           </div>
           <h2 className="text-[15px] font-semibold mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
-            Sending to {aiToolName}...
+            Sending to {activeToolName}...
           </h2>
           <p className="text-[13px]" style={{ color: 'hsl(0 0% 46%)' }}>
             Preparing the prompt and opening your AI tool
@@ -431,7 +429,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
                 </div>
                 <div className="text-left">
                   <p className="text-[13px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>
-                    {isHeadlessMode ? 'Running via Claude CLI' : `Sent to ${aiToolName}!`}
+                    {isHeadlessMode ? `Running via ${activeToolName}` : `Sent to ${activeToolName}!`}
                   </p>
                   <p className="text-[11px]" style={{ color: 'hsl(142 50% 40%)' }}>
                     {isHeadlessMode ? 'Executing in headless mode - no action needed' : 'Check your editor - the prompt is ready'}
@@ -453,7 +451,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
                   <span className="text-xl">📋</span>
                 </div>
                 <p className="text-[13px] font-medium mb-2" style={{ color: 'hsl(45 80% 25%)' }}>
-                  {aiToolName} didn't open automatically
+                  {activeToolName} didn't open automatically
                 </p>
                 <p className="text-[12px] mb-3" style={{ color: 'hsl(45 60% 35%)' }}>
                   Copy the prompt and paste it manually
@@ -498,12 +496,12 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
             
             <div className="text-4xl mb-4 animate-pulse">⏳</div>
             <h2 className="text-[15px] font-semibold mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
-              {isHeadlessMode ? 'Claude is Working...' : 'AI is Analyzing...'}
+              {isHeadlessMode ? `${activeToolName} is Working...` : 'AI is Analyzing...'}
             </h2>
             <p className="text-[13px] mb-6" style={{ color: 'hsl(0 0% 46%)' }}>
               {isHeadlessMode
                 ? 'Running in headless mode - no manual intervention needed'
-                : `Waiting for ${aiToolName} to complete the classification...`}
+                : `Waiting for ${activeToolName} to complete the classification...`}
             </p>
 
             {/* Headless Streaming Log Display */}
@@ -519,7 +517,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
                 >
                   <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
                   <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
-                    Claude CLI
+                    {activeToolName}
                   </span>
                 </div>
                 {/* Log entries */}
@@ -557,7 +555,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
             </div>
             <p className="text-[12px]" style={{ color: 'hsl(0 0% 46%)' }}>
               {isHeadlessMode
-                ? 'Claude CLI is executing the task automatically.'
+                ? `${activeToolName} is executing the task automatically.`
                 : 'This may take a minute. The page will update automatically when complete.'}
             </p>
             
@@ -565,7 +563,7 @@ export function Scoping({ prefillDescription, embedded = false, onStatusChange }
             {lastPrompt && !automationStatus && (
               <div className="mt-6 pt-6" style={{ borderTop: '1px solid hsl(0 0% 92%)' }}>
                 <p className="text-[12px] mb-3" style={{ color: 'hsl(0 0% 46%)' }}>
-                  If {aiToolName} didn't open correctly:
+                  If {activeToolName} didn't open correctly:
                 </p>
                 <button
                   onClick={async () => {

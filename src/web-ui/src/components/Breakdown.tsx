@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates, type WebSocketEvent } from '@/lib/use-realtime';
-import { useAIToolName } from '@/lib/use-ai-tool';
+import { useAIToolName, type AITool } from '@/lib/use-ai-tool';
 import { RefinePanel } from './RefinePanel';
+import { AIActionSplitButton } from './AIActionSplitButton';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 type BreakdownLevel = 'one-shot' | 'few' | 'moderate' | 'detailed';
@@ -191,7 +192,7 @@ export function Breakdown() {
     window.open(`/issues?project=${numericId}`, '_blank');
   };
   
-  const handleCreateIssues = async () => {
+  const handleCreateIssues = async (toolOverride?: AITool) => {
     if (!projectId) return;
 
     try {
@@ -203,13 +204,16 @@ export function Breakdown() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ breakdownLevel })
+        body: JSON.stringify({
+          breakdownLevel,
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        setError(data.error || 'Failed to create issues');
+        setError(data.message || data.error || 'Failed to create issues');
         setBreakdownState('select');
         return;
       }
@@ -676,15 +680,11 @@ export function Breakdown() {
                 })}
               </div>
               
-              <button
-                onClick={handleCreateIssues}
-                className="w-full px-4 py-3 rounded-md text-[14px] font-medium transition-colors"
-                style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(235 69% 55%)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'hsl(235 69% 61%)'; }}
-              >
-                Create Issues Now
-              </button>
+              <AIActionSplitButton
+                label="Create Issues Now"
+                onRun={handleCreateIssues}
+                fullWidth
+              />
             </div>
             
             <button
@@ -706,4 +706,3 @@ export function Breakdown() {
     </div>
   );
 }
-

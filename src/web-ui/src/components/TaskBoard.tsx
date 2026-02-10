@@ -7,6 +7,8 @@ import { Badge } from './ui/badge';
 import { useRealtimeUpdates } from '../lib/use-realtime';
 import { useShipModal } from '../lib/ship-modal-context';
 import { IssueModal } from './IssueModal';
+import { AIActionSplitButton } from './AIActionSplitButton';
+import type { AITool } from '../lib/use-ai-tool';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 interface AcceptanceCriterion {
@@ -225,9 +227,8 @@ export function TaskBoard() {
     total: filteredIssues.length
   };
 
-  const handleShip = (issue: Issue, e: React.MouseEvent) => {
-    e.stopPropagation();
-    openShipModal(issue);
+  const handleShip = (issue: Issue, aiToolOverride?: AITool) => {
+    openShipModal(issue, aiToolOverride);
     setSelectedIssue(null); // Close issue detail modal if open
   };
 
@@ -333,22 +334,14 @@ export function TaskBoard() {
         
         {/* Ship button */}
         {isReady && (
-          <button
-            className="w-full mt-3 px-3 py-2 rounded-md text-[13px] font-medium transition-colors"
-            style={{
-              backgroundColor: 'hsl(235 69% 61%)',
-              color: 'white',
-            }}
-            onClick={(e) => handleShip(issue, e)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'hsl(235 69% 55%)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'hsl(235 69% 61%)';
-            }}
-          >
-            Ship
-          </button>
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <AIActionSplitButton
+              label="Ship"
+              onRun={(toolOverride) => handleShip(issue, toolOverride)}
+              fullWidth
+              size="sm"
+            />
+          </div>
         )}
       </div>
     );
@@ -847,16 +840,13 @@ export function TaskBoard() {
                       <ClockIcon /> {issue.estimatedHours}h
                     </span>
                     {isReady && (
-                      <button
-                        className="px-3 py-1 rounded-md text-[12px] font-medium transition-colors flex-shrink-0"
-                        style={{
-                          backgroundColor: 'hsl(235 69% 61%)',
-                          color: 'white',
-                        }}
-                        onClick={(e) => handleShip(issue, e)}
-                      >
-                        Ship
-                      </button>
+                      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <AIActionSplitButton
+                          label="Ship"
+                          onRun={(toolOverride) => handleShip(issue, toolOverride)}
+                          size="sm"
+                        />
+                      </div>
                     )}
                   </div>
                 );

@@ -24,6 +24,24 @@ It has a CLI (Node.js/Express) and a Web UI (React/Vite) that share a file-based
 - `npm run format` / `npm run format:check` — Prettier
 - No test framework is configured. Do not create test files.
 
+## Local CLI Testing (Unpublished Changes)
+
+Use `specwright-dev` to test local changes before publishing to NPM.
+
+1. Build the local binaries:
+   - `npm run build`
+2. Link this workspace globally:
+   - `npm link`
+3. Verify the debug command points to this workspace:
+   - `which specwright-dev`
+   - `realpath /opt/homebrew/bin/specwright-dev`
+4. Run local debug CLI:
+   - `specwright-dev --version`
+
+Notes:
+- This command is intended for local testing of unpublished code.
+- If automation or headless behavior changes, test with `specwright-dev` first.
+
 ## Critical Rules
 
 ### Imports
