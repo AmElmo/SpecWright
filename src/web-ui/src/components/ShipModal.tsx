@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useAIToolName } from '../lib/use-ai-tool';
+import { AI_TOOL_NAMES, useAIToolName, type AITool } from '../lib/use-ai-tool';
 import { useRealtimeUpdates, waitForWebSocketConnection, type WebSocketEvent } from '../lib/use-realtime';
 import { logger } from '../utils/logger';
 
@@ -51,6 +51,7 @@ function getIconFromStatus(status: string): string {
 interface ShipModalProps {
   isOpen: boolean;
   onClose: () => void;
+  aiToolOverride?: AITool | null;
   issue: {
     issueId: string;
     title: string;
@@ -62,8 +63,9 @@ interface ShipModalProps {
 // Message to show while AI is working
 const BREAK_MESSAGE = "☕ Time for a coffee, a quick walk in the sun, or writing a new spec!";
 
-export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
+export function ShipModal({ isOpen, onClose, issue, aiToolOverride = null }: ShipModalProps) {
   const aiToolName = useAIToolName();
+  const activeToolName = aiToolOverride ? AI_TOOL_NAMES[aiToolOverride] : aiToolName;
   const [status, setStatus] = useState<'loading' | 'working' | 'success' | 'error'>('loading');
   const [prompt, setPrompt] = useState<string>('');
   const [copied, setCopied] = useState(false);
@@ -89,7 +91,7 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
       streamingState.isHeadlessMode = true;
       streamingState.logs = [{
         id: 0,
-        message: `Starting ${aiToolName}...`,
+        message: `Starting ${activeToolName}...`,
         icon: '🚀',
         timestamp: new Date()
       }];
@@ -158,7 +160,7 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
       streamingState.forIssueId = null;
       // Note: We do NOT clear activeShipRequests here - let them expire naturally
     }
-  }, [isOpen, issue?.issueId]);
+  }, [isOpen, issue?.issueId, aiToolOverride]);
 
   const shipIssue = async () => {
     const issueId = issue?.issueId;
@@ -193,7 +195,10 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
       // Use the combined ship endpoint for speed (single network call)
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(aiToolOverride ? { aiTool: aiToolOverride } : {})
+        })
       });
 
       if (!response.ok) {
@@ -204,9 +209,11 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
       setPrompt(data.prompt);
 
       if (data.success) {
+        setErrorMessage('');
         setStatus('success');
       } else {
         // Automation didn't work, but we have the prompt
+        setErrorMessage(data.message || data.error || '');
         setStatus('working');
       }
 
@@ -312,7 +319,7 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
                 />
               </div>
               <p className="text-[14px] font-medium mb-2" style={{ color: 'hsl(0 0% 9%)' }}>
-                {isHeadlessMode ? `Running via ${aiToolName}...` : `Sending to ${aiToolName}...`}
+                {isHeadlessMode ? `Running via ${activeToolName}...` : `Sending to ${activeToolName}...`}
               </p>
               {isHeadlessMode && (
                 <p className="text-[11px] mb-4" style={{ color: 'hsl(0 0% 46%)' }}>
@@ -385,7 +392,7 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
                 className="text-[16px] font-semibold mb-2"
                 style={{ color: 'hsl(0 0% 9%)' }}
               >
-                {status === 'success' ? 'Sent to ' + aiToolName + '!' : 'Prompt Ready!'}
+                {status === 'success' ? 'Sent to ' + activeToolName + '!' : 'Prompt Ready!'}
               </h3>
 
               <p 
@@ -393,10 +400,16 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
                 style={{ color: 'hsl(0 0% 46%)' }}
               >
                 {status === 'success' 
-                  ? `The prompt has been pasted into ${aiToolName}. Check your editor!`
-                  : `The prompt is ready. Paste it into ${aiToolName} to start.`
+                  ? `The prompt has been pasted into ${activeToolName}. Check your editor!`
+                  : `The prompt is ready. Paste it into ${activeToolName} to start.`
                 }
               </p>
+
+              {status === 'working' && errorMessage && (
+                <p className="text-[12px] mb-4" style={{ color: 'hsl(0 84% 45%)' }}>
+                  {errorMessage}
+                </p>
+              )}
 
               {/* Break message */}
               <div 
@@ -439,7 +452,7 @@ export function ShipModal({ isOpen, onClose, issue }: ShipModalProps) {
                   className="text-[12px] mb-2"
                   style={{ color: 'hsl(0 0% 50%)' }}
                 >
-                  If the prompt didn't open in {aiToolName}:
+                  If the prompt didn't open in {activeToolName}:
                 </p>
                 <button
                   onClick={copyPromptToClipboard}

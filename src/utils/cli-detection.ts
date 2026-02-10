@@ -61,6 +61,30 @@ export async function canUseCursorHeadless(): Promise<boolean> {
 }
 
 /**
+ * Check if Codex CLI is available for headless execution.
+ * Authentication is handled by the Codex CLI itself.
+ */
+export async function canUseCodexHeadless(): Promise<boolean> {
+    const hasCLI = await commandExists('codex');
+    if (hasCLI) {
+        logger.debug('✅ Codex CLI detected - headless mode available');
+    }
+    return hasCLI;
+}
+
+/**
+ * Check if Gemini CLI is available for headless execution.
+ * Authentication is handled by the Gemini CLI itself.
+ */
+export async function canUseGeminiHeadless(): Promise<boolean> {
+    const hasCLI = await commandExists('gemini');
+    if (hasCLI) {
+        logger.debug('✅ Gemini CLI detected - headless mode available');
+    }
+    return hasCLI;
+}
+
+/**
  * Check if headless mode is available for the specified AI tool
  */
 export async function canUseHeadless(tool: AITool): Promise<boolean> {
@@ -69,6 +93,10 @@ export async function canUseHeadless(tool: AITool): Promise<boolean> {
             return canUseClaudeHeadless();
         case 'cursor':
             return canUseCursorHeadless();
+        case 'codex':
+            return canUseCodexHeadless();
+        case 'gemini':
+            return canUseGeminiHeadless();
         case 'windsurf':
         case 'github-copilot':
             // These tools don't support headless mode
@@ -85,6 +113,8 @@ export async function getHeadlessStatus(): Promise<Record<AITool, { available: b
     const claudeCLI = await commandExists('claude');
     const cursorCLI = await commandExists('cursor-agent');
     const cursorAPIKey = !!process.env.CURSOR_API_KEY;
+    const codexCLI = await commandExists('codex');
+    const geminiCLI = await commandExists('gemini');
 
     return {
         'claude-code': {
@@ -106,6 +136,26 @@ export async function getHeadlessStatus(): Promise<Record<AITool, { available: b
         'github-copilot': {
             available: false,
             reason: 'GitHub Copilot does not support headless mode'
+        },
+        'codex': {
+            available: codexCLI,
+            reason: codexCLI
+                ? undefined
+                : 'Codex CLI not installed. Install Codex and run codex login.'
+        },
+        'gemini': {
+            available: geminiCLI,
+            reason: geminiCLI
+                ? undefined
+                : 'Gemini CLI not installed. Install Gemini CLI and authenticate.'
         }
     };
+}
+
+/**
+ * Get headless availability for a single tool with reason.
+ */
+export async function getHeadlessStatusForTool(tool: AITool): Promise<{ available: boolean; reason?: string }> {
+    const status = await getHeadlessStatus();
+    return status[tool];
 }

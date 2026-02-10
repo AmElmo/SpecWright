@@ -8,7 +8,7 @@ import {
     type AIToolConfig
 } from '../services/settings-service.js';
 import { logger } from './logger.js';
-import { canUseHeadless } from './cli-detection.js';
+import { canUseHeadless, getHeadlessStatusForTool } from './cli-detection.js';
 import { executeHeadless } from '../services/headless-agent-service.js';
 import { broadcastHeadlessProgress, broadcastHeadlessStarted, broadcastHeadlessCompleted, broadcastSessionCaptured } from '../services/websocket-service.js';
 
@@ -121,6 +121,7 @@ export const startCursorFocusMonitoring = (): void => {
 export interface OpenAIToolResult {
     success: boolean;
     sessionId?: string; // Claude CLI session ID (only available in headless mode)
+    error?: string;
 }
 
 /**
@@ -137,7 +138,7 @@ export interface OpenAIToolOptions {
  * Open AI coding tool and paste text into a new chat
  * This is the main automation function used by the web UI
  *
- * HEADLESS MODE: If the tool supports headless execution (Claude Code, Cursor)
+ * HEADLESS MODE: If the tool supports headless execution (Claude Code, Cursor, Codex, Gemini)
  * and the CLI is available, we use headless mode for faster, more reliable execution.
  * Otherwise, we fall back to keyboard automation.
  */
@@ -153,6 +154,7 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
     // Get the tool config - either from parameter or from saved settings
     const selectedTool = opts.tool || tool || getCurrentAITool();
     const config = getAIToolConfig(selectedTool);
+    const isHeadlessOnlyTool = config.supportsKeyboardAutomation === false || config.appType === 'headless-cli';
 
     // Try headless mode first if available
     try {
@@ -193,13 +195,43 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
             // Headless failed, fall through to keyboard automation
             if (result && result.error) {
                 logger.debug(chalk.yellow(`⚠️ Headless execution failed: ${result.error}`));
-                logger.debug(chalk.yellow('Falling back to keyboard automation...'));
                 broadcastHeadlessCompleted(config.name, false, phase, result.sessionId);
+
+                if (isHeadlessOnlyTool) {
+                    return {
+                        success: false,
+                        sessionId: result.sessionId,
+                        error: `${config.name} failed in headless mode: ${result.error}`
+                    };
+                }
+
+                logger.debug(chalk.yellow('Falling back to keyboard automation...'));
             }
+        } else if (isHeadlessOnlyTool) {
+            const status = await getHeadlessStatusForTool(selectedTool);
+            const guidance = `${config.name} is headless-only in SpecWright. ${status.reason || 'CLI unavailable.'} Please install/authenticate the CLI and try again.`;
+            logger.debug(chalk.yellow(`⚠️ ${guidance}`));
+            return { success: false, error: guidance };
         }
     } catch (headlessError) {
-        logger.debug(chalk.yellow('⚠️ Error checking headless availability, using keyboard automation'));
+        logger.debug(chalk.yellow('⚠️ Error checking headless availability'));
         logger.debug(chalk.dim(String(headlessError)));
+
+        if (isHeadlessOnlyTool) {
+            return {
+                success: false,
+                error: `${config.name} is headless-only in SpecWright. Failed to verify CLI availability. Please check installation/authentication and retry.`
+            };
+        }
+
+        logger.debug(chalk.yellow('Using keyboard automation fallback...'));
+    }
+
+    if (isHeadlessOnlyTool) {
+        return {
+            success: false,
+            error: `${config.name} is headless-only in SpecWright and is not currently available. Please check CLI setup and authentication.`
+        };
     }
 
     // Keyboard automation fallback
@@ -291,10 +323,10 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
                 await execAsync(`powershell -Command "Start-Process ${config.cliCommand}"`).catch(() => {});
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } else {
-                logger.debug(chalk.yellow('⚠️  Auto-open only supported on macOS and Windows'));
-                logger.debug(chalk.dim(`Please switch to ${config.name} and paste manually`));
-                return { success: false };
-            }
+            logger.debug(chalk.yellow('⚠️  Auto-open only supported on macOS and Windows'));
+            logger.debug(chalk.dim(`Please switch to ${config.name} and paste manually`));
+            return { success: false, error: `Auto-open is not supported on this platform for ${config.name}.` };
+        }
         }
         
         // 4. Ensure we're not focused on any text input (like a chat)
@@ -365,7 +397,7 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
             
         } else {
             logger.debug(chalk.yellow(`📋 Prompt copied! Please paste manually into ${config.name}`));
-            return { success: false };
+            return { success: false, error: `Prompt copied. Paste manually into ${config.name}.` };
         }
         
         logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -377,7 +409,10 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
         logger.debug(chalk.red('\n❌ ERROR in openAIToolAndPaste():'));
         logger.debug(chalk.red(error));
         logger.debug(chalk.dim('Prompt is in clipboard - please paste manually'));
-        return { success: false };
+        return {
+            success: false,
+            error: `Failed to automate ${config.name}. Prompt was copied to clipboard; paste manually.`
+        };
     }
 };
 
@@ -385,8 +420,14 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
  * Open Cursor and paste text into a new chat
  * This is kept for backward compatibility - now uses the generic openAIToolAndPaste
  */
-export const openCursorAndPaste = async (text: string, workspacePath?: string, phase?: string, timeout?: number): Promise<OpenAIToolResult> => {
-    return openAIToolAndPaste(text, { workspacePath, phase, timeout });
+export const openCursorAndPaste = async (
+    text: string,
+    workspacePath?: string,
+    phase?: string,
+    timeout?: number,
+    tool?: AITool
+): Promise<OpenAIToolResult> => {
+    return openAIToolAndPaste(text, { workspacePath, phase, timeout, tool });
 };
 
 /**

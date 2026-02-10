@@ -9,10 +9,11 @@ import { CostWidget } from './CostWidget';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { useRealtimeUpdates } from '@/lib/use-realtime';
-import { useAIToolName } from '@/lib/use-ai-tool';
+import { useAIToolName, AI_TOOL_NAMES, type AITool } from '@/lib/use-ai-tool';
 import { IconPicker, IconSVG } from './IconPicker';
 import { useShipModal } from '@/lib/ship-modal-context';
 import { IssueModal } from './IssueModal';
+import { AIActionSplitButton } from './AIActionSplitButton';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 interface ProjectIcon {
@@ -222,12 +223,6 @@ const CheckIcon = () => (
   </svg>
 );
 
-const PlusIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 6h18"></path>
@@ -259,6 +254,8 @@ export function ProjectDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const aiToolName = useAIToolName();
+  const [currentRunTool, setCurrentRunTool] = useState<AITool | null>(null);
+  const activeToolName = currentRunTool ? AI_TOOL_NAMES[currentRunTool] : aiToolName;
   const [project, setProject] = useState<ProjectData | null>(null);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(null);
   const [questions, setQuestions] = useState<AllQuestions | null>(null);
@@ -544,16 +541,20 @@ export function ProjectDetail() {
     }
   };
   
-  const triggerIssueCreation = async () => {
+  const triggerIssueCreation = async (toolOverride?: AITool) => {
     if (!id) return;
     
     try {
+      setCurrentRunTool(toolOverride || null);
       setBreakingDown(true);
       setError(null);
       
       const response = await fetch(`/api/specification/breakdown/${id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
       
       const data = await response.json();
@@ -563,7 +564,7 @@ export function ProjectDetail() {
           setBreakdownPrompt(data.prompt);
         }
       } else {
-        setError(data.error || 'Failed to create issues');
+        setError(data.message || data.error || 'Failed to create issues');
         setBreakingDown(false);
       }
     } catch (err) {
@@ -671,14 +672,13 @@ export function ProjectDetail() {
     total: fullIssues.length
   };
 
-  const handleShip = (issue: FullIssue, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleShip = (issue: FullIssue, aiToolOverride?: AITool) => {
     openShipModal({
       issueId: issue.issueId,
       title: issue.title,
       projectId: issue.projectId,
       projectName: project?.name || project?.id || ''
-    });
+    }, aiToolOverride);
     setSelectedIssue(null); // Close issue detail modal if open
   };
 
@@ -1002,7 +1002,7 @@ export function ProjectDetail() {
                 {breakdownPrompt && (
                   <div className="mt-6 pt-6 relative" style={{ borderTop: '1px solid hsl(0 0% 92%)' }}>
                     <p className="text-[12px] mb-3" style={{ color: 'hsl(0 0% 46%)' }}>
-                      If {aiToolName} didn't open correctly:
+                      If {activeToolName} didn't open correctly:
                     </p>
                     <CopyBreakdownPromptButton prompt={breakdownPrompt} />
                   </div>
@@ -1039,10 +1039,10 @@ export function ProjectDetail() {
               </p>
               
               {isFullySpecced && (
-                <Button onClick={triggerIssueCreation}>
-                  <PlusIcon />
-                  <span>Generate Issues</span>
-                </Button>
+                <AIActionSplitButton
+                  label="Generate Issues"
+                  onRun={triggerIssueCreation}
+                />
               )}
               
               {isPartiallySpecced && (
@@ -1165,22 +1165,14 @@ export function ProjectDetail() {
             
             {/* Ship button */}
             {isReady && (
-              <button
-                className="w-full mt-3 px-3 py-2 rounded-md text-[13px] font-medium transition-colors"
-                style={{
-                  backgroundColor: 'hsl(235 69% 61%)',
-                  color: 'white',
-                }}
-                onClick={(e) => handleShip(issue, e)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'hsl(235 69% 55%)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'hsl(235 69% 61%)';
-                }}
-              >
-                Ship
-              </button>
+              <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+                <AIActionSplitButton
+                  label="Ship"
+                  onRun={(toolOverride) => handleShip(issue, toolOverride)}
+                  fullWidth
+                  size="sm"
+                />
+              </div>
             )}
           </div>
         );
@@ -1349,16 +1341,13 @@ export function ProjectDetail() {
                       {config.label}
                     </span>
                     {isReady && (
-                      <button
-                        className="px-3 py-1 rounded-md text-[12px] font-medium transition-colors flex-shrink-0"
-                        style={{
-                          backgroundColor: 'hsl(235 69% 61%)',
-                          color: 'white',
-                        }}
-                        onClick={(e) => handleShip(issue, e)}
-                      >
-                        Ship
-                      </button>
+                      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <AIActionSplitButton
+                          label="Ship"
+                          onRun={(toolOverride) => handleShip(issue, toolOverride)}
+                          size="sm"
+                        />
+                      </div>
                     )}
                   </div>
                 );
@@ -2009,14 +1998,13 @@ export function ProjectDetail() {
           )}
           
           {isFullySpecced && !hasIssues && (
-            <button
-              onClick={triggerIssueCreation}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium transition-all mb-2"
-              style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
-            >
-              <PlusIcon />
-              Generate Issues
-            </button>
+            <AIActionSplitButton
+              label="Generate Issues"
+              onRun={triggerIssueCreation}
+              fullWidth
+              size="sm"
+              className="mb-2"
+            />
           )}
 
           {/* Cost Widget */}

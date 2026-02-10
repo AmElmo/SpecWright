@@ -403,6 +403,13 @@ export async function startWebServer(port = 5174) {
   // Generate playbook prompt
   app.post('/api/playbook/generate', async (req, res) => {
     try {
+      const { aiTool } = req.body || {};
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
+
       // Build the generation prompt
       const prompt = `@specwright/agents/playbook/generation_prompt.md
 @package.json
@@ -418,7 +425,7 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
       let result: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        result = await openCursorAndPaste(prompt, WORKSPACE_PATH, undefined, undefined, aiTool);
 
         if (result.success) {
           logger.debug('⏳ Waiting for AI to create: PLAYBOOK.md');
@@ -433,7 +440,7 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
           ? 'Prompt ready. Please paste manually in your AI tool.'
           : (result.success
             ? 'AI tool opened and prompt pasted. Review and press Enter.'
-            : 'Failed to open AI tool automatically. Prompt is in clipboard.')
+            : (result.error || 'Failed to open AI tool automatically. Prompt is in clipboard.'))
       });
     } catch (error) {
       logger.error('Error generating playbook prompt:', error);
@@ -444,6 +451,13 @@ IMPORTANT: Create the file at the project root as PLAYBOOK.md`;
   // Update playbook prompt
   app.post('/api/playbook/update', async (req, res) => {
     try {
+      const { aiTool } = req.body || {};
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
+
       const playbookPath = path.join(WORKSPACE_PATH, 'PLAYBOOK.md');
       
       if (!fs.existsSync(playbookPath)) {
@@ -470,7 +484,7 @@ Key points:
       let updateResult: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        updateResult = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        updateResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, undefined, undefined, aiTool);
 
         if (updateResult.success) {
           logger.debug('⏳ Waiting for AI to update: PLAYBOOK.md');
@@ -485,7 +499,7 @@ Key points:
           ? 'Prompt ready. Please paste manually in your AI tool.'
           : (updateResult.success
             ? 'AI tool opened and prompt pasted. Review and press Enter.'
-            : 'Failed to open AI tool automatically. Prompt is in clipboard.')
+            : (updateResult.error || 'Failed to open AI tool automatically. Prompt is in clipboard.'))
       });
     } catch (error) {
       logger.error('Error generating update prompt:', error);
@@ -496,6 +510,13 @@ Key points:
   // Audit playbook prompt (no automation needed - just copy to clipboard)
   app.post('/api/playbook/audit', (req, res) => {
     try {
+      const { aiTool } = req.body || {};
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
+
       const playbookPath = path.join(WORKSPACE_PATH, 'PLAYBOOK.md');
       
       if (!fs.existsSync(playbookPath)) {
@@ -668,7 +689,7 @@ Generate a comprehensive audit report showing:
       // Validate tool
       if (!isValidAITool(tool)) {
         return res.status(400).json({ 
-          error: 'Invalid tool: must be cursor, windsurf, github-copilot, or claude-code' 
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf' 
         });
       }
       
@@ -900,7 +921,13 @@ Generate a comprehensive audit report showing:
   // Trigger AI classification in Cursor
   app.post('/api/scoping/classify', async (req, res) => {
     try {
-      const { userRequest } = req.body;
+      const { userRequest, aiTool } = req.body || {};
+
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
       
       if (!userRequest) {
         return res.status(400).json({ error: 'User request is required' });
@@ -934,7 +961,7 @@ Please analyze this request and update the scoping_plan.json file.`;
       let result: OpenAIToolResult = { success: true };
       if (!skipAutomation) {
         // Trigger Cursor automation with workspace targeting
-        result = await openCursorAndPaste(prompt, WORKSPACE_PATH);
+        result = await openCursorAndPaste(prompt, WORKSPACE_PATH, undefined, undefined, aiTool);
 
         if (result.success) {
           logger.debug('⏳ Waiting for AI to update: scoping_plan.json');
@@ -952,10 +979,10 @@ Please analyze this request and update the scoping_plan.json file.`;
         success: result.success,
         sessionId: result.sessionId,
         message: skipAutomation
-          ? 'Prompt ready. Please paste manually in Cursor.'
+          ? 'Prompt ready. Please paste manually in your AI tool.'
           : (result.success
-            ? 'Cursor opened and prompt pasted. Review and press Enter.'
-            : 'Failed to open Cursor automatically. Prompt is in clipboard.'),
+            ? 'AI tool opened and prompt pasted. Review and press Enter.'
+            : (result.error || 'Failed to open AI tool automatically. Prompt is in clipboard.')),
         prompt // Return the prompt so UI can offer to copy it
       });
     } catch (error) {
@@ -1808,7 +1835,13 @@ Please analyze this request and update the scoping_plan.json file.`;
     try {
       const projectPath = path.join(OUTPUT_DIR, 'projects', req.params.projectId);
       const phase = req.params.phase;
-      const { documentDetail } = req.body; // Extract parameters from request body
+      const { documentDetail, aiTool } = req.body || {}; // Extract parameters from request body
+
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
       
       if (!fs.existsSync(projectPath)) {
         return res.status(404).json({ error: 'Project not found' });
@@ -2066,11 +2099,11 @@ Please analyze this request and update the scoping_plan.json file.`;
           sessionId = existingSessionId;
           // TODO: For now, still using keyboard automation with session tracking
           // When refine endpoint is called, it will use --resume
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool);
         } else {
           // Create new session (first phase of agent)
           logger.debug(`🆕 Starting new ${agent} agent session`);
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool);
 
           // Save the session ID if headless mode was used
           if (result.sessionId) {
@@ -2126,10 +2159,10 @@ Please analyze this request and update the scoping_plan.json file.`;
         success: result.success,
         sessionId, // Include session ID for frontend
         message: skipAutomation
-          ? 'Prompt ready. Please paste manually in Cursor.'
+          ? 'Prompt ready. Please paste manually in your AI tool.'
           : (result.success
-            ? 'Cursor opened and prompt pasted. Review and press Enter.'
-            : 'Failed to open Cursor automatically. Prompt is in clipboard.'),
+            ? 'AI tool opened and prompt pasted. Review and press Enter.'
+            : (result.error || 'Failed to open AI tool automatically. Prompt is in clipboard.')),
         phase,
         prompt, // Return the prompt so UI can offer to copy it
         cost: costInfo // Include cost info in response
@@ -2228,7 +2261,13 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   app.post('/api/specification/breakdown/:projectId', async (req, res) => {
     try {
       const projectPath = path.join(OUTPUT_DIR, 'projects', req.params.projectId);
-      const { breakdownLevel } = req.body; // Extract breakdown level from request body
+      const { breakdownLevel, aiTool } = req.body || {}; // Extract breakdown level from request body
+
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
       
       if (!fs.existsSync(projectPath)) {
         return res.status(404).json({ error: 'Project not found' });
@@ -2377,7 +2416,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         // Trigger Cursor automation with phase for WebSocket streaming
         // Use 15-minute timeout for breakdown (complex task with lots of context to analyze)
         const BREAKDOWN_TIMEOUT = 15 * 60 * 1000; // 15 minutes
-        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT);
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT, aiTool);
 
         if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');
@@ -2388,10 +2427,10 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       res.json({
         success: breakdownResult.success,
         message: skipAutomation
-          ? 'Prompt ready. Please paste manually in Cursor.'
+          ? 'Prompt ready. Please paste manually in your AI tool.'
           : (breakdownResult.success
-            ? 'Cursor opened with issue creation prompt'
-            : 'Failed to open Cursor automatically'),
+            ? 'AI tool opened with issue creation prompt'
+            : (breakdownResult.error || 'Failed to open AI tool automatically')),
         prompt
       });
     } catch (error) {
@@ -2660,6 +2699,12 @@ ${suggestion || 'Implement this change directly in your code editor.'}
 
     try {
       const { projectId, issueId } = req.params;
+      const { aiTool } = req.body || {};
+      if (aiTool && !isValidAITool(aiTool)) {
+        return res.status(400).json({
+          error: 'Invalid tool: must be cursor, claude-code, codex, gemini, github-copilot, or windsurf'
+        });
+      }
       logger.debug(`\n🚀 [API] Shipping issue ${issueId} in project ${projectId}`);
 
       // Find the actual project folder (could be "002" or "002-project-name")
@@ -2704,7 +2749,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       try {
         console.log('[SHIP DEBUG] Triggering AI tool automation with phase=ship...');
         logger.debug('🚀 [API] Triggering AI tool automation...');
-        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship');
+        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship', undefined, aiTool);
         console.log('[SHIP DEBUG] AI tool automation result:', shipResult);
         logger.debug(`[API] AI tool automation result:`, shipResult);
       } catch (err) {
@@ -2718,7 +2763,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         prompt,
         message: shipResult.success
           ? 'Prompt sent to AI tool successfully'
-          : 'Prompt ready - paste manually if AI tool did not open'
+          : (shipResult.error || 'Prompt ready - paste manually if AI tool did not open')
       };
 
       console.log('[SHIP DEBUG] Sending response:', {
@@ -3580,4 +3625,3 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   
   return { server, wss, watcher };
 }
-

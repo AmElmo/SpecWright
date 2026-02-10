@@ -4,7 +4,8 @@ import { logger } from '../utils/logger';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 import { MarkdownViewer } from './MarkdownViewer';
 import { useRealtimeUpdates } from '../lib/use-realtime';
-import { useAIToolName } from '../lib/use-ai-tool';
+import { useAIToolName, AI_TOOL_NAMES, type AITool } from '../lib/use-ai-tool';
+import { AIActionSplitButton } from './AIActionSplitButton';
 
 // Icons
 const ProjectsIcon = () => (
@@ -41,28 +42,9 @@ const PlaybookIcon = () => (
   </svg>
 );
 
-const RefreshIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M2.5 8C2.5 4.96243 4.96243 2.5 8 2.5C10.2504 2.5 12.1654 3.87659 12.9329 5.83333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M13.5 8C13.5 11.0376 11.0376 13.5 8 13.5C5.74962 13.5 3.83462 12.1234 3.06709 10.1667" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M10.5 5.5H13.5V2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5.5 10.5H2.5V13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M3 8L6.5 11.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-// Magic wand icon for generate button
-const WandIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10.5 2L11.5 4L13.5 5L11.5 6L10.5 8L9.5 6L7.5 5L9.5 4L10.5 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    <path d="M3 13L9 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M5.5 1.5L6 2.5L7 3L6 3.5L5.5 4.5L5 3.5L4 3L5 2.5L5.5 1.5Z" fill="currentColor"/>
-    <path d="M2.5 5.5L3 6.5L4 7L3 7.5L2.5 8.5L2 7.5L1 7L2 6.5L2.5 5.5Z" fill="currentColor"/>
   </svg>
 );
 
@@ -89,9 +71,11 @@ export function Playbook() {
   const [error, setError] = useState<string | null>(null);
   const [repositoryName, setRepositoryName] = useState<string>('');
   const [lastPrompt, setLastPrompt] = useState<string>('');
+  const [currentRunTool, setCurrentRunTool] = useState<AITool | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const aiToolName = useAIToolName();
+  const activeToolName = currentRunTool ? AI_TOOL_NAMES[currentRunTool] : aiToolName;
 
   const navItems = [
     { label: 'Projects', icon: ProjectsIcon, path: '/', active: location.pathname === '/' },
@@ -165,21 +149,30 @@ export function Playbook() {
     };
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (toolOverride?: AITool) => {
     try {
+      setCurrentRunTool(toolOverride || null);
       setIsGenerating(true);
       setError(null);
       
       // Call API WITHOUT X-Integrated-Browser header to trigger automation
       const res = await fetch('/api/playbook/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
       
       const data = await res.json();
       
       if (data.prompt) {
         setLastPrompt(data.prompt);
+      }
+
+      if (!data.success) {
+        setError(data.message || data.error || 'Failed to generate playbook');
+        setIsGenerating(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate playbook');
@@ -187,14 +180,18 @@ export function Playbook() {
     }
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (toolOverride?: AITool) => {
     try {
+      setCurrentRunTool(toolOverride || null);
       setIsUpdating(true);
       setError(null);
       
       const res = await fetch('/api/playbook/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
       
       const data = await res.json();
@@ -202,20 +199,29 @@ export function Playbook() {
       if (data.prompt) {
         setLastPrompt(data.prompt);
       }
+
+      if (!data.success) {
+        setError(data.message || data.error || 'Failed to update playbook');
+        setIsUpdating(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update playbook');
       setIsUpdating(false);
     }
   };
 
-  const handleAudit = async () => {
+  const handleAudit = async (toolOverride?: AITool) => {
     try {
+      setCurrentRunTool(toolOverride || null);
       setIsAuditing(true);
       setError(null);
       
       const res = await fetch('/api/playbook/audit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
       
       const data = await res.json();
@@ -223,7 +229,7 @@ export function Playbook() {
       if (data.prompt) {
         // For audit, just copy to clipboard - no file watching needed
         await navigator.clipboard.writeText(data.prompt);
-        alert('✅ Audit prompt copied to clipboard!\n\nPaste it in ' + aiToolName + ' to check codebase compliance.');
+        alert('✅ Audit prompt copied to clipboard!\n\nPaste it in ' + (toolOverride ? AI_TOOL_NAMES[toolOverride] : aiToolName) + ' to check codebase compliance.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to audit playbook');
@@ -497,7 +503,7 @@ export function Playbook() {
                 {lastPrompt && (
                   <div className="mt-6 pt-6 relative" style={{ borderTop: '1px solid hsl(0 0% 92%)' }}>
                     <p className="text-[12px] mb-3" style={{ color: 'hsl(0 0% 46%)' }}>
-                      If {aiToolName} didn't open correctly:
+                      If {activeToolName} didn't open correctly:
                     </p>
                     <CopyPromptButton prompt={lastPrompt} />
                   </div>
@@ -652,52 +658,20 @@ export function Playbook() {
 
           {status?.exists && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleUpdate}
+              <AIActionSplitButton
+                label={isUpdating ? 'Updating...' : 'Update'}
+                onRun={handleUpdate}
                 disabled={isUpdating}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: 'hsl(235 69% 50%)',
-                  border: '1px solid hsl(235 69% 85%)',
-                  opacity: isUpdating ? 0.6 : 1,
-                  cursor: isUpdating ? 'wait' : 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isUpdating) {
-                    e.currentTarget.style.backgroundColor = 'hsl(235 69% 97%)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <RefreshIcon />
-                {isUpdating ? 'Updating...' : 'Update'}
-              </button>
-              <button
-                onClick={handleAudit}
+                variant="outline"
+                size="sm"
+              />
+              <AIActionSplitButton
+                label={isAuditing ? 'Preparing...' : 'Audit'}
+                onRun={handleAudit}
                 disabled={isAuditing}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: 'hsl(142 76% 36%)',
-                  border: '1px solid hsl(142 76% 85%)',
-                  opacity: isAuditing ? 0.6 : 1,
-                  cursor: isAuditing ? 'wait' : 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isAuditing) {
-                    e.currentTarget.style.backgroundColor = 'hsl(142 76% 97%)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <CheckIcon />
-                {isAuditing ? 'Preparing...' : 'Audit'}
-              </button>
+                variant="success"
+                size="sm"
+              />
             </div>
           )}
         </header>
@@ -810,26 +784,11 @@ export function Playbook() {
                   <p className="text-[14px] mb-6 max-w-md mx-auto" style={{ color: 'hsl(0 0% 46%)' }}>
                     Generate a playbook by analyzing your codebase. AI will discover your tech stack, infer development practices, and create a comprehensive governance document.
                   </p>
-                  <button
-                    onClick={handleGenerate}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-[14px] font-medium no-underline transition-all"
-                    style={{ 
-                      backgroundColor: '#f59e0b', 
-                      color: 'white',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#d97706';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f59e0b';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <WandIcon />
-                    <span>Generate Playbook</span>
-                  </button>
+                  <AIActionSplitButton
+                    label="Generate Playbook"
+                    onRun={handleGenerate}
+                    variant="warning"
+                  />
                   <p className="text-[12px] mt-4" style={{ color: 'hsl(0 0% 60%)' }}>
                     Creates <code className="px-1.5 py-0.5 rounded text-[11px]" style={{ backgroundColor: 'white', border: '1px solid hsl(0 0% 90%)' }}>PLAYBOOK.md</code> in your project root
                   </p>

@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { useRealtimeUpdates } from '../lib/use-realtime';
-import { useAIToolName } from '../lib/use-ai-tool';
+import { useAIToolName, AI_TOOL_NAMES, type AITool } from '../lib/use-ai-tool';
 import { getActionIcon } from '../lib/action-icons';
 import { QuestionForm } from './QuestionForm';
 import { DocumentReview } from './DocumentReview';
 import { CostWidget } from './CostWidget';
 import { RefinePanel } from './RefinePanel';
+import { AIActionSplitButton } from './AIActionSplitButton';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 
 interface SpecificationStatus {
@@ -91,6 +92,9 @@ export function Specification() {
   const [headlessLogs, setHeadlessLogs] = useState<HeadlessLogEntry[]>([]);
   const [logIdCounter, setLogIdCounter] = useState(0);
   const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
+  const [currentRunTool, setCurrentRunTool] = useState<AITool | null>(null);
+
+  const activeToolName = currentRunTool ? AI_TOOL_NAMES[currentRunTool] : aiToolName;
 
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
                            status?.currentPhase === 'ux-questions-answer' || 
@@ -114,7 +118,7 @@ export function Specification() {
       // Add initial log entry
       const startEntry: HeadlessLogEntry = {
         id: 0,
-        message: 'Starting Claude CLI...',
+        message: `Starting ${activeToolName}...`,
         icon: '🚀',
         timestamp: new Date()
       };
@@ -274,10 +278,11 @@ export function Specification() {
     }
   };
   
-  const triggerBreakdown = async () => {
+  const triggerBreakdown = async (toolOverride?: AITool) => {
     if (!projectId) return;
 
     try {
+      setCurrentRunTool(toolOverride || null);
       setBreakingDown(true);
       setError('');
       // Clear previous headless logs and reset state for streaming
@@ -287,7 +292,10 @@ export function Specification() {
 
       const response = await fetch(`/api/specification/breakdown/${projectId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
 
       const data = await response.json();
@@ -392,17 +400,21 @@ export function Specification() {
     }
   };
   
-  const triggerPhase = async (phase: string) => {
+  const triggerPhase = async (phase: string, toolOverride?: AITool) => {
     if (!projectId) return;
     
     try {
+      setCurrentRunTool(toolOverride || null);
       setTriggeringPhase(phase);
       setAutomationStatus('sending');
       setError('');
       
       const response = await fetch(`/api/specification/continue/${projectId}/${phase}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(toolOverride ? { aiTool: toolOverride } : {})
+        })
       });
       
       const data = await response.json();
@@ -416,6 +428,9 @@ export function Specification() {
         setAutomationStatus('sent');
       } else {
         // Automation failed - show copy prompt button prominently
+        if (data.message || data.error) {
+          setError(data.message || data.error);
+        }
         setAutomationStatus('failed');
       }
     } catch (err) {
@@ -805,7 +820,7 @@ export function Specification() {
                     />
                   </div>
                   <p className="text-[14px] font-medium" style={{ color: 'hsl(0 0% 9%)' }}>
-                    Sending to {aiToolName}...
+                    Sending to {activeToolName}...
                   </p>
                 </div>
               )}
@@ -826,7 +841,7 @@ export function Specification() {
                   </div>
                   <div className="text-left">
                     <p className="text-[13px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>
-                      {isHeadlessMode ? 'Running via Claude CLI' : `Sent to ${aiToolName}!`}
+                      {isHeadlessMode ? `Running via ${activeToolName}` : `Sent to ${activeToolName}!`}
                     </p>
                     <p className="text-[11px]" style={{ color: 'hsl(142 50% 40%)' }}>
                       {isHeadlessMode ? 'Executing in headless mode - no action needed' : 'Check your editor - the prompt is ready'}
@@ -845,7 +860,7 @@ export function Specification() {
                     <span className="text-2xl">📋</span>
                   </div>
                   <p className="text-[14px] font-medium mb-2" style={{ color: 'hsl(45 80% 25%)' }}>
-                    {aiToolName} didn't open automatically
+                    {activeToolName} didn't open automatically
                   </p>
                   <p className="text-[12px] mb-4" style={{ color: 'hsl(45 60% 35%)' }}>
                     Copy the prompt and paste it manually
@@ -980,7 +995,7 @@ export function Specification() {
                     >
                       <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
                       <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
-                        Claude CLI
+                        {activeToolName}
                       </span>
                     </div>
                     {/* Log entries */}
@@ -1034,13 +1049,13 @@ export function Specification() {
                 `}</style>
 
                 <p className="text-[11px] mt-4" style={{ color: 'hsl(0 0% 60%)' }}>
-                  {isHeadlessMode ? 'Claude CLI is executing the task automatically.' : 'This may take a minute. The page will update automatically.'}
+                  {isHeadlessMode ? `${activeToolName} is executing the task automatically.` : 'This may take a minute. The page will update automatically.'}
                 </p>
                 
                 {lastPrompt && (
                   <div className="mt-6 pt-6" style={{ borderTop: '1px solid hsl(0 0% 92%)' }}>
                     <p className="text-[12px] mb-3" style={{ color: 'hsl(0 0% 46%)' }}>
-                      If {aiToolName} didn't open correctly:
+                      If {activeToolName} didn't open correctly:
                     </p>
                     <CopyPromptButton prompt={lastPrompt} />
                   </div>
@@ -1223,15 +1238,10 @@ export function Specification() {
                 </p>
                 
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => triggerPhase(nextActionPhase)}
-                    className="px-5 py-2.5 rounded-md text-[13px] font-medium transition-colors"
-                    style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'hsl(235 69% 55%)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'hsl(235 69% 61%)'; }}
-                  >
-                    {info.buttonText}
-                  </button>
+                  <AIActionSplitButton
+                    label={info.buttonText}
+                    onRun={(toolOverride) => triggerPhase(nextActionPhase, toolOverride)}
+                  />
                   
                   <button
                     onClick={() => navigate('/')}
@@ -1319,13 +1329,12 @@ export function Specification() {
                 </div>
                 
                 <div className="flex gap-3">
-                  <button
-                    onClick={triggerBreakdown}
-                    className="flex-1 px-4 py-2.5 rounded-md text-[13px] font-medium transition-colors"
-                    style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
-                  >
-                    Generate Issues
-                  </button>
+                  <AIActionSplitButton
+                    label="Generate Issues"
+                    onRun={triggerBreakdown}
+                    fullWidth
+                    className="flex-1"
+                  />
                   <button
                     onClick={() => navigate(`/project/${projectId}`)}
                     className="px-4 py-2.5 rounded-md text-[13px] font-medium transition-colors"
@@ -1430,7 +1439,7 @@ export function Specification() {
                     >
                       <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
                       <span className="text-[11px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
-                        Claude CLI
+                        {activeToolName}
                       </span>
                     </div>
                     {/* Log entries */}
@@ -1484,7 +1493,7 @@ export function Specification() {
                 `}</style>
 
                 <p className="text-[11px] mt-4 relative" style={{ color: 'hsl(0 0% 60%)' }}>
-                  {isHeadlessMode ? 'Claude CLI is executing the task automatically.' : 'This typically takes 2-3 minutes.'}
+                  {isHeadlessMode ? `${activeToolName} is executing the task automatically.` : 'This typically takes 2-3 minutes.'}
                 </p>
               </div>
             )}

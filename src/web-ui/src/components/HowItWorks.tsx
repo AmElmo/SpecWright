@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
-import { CursorLogo, ClaudeCodeLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
+import { CursorLogo, ClaudeCodeLogo, CodexLogo, GeminiLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
 
 // Icons
 const ProjectsIcon = () => (
@@ -281,6 +281,8 @@ export function HowItWorks() {
                     >
                       <div className="transform scale-75"><CursorLogo size={20} /></div>
                       <div className="transform scale-75"><ClaudeCodeLogo size={20} /></div>
+                      <div className="transform scale-75"><CodexLogo size={20} /></div>
+                      <div className="transform scale-75"><GeminiLogo size={20} /></div>
                     </div>
                     <span className="text-[11px] font-medium" style={{ color: 'hsl(0 0% 46%)' }}>AI Tool</span>
                   </div>
@@ -331,6 +333,14 @@ export function HowItWorks() {
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
                     <GitHubCopilotLogo size={18} />
                     <span className="text-[12px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>Copilot</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
+                    <CodexLogo size={18} />
+                    <span className="text-[12px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>Codex</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
+                    <GeminiLogo size={18} />
+                    <span className="text-[12px] font-medium" style={{ color: 'hsl(0 0% 32%)' }}>Gemini</span>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
                     <WindsurfLogo size={18} />
@@ -614,4 +624,3 @@ export function HowItWorks() {
     </div>
   );
 }
-

@@ -13,7 +13,7 @@ import { logger } from '../utils/logger.js';
 // Types
 // ============================================================================
 
-export type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code';
+export type AITool = 'cursor' | 'windsurf' | 'github-copilot' | 'claude-code' | 'codex' | 'gemini';
 
 export type GitStrategy = 'none' | 'branch-per-issue' | 'branch-per-project';
 
@@ -44,7 +44,7 @@ export interface Settings {
 // AI Tool Configurations (for keyboard automation)
 // ============================================================================
 
-export type AppType = 'standalone' | 'vscode-extension';
+export type AppType = 'standalone' | 'vscode-extension' | 'headless-cli';
 
 export interface AIToolConfig {
   id: AITool;
@@ -52,6 +52,7 @@ export interface AIToolConfig {
   appType: AppType;
   appName: string;           // Process name for detection
   cliCommand: string;        // CLI to open/activate
+  supportsKeyboardAutomation?: boolean;
   
   macShortcuts: {
     openChat: string;        // AppleScript keystroke command
@@ -137,6 +138,38 @@ export const AI_TOOL_CONFIGS: Record<AITool, AIToolConfig> = {
     initWaitTime: 500,  // Wait for command palette flow
     requiresCommandPalette: true,
     commandPaletteCommand: 'Claude Code: Open in New Tab'
+  },
+
+  'codex': {
+    id: 'codex',
+    name: 'Codex CLI',
+    appType: 'headless-cli',
+    appName: 'Terminal',
+    cliCommand: 'codex',
+    supportsKeyboardAutomation: false,
+    macShortcuts: {
+      openChat: 'keystroke "i" using {command down, shift down}',
+    },
+    windowsShortcuts: {
+      openChat: '^+i',
+    },
+    initWaitTime: 400
+  },
+
+  'gemini': {
+    id: 'gemini',
+    name: 'Gemini CLI',
+    appType: 'headless-cli',
+    appName: 'Terminal',
+    cliCommand: 'gemini',
+    supportsKeyboardAutomation: false,
+    macShortcuts: {
+      openChat: 'keystroke "i" using {command down, shift down}',
+    },
+    windowsShortcuts: {
+      openChat: '^+i',
+    },
+    initWaitTime: 400
   }
   
 };
@@ -352,4 +385,3 @@ export function generateGitInstructions(preferences: GitPreferences, projectId?:
 
   return instructions;
 }
-
