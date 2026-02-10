@@ -63,7 +63,6 @@ Each specialist creates structured outputs that feed into your AI coding assista
 <td width="50%">
 
 ### Project Dashboard
-*[Screenshot: Project overview with status cards]*
 
 ![Project Dashboard](./docs/screenshots/project_page.png)
 
@@ -73,7 +72,6 @@ Browse all projects, view progress, and track implementation tasks.
 <td width="50%">
 
 ### Specification Viewer
-*[Screenshot: Specification document view]*
 
 ![Specification Viewer](./docs/screenshots/screens_page.png)
 
@@ -85,7 +83,6 @@ Rich viewing experience for PRDs, designs, and technical specs.
 <td width="50%">
 
 ### Issue Breakdown
-*[Screenshot: Issue list with vertical slices]*
 
 ![Issue Breakdown](./docs/screenshots/issue_list_page.png)
 
@@ -95,7 +92,6 @@ Implementation tasks organized by vertical slice with clear acceptance criteria.
 <td width="50%">
 
 ### Technology Choices
-*[Screenshot: Technology selection interface]*
 
 ![Technology Choices](./docs/screenshots/technology_choices.png)
 
