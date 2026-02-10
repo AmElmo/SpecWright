@@ -1,3 +1,13 @@
+## [3.2.0](https://github.com/amelmo/specwright/compare/v3.1.1...v3.2.0) (2026-02-10)
+
+### Features
+
+* add manual issue status changes with drag-and-drop ([#15](https://github.com/amelmo/specwright/issues/15)) ([8e4e7bd](https://github.com/amelmo/specwright/commit/8e4e7bd3de77da151362e63aa2ee5eea41e8af4c))
+
+### Bug Fixes
+
+* correct npx syntax in publish workflow for semantic-release ([#16](https://github.com/amelmo/specwright/issues/16)) ([be7a43f](https://github.com/amelmo/specwright/commit/be7a43f3961764343e3eac20f487099cd6073626))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
