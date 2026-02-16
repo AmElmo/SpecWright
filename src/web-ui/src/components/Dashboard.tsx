@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from './ui/select-new';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface Project {
   id: string;
@@ -88,6 +90,7 @@ const FilterIcon = () => (
 );
 
 export function Dashboard() {
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,9 +227,10 @@ export function Dashboard() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
       {/* Sidebar */}
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0"
-        style={{ 
+      <aside
+        className="relative flex-shrink-0 h-screen flex flex-col border-r sticky top-0"
+        style={{
+          width: sidebarWidth,
           backgroundColor: 'hsl(0 0% 100%)',
           borderColor: 'hsl(0 0% 92%)'
         }}
@@ -333,6 +337,7 @@ export function Dashboard() {
             </div>
           );
         })()}
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
 
       {/* Main Content */}

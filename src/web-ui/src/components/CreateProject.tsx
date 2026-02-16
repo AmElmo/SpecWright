@@ -6,6 +6,8 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Scoping } from './Scoping';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 // Icons as inline SVGs for Linear-style aesthetic
 const ProjectsIcon = () => (
@@ -42,6 +44,7 @@ const PlusIcon = () => (
 );
 
 export function CreateProject() {
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mode, setMode] = useState<'manual' | 'ai'>('ai');
@@ -92,9 +95,10 @@ export function CreateProject() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
       {/* Sidebar */}
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0"
-        style={{ 
+      <aside
+        className="relative flex-shrink-0 h-screen flex flex-col border-r sticky top-0"
+        style={{
+          width: sidebarWidth,
           backgroundColor: 'hsl(0 0% 100%)',
           borderColor: 'hsl(0 0% 92%)'
         }}
@@ -175,6 +179,7 @@ export function CreateProject() {
             <span className="text-[13px] font-medium">Settings</span>
           </Link>
         </div>
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
 
       {/* Main Content */}

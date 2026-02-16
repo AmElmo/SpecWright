@@ -15,6 +15,8 @@ import { useShipModal } from '@/lib/ship-modal-context';
 import { IssueModal } from './IssueModal';
 import { AIActionSplitButton } from './AIActionSplitButton';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface ProjectIcon {
   type: 'icon' | 'emoji';
@@ -263,7 +265,8 @@ export function ProjectDetail() {
   const [error, setError] = useState<string | null>(null);
   const [breakingDown, setBreakingDown] = useState(false);
   const [breakdownPrompt, setBreakdownPrompt] = useState<string>('');
-  
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
+
   // Determine active view from URL
   const activeSection = section || 'docs';
   const activeDocType = docType || 'request';
@@ -275,6 +278,7 @@ export function ProjectDetail() {
     document_length: 'standard' as 'brief' | 'standard' | 'comprehensive'
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [hasExistingSettings, setHasExistingSettings] = useState(false);
   
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -368,6 +372,20 @@ export function ProjectDetail() {
         }
       } catch (err) {
         logger.error('Failed to fetch project icon:', err);
+      }
+
+      // Fetch saved project settings (question_depth, document_length)
+      try {
+        const settingsRes = await fetch(`/api/projects/${id}/settings`);
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          if (settingsData.settings) {
+            setProjectSettings(settingsData.settings);
+            setHasExistingSettings(true);
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to fetch project settings:', err);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load project');
@@ -518,20 +536,30 @@ export function ProjectDetail() {
     }
   };
   
+  const handleStartSpecClick = () => {
+    if (hasExistingSettings) {
+      // Settings already saved — skip the modal and navigate directly
+      navigate(`/specification/${id}`);
+    } else {
+      setShowConfigModal(true);
+    }
+  };
+
   const handleStartSpec = async () => {
     if (!id) return;
-    
+
     try {
       setSavingSettings(true);
-      
+
       const response = await fetch(`/api/projects/${id}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: projectSettings })
       });
-      
+
       if (!response.ok) throw new Error('Failed to save settings');
-      
+
+      setHasExistingSettings(true);
       setShowConfigModal(false);
       navigate(`/specification/${id}`);
     } catch (err) {
@@ -831,9 +859,9 @@ export function ProjectDetail() {
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         {/* Sidebar */}
-        <aside 
-          className="w-[220px] h-screen flex flex-col border-r sticky top-0 flex-shrink-0"
-          style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
+        <aside
+          className="h-screen flex flex-col border-r sticky top-0 flex-shrink-0 relative"
+          style={{ width: sidebarWidth, backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
         >
           <div className="px-4 py-4 border-b" style={{ borderColor: 'hsl(0 0% 92%)' }}>
             <Link to="/" className="flex items-center gap-2.5 no-underline">
@@ -883,6 +911,7 @@ export function ProjectDetail() {
               </Link>
             </div>
           </div>
+          <SidebarResizeHandle onMouseDown={handleResizeStart} />
         </aside>
 
         {/* Main Content */}
@@ -1052,7 +1081,7 @@ export function ProjectDetail() {
               )}
               
               {isNotSpecced && (
-                <Button onClick={() => setShowConfigModal(true)}>
+                <Button onClick={handleStartSpecClick}>
                   ✨ Start Specification
                 </Button>
               )}
@@ -1403,7 +1432,7 @@ export function ProjectDetail() {
               </p>
               
               {isNotSpecced && (
-                <Button onClick={() => setShowConfigModal(true)}>
+                <Button onClick={handleStartSpecClick}>
                   ✨ Start Specification
                 </Button>
               )}
@@ -1606,7 +1635,7 @@ export function ProjectDetail() {
             )}
             
             {isNotSpecced && (
-              <Button onClick={() => setShowConfigModal(true)}>
+              <Button onClick={handleStartSpecClick}>
                 ✨ Start Specification
               </Button>
             )}
@@ -1979,14 +2008,14 @@ export function ProjectDetail() {
           {/* Primary Action Button */}
           {isNotSpecced && (
             <button
-              onClick={() => setShowConfigModal(true)}
+              onClick={handleStartSpecClick}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium transition-all mb-2"
               style={{ backgroundColor: 'hsl(235 69% 61%)', color: 'white' }}
             >
               ✨ Start Specification
             </button>
           )}
-          
+
           {isPartiallySpecced && !hasIssues && (
             <button
               onClick={() => navigate(`/specification/${id}`)}
@@ -2037,12 +2066,25 @@ export function ProjectDetail() {
                   border: '1px solid hsl(0 0% 92%)'
                 }}
               >
+                {hasExistingSettings && (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowConfigModal(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[hsl(0_0%_96%)]"
+                    style={{ color: 'hsl(0 0% 35%)' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span className="text-[13px] font-medium">Spec Settings</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     setShowDeleteModal(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[hsl(0_0%_96%)]"
                   style={{ color: 'hsl(0 84% 45%)' }}
                 >
                   <TrashIcon />

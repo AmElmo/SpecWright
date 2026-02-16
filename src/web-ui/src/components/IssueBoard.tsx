@@ -10,6 +10,8 @@ import { IssueModal } from './IssueModal';
 import { AIActionSplitButton } from './AIActionSplitButton';
 import type { AITool } from '../lib/use-ai-tool';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface AcceptanceCriterion {
   id: string;
@@ -120,6 +122,7 @@ const LockIcon = () => (
 );
 
 export function IssueBoard() {
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -473,9 +476,10 @@ export function IssueBoard() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
       {/* Sidebar */}
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0"
-        style={{ 
+      <aside
+        className="relative flex-shrink-0 h-screen flex flex-col border-r sticky top-0"
+        style={{
+          width: sidebarWidth,
           backgroundColor: 'white',
           borderColor: 'hsl(0 0% 92%)'
         }}
@@ -580,6 +584,7 @@ export function IssueBoard() {
             </div>
           );
         })()}
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
 
       {/* Main Content */}

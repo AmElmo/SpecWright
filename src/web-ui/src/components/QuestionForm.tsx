@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface Question {
   question: string;
@@ -65,7 +67,8 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
   const submitSectionRef = useRef<HTMLDivElement | null>(null);
   const hasAutoFocused = useRef(false);
   const isManualScrolling = useRef(false);
-  
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
+
   useEffect(() => {
     fetchQuestions();
   }, [projectId, phase]);
@@ -266,9 +269,9 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
     const settingsItem = navItems.find(item => item.label === 'Settings');
     
     return (
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0 flex-shrink-0"
-        style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
+      <aside
+        className="h-screen flex flex-col border-r sticky top-0 flex-shrink-0 relative"
+        style={{ width: sidebarWidth, backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
       >
         <div className="px-4 py-4 border-b" style={{ borderColor: 'hsl(0 0% 92%)' }}>
           <Link to="/" className="flex items-center gap-2.5 no-underline">
@@ -309,10 +312,11 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
             </Link>
           </div>
         )}
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
     );
   };
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>

@@ -19,6 +19,8 @@ import { Input } from './ui/input';
 import { CursorLogo, ClaudeCodeLogo, CodexLogo, GeminiLogo, GitHubCopilotLogo, WindsurfLogo } from './AIToolLogos';
 import { invalidateAIToolPreferenceCache } from '@/lib/use-ai-tool';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface GitPreferences {
   enabled: boolean;
@@ -412,6 +414,7 @@ interface LinearTeam {
 }
 
 export function Settings() {
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
   const location = useLocation();
   const [gitPreferences, setGitPreferences] = useState<GitPreferences>({
     enabled: false,
@@ -1038,9 +1041,10 @@ export function Settings() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
       {/* Sidebar */}
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0"
-        style={{ 
+      <aside
+        className="relative flex-shrink-0 h-screen flex flex-col border-r sticky top-0"
+        style={{
+          width: sidebarWidth,
           backgroundColor: 'white',
           borderColor: 'hsl(0 0% 92%)'
         }}
@@ -1116,6 +1120,7 @@ export function Settings() {
             </div>
           );
         })()}
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
 
       {/* Main Content */}

@@ -26,17 +26,12 @@ It has a CLI (Node.js/Express) and a Web UI (React/Vite) that share a file-based
 
 ## Local CLI Testing (Unpublished Changes)
 
-Use `specwright-dev` to test local changes before publishing to NPM.
+**MANDATORY: After ANY code edit session, ALWAYS run `npm run build && npm link` before finishing.** This ensures `specwright-dev` reflects the latest changes. Verify with `specwright-dev --version`. Never skip this step.
 
-1. Build the local binaries:
-   - `npm run build`
-2. Link this workspace globally:
-   - `npm link`
-3. Verify the debug command points to this workspace:
-   - `which specwright-dev`
-   - `realpath /opt/homebrew/bin/specwright-dev`
-4. Run local debug CLI:
-   - `specwright-dev --version`
+Steps for reference:
+1. `npm run build` — Build the local binaries
+2. `npm link` — Link this workspace globally
+3. `specwright-dev --version` — Verify it points to this workspace
 
 Notes:
 - This command is intended for local testing of unpublished code.

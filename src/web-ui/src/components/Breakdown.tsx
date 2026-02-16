@@ -6,6 +6,8 @@ import { useAIToolName, type AITool } from '@/lib/use-ai-tool';
 import { RefinePanel } from './RefinePanel';
 import { AIActionSplitButton } from './AIActionSplitButton';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 type BreakdownLevel = 'one-shot' | 'few' | 'moderate' | 'detailed';
 type BreakdownState = 'select' | 'generating' | 'preview';
@@ -57,10 +59,12 @@ const IssueBreakdownIcon = () => (
 );
 
 // Sidebar component
-const Sidebar = () => (
-  <aside 
-    className="w-[220px] h-screen flex flex-col border-r sticky top-0 flex-shrink-0"
-    style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
+const Sidebar = () => {
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
+  return (
+  <aside
+    className="h-screen flex flex-col border-r sticky top-0 flex-shrink-0 relative"
+    style={{ width: sidebarWidth, backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
   >
     <div className="px-4 py-4 border-b" style={{ borderColor: 'hsl(0 0% 92%)' }}>
       <Link to="/" className="flex items-center gap-2.5 no-underline">
@@ -102,8 +106,10 @@ const Sidebar = () => (
         <span className="text-[13px] font-medium">Settings</span>
       </Link>
     </div>
+    <SidebarResizeHandle onMouseDown={handleResizeStart} />
   </aside>
-);
+  );
+};
 
 export function Breakdown() {
   const { projectId } = useParams<{ projectId: string }>();

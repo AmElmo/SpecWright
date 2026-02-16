@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 import { MarkdownViewer } from './MarkdownViewer';
 import { useRealtimeUpdates } from '../lib/use-realtime';
 import { useAIToolName, AI_TOOL_NAMES, type AITool } from '../lib/use-ai-tool';
@@ -76,6 +78,7 @@ export function Playbook() {
   const navigate = useNavigate();
   const aiToolName = useAIToolName();
   const activeToolName = currentRunTool ? AI_TOOL_NAMES[currentRunTool] : aiToolName;
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
 
   const navItems = [
     { label: 'Projects', icon: ProjectsIcon, path: '/', active: location.pathname === '/' },
@@ -286,9 +289,9 @@ export function Playbook() {
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         {/* Sidebar */}
-        <aside 
-          className="w-[220px] h-screen flex flex-col border-r sticky top-0"
-          style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
+        <aside
+          className="h-screen flex flex-col border-r sticky top-0 flex-shrink-0 relative"
+          style={{ width: sidebarWidth, backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
         >
           {/* Logo */}
           <div className="px-4 py-4 border-b" style={{ borderColor: 'hsl(0 0% 92%)' }}>
@@ -296,7 +299,7 @@ export function Playbook() {
               <img src={specwrightLogo} alt="SpecWright" className="w-7 h-7" />
               <span className="font-semibold text-[18px]" style={{ color: 'hsl(0 0% 9%)' }}>SpecWright</span>
             </Link>
-            <div 
+            <div
               className="mt-2 text-[11px] font-mono truncate"
               style={{ color: 'hsl(0 0% 46%)' }}
             >
@@ -357,7 +360,7 @@ export function Playbook() {
               ))}
             </ul>
           </nav>
-          
+
           {/* Settings at bottom */}
           {(() => {
             const settingsItem = navItems.find(item => item.label === 'Settings');
@@ -388,6 +391,7 @@ export function Playbook() {
               </div>
             );
           })()}
+          <SidebarResizeHandle onMouseDown={handleResizeStart} />
         </aside>
 
         <main className="flex-1">
@@ -519,9 +523,10 @@ export function Playbook() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
       {/* Sidebar */}
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0"
-        style={{ 
+      <aside
+        className="h-screen flex flex-col border-r sticky top-0 flex-shrink-0 relative"
+        style={{
+          width: sidebarWidth,
           backgroundColor: 'hsl(0 0% 100%)',
           borderColor: 'hsl(0 0% 92%)'
         }}
@@ -626,6 +631,7 @@ export function Playbook() {
             </div>
           );
         })()}
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
 
       {/* Main Content */}
