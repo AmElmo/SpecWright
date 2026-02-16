@@ -1,3 +1,9 @@
+## [3.4.0](https://github.com/amelmo/specwright/compare/v3.3.0...v3.4.0) (2026-02-16)
+
+### Features
+
+* Add resizable sidebar and enhance document review workflow ([#19](https://github.com/amelmo/specwright/issues/19)) ([6696a0c](https://github.com/amelmo/specwright/commit/6696a0c49567dd42f09919ec017d1df93d0924f2))
+
 ## [3.3.0](https://github.com/amelmo/specwright/compare/v3.2.0...v3.3.0) (2026-02-11)
 
 ### Features
