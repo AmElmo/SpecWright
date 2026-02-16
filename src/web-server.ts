@@ -31,6 +31,7 @@ import {
   validateAndRecoverPhase,
   initializeProjectStatus,
   updateProjectSettings,
+  getProjectSettings,
   updateProjectIcon,
   getProjectIcon
 } from './services/status-service.js';
@@ -1176,6 +1177,24 @@ Please analyze this request and update the scoping_plan.json file.`;
     } catch (error) {
       logger.error('Error during refinement:', error);
       res.status(500).json({ error: 'Failed to refine output' });
+    }
+  });
+
+  // Get project settings (from project_status.json)
+  app.get('/api/projects/:projectId/settings', (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
+
+      if (!fs.existsSync(projectPath)) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const settings = getProjectSettings(projectId);
+      res.json({ settings: settings || null });
+    } catch (error) {
+      logger.error('Error getting project settings:', error);
+      res.status(500).json({ error: 'Failed to get settings' });
     }
   });
 

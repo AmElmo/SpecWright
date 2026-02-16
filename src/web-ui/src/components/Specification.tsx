@@ -7,9 +7,11 @@ import { getActionIcon } from '../lib/action-icons';
 import { QuestionForm } from './QuestionForm';
 import { DocumentReview } from './DocumentReview';
 import { CostWidget } from './CostWidget';
-import { RefinePanel } from './RefinePanel';
+// RefinePanel is now integrated within DocumentReview
 import { AIActionSplitButton } from './AIActionSplitButton';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
+import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface SpecificationStatus {
   projectId: string;
@@ -646,15 +648,17 @@ export function Specification() {
     />
   );
 
+  const { sidebarWidth, handleResizeStart } = useSidebarWidth();
+
   // Sidebar component
   const Sidebar = () => {
     const mainNavItems = navItems.filter(item => item.label !== 'Settings');
     const settingsItem = navItems.find(item => item.label === 'Settings');
-    
+
     return (
-      <aside 
-        className="w-[220px] h-screen flex flex-col border-r sticky top-0 flex-shrink-0"
-        style={{ backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
+      <aside
+        className="h-screen flex flex-col border-r sticky top-0 flex-shrink-0 relative"
+        style={{ width: `${sidebarWidth}px`, backgroundColor: 'hsl(0 0% 100%)', borderColor: 'hsl(0 0% 92%)' }}
       >
         <div className="px-4 py-4 border-b" style={{ borderColor: 'hsl(0 0% 92%)' }}>
           <Link to="/" className="flex items-center gap-2.5 no-underline">
@@ -694,7 +698,7 @@ export function Specification() {
               <CostWidget projectId={projectId} />
             </div>
           )}
-          
+
           {/* Settings */}
           {settingsItem && (
             <div className="p-2 border-t" style={{ borderColor: 'hsl(0 0% 92%)' }}>
@@ -717,6 +721,8 @@ export function Specification() {
             </div>
           )}
         </div>
+
+        <SidebarResizeHandle onMouseDown={handleResizeStart} />
       </aside>
     );
   };
@@ -1141,15 +1147,9 @@ export function Specification() {
                 documentContent={reviewDocumentContent}
                 documentType={getDocumentType()}
                 onApprove={handleApproveDocument}
-              />
-            </div>
-
-            {/* Floating RefinePanel for feedback - in right margin */}
-            {currentSessionId && (
-              <RefinePanel
-                phase={currentAgent}
+                isBreakdownComplete={hasTasks}
                 sessionId={currentSessionId}
-                floatingMode={true}
+                phase={currentAgent}
                 onRefineComplete={() => {
                   // Refresh sessions after refinement
                   fetch(`/api/sessions/${projectId}`)
@@ -1164,7 +1164,7 @@ export function Specification() {
                   }
                 }}
               />
-            )}
+            </div>
           </div>
         </main>
       </div>
