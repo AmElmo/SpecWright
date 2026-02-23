@@ -1,4 +1,10 @@
 /* ── Base ── */
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
 .page {
   min-height: 100vh;
   display: flex;
@@ -8,6 +14,8 @@
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* ── Nav ── */
@@ -386,10 +394,43 @@
   .screenshotSection {
     padding: 1.5rem 1rem 3rem;
   }
+
+  .nav {
+    padding: 1rem 1rem;
+  }
+
+  .problemSection {
+    padding: 3rem 1.5rem 2rem;
+  }
+
+  .features {
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .workflow {
+    padding: 3rem 1.5rem;
+  }
+
+  .highlights {
+    padding: 3rem 1.5rem;
+  }
+
+  .finalCta {
+    padding: 3rem 1.5rem;
+  }
 }
 
 @media (max-width: 480px) {
+  .title {
+    font-size: 2.25rem;
+  }
+
   .features {
     grid-template-columns: 1fr;
+  }
+
+  .installBlock {
+    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
   }
 }
