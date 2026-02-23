@@ -132,6 +132,7 @@ export interface OpenAIToolOptions {
     tool?: AITool;
     phase?: string; // Phase identifier for WebSocket broadcasts (e.g., 'pm-questions', 'engineer-spec')
     timeout?: number; // Custom timeout in ms (default: 5 minutes, use 15 minutes for breakdown)
+    processKey?: string; // Registry key for cancel support (e.g., 'spec:myproject:pm-prd')
 }
 
 /**
@@ -175,6 +176,7 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
             const result = await executeHeadless(selectedTool, text, {
                 workingDir: workspacePath,
                 timeout: opts.timeout, // Pass custom timeout if provided
+                processKey: opts.processKey,
                 onProgress: (status: string) => {
                     // Broadcast progress to WebSocket clients (with phase if provided)
                     broadcastHeadlessProgress(status, phase);
@@ -190,6 +192,13 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
                 logger.debug(chalk.green(`✅ Headless execution completed successfully for ${config.name}`));
                 broadcastHeadlessCompleted(config.name, true, phase, result.sessionId);
                 return { success: true, sessionId: result.sessionId };
+            }
+
+            // User-initiated cancel — do NOT fall through to keyboard automation
+            if (result && result.cancelled) {
+                logger.debug(chalk.yellow(`🛑 Headless execution was cancelled by user for ${config.name}`));
+                broadcastHeadlessCompleted(config.name, false, phase, result.sessionId);
+                return { success: false, sessionId: result.sessionId, error: 'Cancelled by user' };
             }
 
             // Headless failed, fall through to keyboard automation
@@ -425,9 +434,10 @@ export const openCursorAndPaste = async (
     workspacePath?: string,
     phase?: string,
     timeout?: number,
-    tool?: AITool
+    tool?: AITool,
+    processKey?: string
 ): Promise<OpenAIToolResult> => {
-    return openAIToolAndPaste(text, { workspacePath, phase, timeout, tool });
+    return openAIToolAndPaste(text, { workspacePath, phase, timeout, tool, processKey });
 };
 
 /**

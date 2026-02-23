@@ -13,13 +13,13 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
-import { getExistingProjects, enrichProjectsWithProgress, getAllIssues, isPMPRDComplete, isUXWireframesComplete, isArchitectComplete, isPMQuestionsGenerated, isPMQuestionsAnswered, isUXDesignBriefComplete, createProjectFolder } from './services/project-service.js';
+import { getExistingProjects, enrichProjectsWithProgress, getAllIssues, isPMPRDComplete, isUXWireframesComplete, isArchitectComplete, isPMQuestionsGenerated, isPMQuestionsAnswered, isUXDesignBriefComplete, isFileCompletedInPhase, createProjectFolder } from './services/project-service.js';
 import { logger } from './utils/logger.js';
 import { OUTPUT_DIR, TEMPLATES_DIR } from './config/constants.js';
 import { openCursorAndPaste, type OpenAIToolResult } from './utils/clipboard.js';
 import { finalizeScopingPlan } from './services/scoping-service.js';
-import { executeClaudeHeadless } from './services/headless-agent-service.js';
-import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted } from './services/websocket-service.js';
+import { executeClaudeHeadless, cancelAllProjectProcesses } from './services/headless-agent-service.js';
+import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted, broadcastHeadlessCancelled } from './services/websocket-service.js';
 import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, saveRefinementImages, type AgentType as SessionAgentType } from './services/session-service.js';
 import {
   getOrCreateStatus,
@@ -33,7 +33,12 @@ import {
   updateProjectSettings,
   getProjectSettings,
   updateProjectIcon,
-  getProjectIcon
+  getProjectIcon,
+  markAllDocsGenerating,
+  markDocPhaseGenerating,
+  markDocGenComplete,
+  checkAllDocsComplete,
+  clearAIWorkingState
 } from './services/status-service.js';
 import { getReconciledProjectStatus } from './services/reconciliation-service.js';
 import type { AgentType } from './types/project-status.js';
@@ -100,7 +105,8 @@ import {
   getSpecGeneratingPhase,
   markBreakdownGenerating,
   markBreakdownComplete,
-  isBreakdownGenerating
+  isBreakdownGenerating,
+  getActiveGenerations
 } from './services/generation-tracker-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -228,6 +234,32 @@ export async function startWebServer(port = 5174) {
     }
   });
   
+  // Get all active AI generations (for global indicator)
+  app.get('/api/generations/active', (req, res) => {
+    try {
+      const active = getActiveGenerations();
+      const projects = getExistingProjects();
+
+      const generations = Array.from(active.entries()).map(([key, entry]) => {
+        const projectName = entry.projectId
+          ? projects.find((p: { id: string; description: string }) => p.id === entry.projectId)?.description || entry.projectId
+          : undefined;
+        return {
+          key,
+          phase: entry.phase,
+          projectId: entry.projectId,
+          projectName,
+          startedAt: entry.startedAt.toISOString(),
+        };
+      });
+
+      res.json({ generations });
+    } catch (error) {
+      logger.error('Error fetching active generations:', error);
+      res.status(500).json({ error: 'Failed to fetch active generations' });
+    }
+  });
+
   // Get workspace info (repository name, etc.)
   app.get('/api/workspace-info', (req, res) => {
     try {
@@ -1210,7 +1242,8 @@ Please analyze this request and update the scoping_plan.json file.`;
       }
       
       // Save settings to project_status.json using status service
-      updateProjectSettings(projectId, settings);
+      // Mark settingsConfirmed so the UI knows the user explicitly chose these
+      updateProjectSettings(projectId, { ...settings, settingsConfirmed: true });
       
       res.json({ success: true });
     } catch (error) {
@@ -1530,10 +1563,105 @@ Please analyze this request and update the scoping_plan.json file.`;
       let reviewDocument: string | null = null;
       let nextPhase: string | null = null;
       
+      // Handle docs-generate phase (parallel doc generation)
+      if (status.currentPhase === 'docs-generate') {
+        // Check if all 3 doc sets exist retroactively
+        const projectPath2 = path.join(OUTPUT_DIR, 'projects', req.params.projectId);
+        const allDocsExist = isPMPRDComplete(projectPath2, null) &&
+          isUXWireframesComplete(projectPath2, null) &&
+          isArchitectComplete(projectPath2, null);
+
+        if (allDocsExist) {
+          // All docs are done — advance to PM PRD review
+          logger.debug(`✨ [API] All docs complete retroactively, advancing to PM PRD review`);
+          const updated = markDocGenComplete(req.params.projectId, 'pm', 'prd-generate');
+          // markDocGenComplete checks all and advances if needed, but let's also complete the other two
+          markDocGenComplete(req.params.projectId, 'ux', 'design-brief-generate');
+          markDocGenComplete(req.params.projectId, 'engineer', 'spec-generate');
+          status = getOrCreateStatus(req.params.projectId);
+        }
+
+        if (status.currentPhase === 'docs-generate') {
+          // Still in docs-generate — return generation progress with per-file detail
+          const pmStatus = status.agents.pm.phases['prd-generate']?.status || 'not-started';
+          const uxStatus = status.agents.ux.phases['design-brief-generate']?.status || 'not-started';
+          const engineerStatus = status.agents.engineer.phases['spec-generate']?.status || 'not-started';
+
+          let anyGenerating = [pmStatus, uxStatus, engineerStatus].some(s => s === 'ai-working');
+
+          const generatingStatus = getSpecGeneratingPhase(req.params.projectId);
+
+          // Stale state recovery: if no in-memory tracker entry exists but file has
+          // ai-working phases, the state is stale (e.g., server restarted mid-generation).
+          // Clear it so the UI doesn't get stuck in a perpetual "working" state.
+          let effectivePmStatus = pmStatus;
+          let effectiveUxStatus = uxStatus;
+          let effectiveEngineerStatus = engineerStatus;
+          if (anyGenerating && !generatingStatus.isGenerating) {
+            logger.debug(`🧹 [Status] Clearing stale ai-working state for ${req.params.projectId}`);
+            clearAIWorkingState(req.params.projectId);
+            anyGenerating = false;
+            effectivePmStatus = 'not-started';
+            effectiveUxStatus = 'not-started';
+            effectiveEngineerStatus = 'not-started';
+          }
+
+          // Per-file completeness checks (check on disk for granular UI)
+          const pid = req.params.projectId;
+          const docsProgress = {
+            pm: {
+              status: effectivePmStatus,
+              files: [
+                { name: 'prd.md', label: 'Product Requirements', complete: isFileCompletedInPhase(getPRDPath(pid), null) },
+                { name: 'acceptance_criteria.json', label: 'Acceptance Criteria', complete: isFileCompletedInPhase(getAcceptanceCriteriaPath(pid), null, 100) }
+              ]
+            },
+            ux: {
+              status: effectiveUxStatus,
+              files: [
+                { name: 'design_brief.md', label: 'Design Brief', complete: isFileCompletedInPhase(getDesignBriefPath(pid), null, 200) },
+                { name: 'screens.json', label: 'Screens & Wireframes', complete: isFileCompletedInPhase(getScreensPath(pid), null, 100) }
+              ]
+            },
+            engineer: {
+              status: effectiveEngineerStatus,
+              files: [
+                { name: 'technical_specification.md', label: 'Technical Specification', complete: isFileCompletedInPhase(getTechnicalSpecPath(pid), null) },
+                { name: 'technology_choices.json', label: 'Technology Choices', complete: isFileCompletedInPhase(getTechnologyChoicesPath(pid), null, 200) }
+              ]
+            }
+          };
+
+          nextPhase = anyGenerating ? null : 'docs-generate';
+
+          res.json({
+            projectId: req.params.projectId,
+            phases: {
+              pm: { complete: false },
+              ux: { complete: false },
+              engineer: { complete: false }
+            },
+            currentPhase: 'docs-generate',
+            nextPhase,
+            needsReview: false,
+            reviewDocument: null,
+            isComplete: false,
+            needsGeneration: !anyGenerating,
+            docsProgress,
+            isGenerating: generatingStatus.isGenerating || anyGenerating,
+            generatingPhase: generatingStatus.phase || (anyGenerating ? 'docs-generate' : null),
+            generatingStartedAt: generatingStatus.startedAt
+          });
+
+          return;
+        }
+        // If we fell through, status was updated — continue with normal logic
+      }
+
       if (currentAgent !== 'complete') {
         const agentStatus = status.agents[currentAgent];
         const currentPhaseName = agentStatus.currentPhase;
-        
+
         if (currentPhaseName) {
           const phaseData = agentStatus.phases[currentPhaseName];
           
@@ -1647,16 +1775,17 @@ Please analyze this request and update the scoping_plan.json file.`;
             // Phase ready to start (or needs retry)
             nextPhase = `${currentAgent}-${currentPhaseName}`;
           } else if (effectiveStatus === 'complete') {
-            // Phase complete, move to next
-            const phaseList = getPhaseListForAgent(currentAgent);
-            const currentIndex = phaseList.indexOf(currentPhaseName);
-            
-            if (currentIndex < phaseList.length - 1) {
-              nextPhase = `${currentAgent}-${phaseList[currentIndex + 1]}`;
-            } else if (currentAgent === 'pm' && pmComplete) {
-              nextPhase = 'ux-questions-generate';
-            } else if (currentAgent === 'ux' && uxComplete) {
-              nextPhase = 'engineer-questions-generate';
+            // Unified flow: after questions-answer, skip to next agent's questions or docs-generate
+            if (currentPhaseName === 'questions-answer') {
+              if (currentAgent === 'pm') {
+                nextPhase = 'ux-questions-generate';
+              } else if (currentAgent === 'ux') {
+                nextPhase = 'engineer-questions-generate';
+              } else if (currentAgent === 'engineer') {
+                nextPhase = 'docs-generate';
+              }
+            } else if (currentPhaseName === 'questions-generate') {
+              nextPhase = `${currentAgent}-questions-answer`;
             }
           }
           // Note: awaiting-user and user-reviewing don't get nextPhase
@@ -1908,7 +2037,18 @@ Please analyze this request and update the scoping_plan.json file.`;
       if (mappedPhase) {
         // Update status to reflect that we're starting this phase
         const status = getOrCreateStatus(req.params.projectId);
-        if (status.currentAgent === mappedPhase.agent &&
+        const isDocsGeneratePhase = status.currentPhase === 'docs-generate';
+
+        if (isDocsGeneratePhase && ['prd-generate', 'design-brief-generate', 'spec-generate'].includes(mappedPhase.phase)) {
+          // During parallel docs-generate, mark only this specific agent's phase as ai-working
+          // (preserves already-complete agents when re-triggering after partial completion)
+          markDocPhaseGenerating(req.params.projectId, mappedPhase.agent as AgentType, mappedPhase.phase);
+
+          // Mark spec phase as generating (for page reload state restoration)
+          markSpecPhaseGenerating(req.params.projectId, 'docs-generate');
+
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else if (status.currentAgent === mappedPhase.agent &&
             status.agents[mappedPhase.agent].currentPhase === mappedPhase.phase) {
           // Phase matches, mark as ai-working
           markAIWorkStarted(req.params.projectId);
@@ -2112,17 +2252,19 @@ Please analyze this request and update the scoping_plan.json file.`;
         // Check if we should resume an existing session
         const existingSessionId = getAgentSession(projectId, agent);
 
+        const specProcessKey = `spec:${projectId}:${phase}`;
+
         if (existingSessionId && !isFirstPhaseOfAgent) {
           // Resume existing session for this agent
           logger.debug(`📌 Resuming ${agent} agent session: ${existingSessionId}`);
           sessionId = existingSessionId;
           // TODO: For now, still using keyboard automation with session tracking
           // When refine endpoint is called, it will use --resume
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool, specProcessKey);
         } else {
           // Create new session (first phase of agent)
           logger.debug(`🆕 Starting new ${agent} agent session`);
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool, specProcessKey);
 
           // Save the session ID if headless mode was used
           if (result.sessionId) {
@@ -2435,7 +2577,8 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         // Trigger Cursor automation with phase for WebSocket streaming
         // Use 15-minute timeout for breakdown (complex task with lots of context to analyze)
         const BREAKDOWN_TIMEOUT = 15 * 60 * 1000; // 15 minutes
-        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT, aiTool);
+        const breakdownProcessKey = `breakdown:${req.params.projectId}`;
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT, aiTool, breakdownProcessKey);
 
         if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');
@@ -2541,12 +2684,38 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       res.status(500).json({ error: 'Failed to check breakdown status' });
     }
   });
-  
+
+  // Cancel all running headless processes for a project
+  app.post('/api/headless/cancel/:projectId', (req, res) => {
+    try {
+      const { projectId } = req.params;
+
+      // Kill running headless processes
+      const cancelled = cancelAllProjectProcesses(projectId);
+      logger.debug(`🛑 Cancelled ${cancelled} headless process(es) for project ${projectId}`);
+
+      // Clear in-memory generation tracker so UI doesn't restore "working" state on reload
+      markSpecPhaseComplete(projectId);
+      markBreakdownComplete(projectId);
+
+      // Clear file-based ai-working state so status endpoint doesn't report isGenerating
+      clearAIWorkingState(projectId);
+
+      // Notify connected clients
+      broadcastHeadlessCancelled('headless', undefined);
+
+      res.json({ success: true, cancelled });
+    } catch (error) {
+      logger.error('Error cancelling headless processes:', error);
+      res.status(500).json({ error: 'Failed to cancel headless processes' });
+    }
+  });
+
   // Auto-detect next incomplete phase for a project
   app.get('/api/projects/:id/next-phase', (req, res) => {
     try {
       const projectPath = path.join(OUTPUT_DIR, 'projects', req.params.id);
-      
+
       if (!fs.existsSync(projectPath)) {
         return res.status(404).json({ error: 'Project not found' });
       }
@@ -2768,7 +2937,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       try {
         console.log('[SHIP DEBUG] Triggering AI tool automation with phase=ship...');
         logger.debug('🚀 [API] Triggering AI tool automation...');
-        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship', undefined, aiTool);
+        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship', undefined, aiTool, `ship:${projectId}:${issueId}`);
         console.log('[SHIP DEBUG] AI tool automation result:', shipResult);
         logger.debug(`[API] AI tool automation result:`, shipResult);
       } catch (err) {
@@ -3437,23 +3606,29 @@ ${suggestion || 'Implement this change directly in your code editor.'}
     
     // Check if this file indicates AI work completion
     let shouldUpdateStatus = false;
-    
+    // Track which specific doc generation completed (for parallel docs-generate phase)
+    let docGenAgent: AgentType | null = null;
+    let docGenPhase: string | null = null;
+
     // Check file content to validate it's real content
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       logger.debug(`📏 File size: ${content.length} characters`);
-      
+
       // Validate minimum content length (avoid empty files)
       if (content.trim().length < 50) {
         logger.debug(`❌ File too small (< 50 chars), skipping`);
         logger.debug(`${'='.repeat(80)}\n`);
         return;
       }
-      
+
+      // During docs-generate phase, handle doc file changes specially
+      const isDocsGeneratePhase = status.currentPhase === 'docs-generate';
+
       // PM phases
       if (fileName === 'pm_questions.json' && dirName === 'questions') {
         logger.debug(`🎯 Detected PM questions file`);
-        if (currentPhase === 'questions-generate') {
+        if (currentAgent === 'pm' && currentPhase === 'questions-generate') {
           logger.debug(`✅ Current phase matches: questions-generate`);
           const hasReal = hasRealQuestions(content);
           logger.debug(`🎲 Has real questions: ${hasReal}`);
@@ -3461,30 +3636,35 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             shouldUpdateStatus = true;
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: questions-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentAgent}-${currentPhase}, expected: pm-questions-generate`);
         }
       } else if ((fileName === 'prd.md' || fileName === 'acceptance_criteria.json') && dirName === 'documents') {
         logger.debug(`🎯 Detected PM file: ${fileName}`);
-        if (currentPhase === 'prd-generate') {
-          logger.debug(`✅ Current phase matches: prd-generate`);
-          
+        if (isDocsGeneratePhase || currentPhase === 'prd-generate') {
+          logger.debug(`✅ Phase matches for PM doc generation`);
+
           // For PM phase, we need BOTH files to be complete (PRD AND acceptance_criteria.json)
           const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
-          const phaseStartedAt = status.agents[currentAgent]?.phases['prd-generate']?.startedAt || null;
+          const phaseStartedAt = status.agents.pm?.phases['prd-generate']?.startedAt || null;
           const bothFilesComplete = isPMPRDComplete(projectPath, phaseStartedAt);
           logger.debug(`🎲 Both PM files complete (PRD + acceptance_criteria.json): ${bothFilesComplete}`);
-          
+
           if (bothFilesComplete) {
-            shouldUpdateStatus = true;
+            if (isDocsGeneratePhase) {
+              docGenAgent = 'pm';
+              docGenPhase = 'prd-generate';
+            } else {
+              shouldUpdateStatus = true;
+            }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: prd-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: prd-generate or docs-generate`);
         }
       }
       // UX phases
       else if (fileName === 'ux_questions.json' && dirName === 'questions') {
         logger.debug(`🎯 Detected UX questions file`);
-        if (currentPhase === 'questions-generate') {
+        if (currentAgent === 'ux' && currentPhase === 'questions-generate') {
           logger.debug(`✅ Current phase matches: questions-generate`);
           const hasReal = hasRealQuestions(content);
           logger.debug(`🎲 Has real questions: ${hasReal}`);
@@ -3492,30 +3672,35 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             shouldUpdateStatus = true;
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: questions-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentAgent}-${currentPhase}, expected: ux-questions-generate`);
         }
       } else if ((fileName === 'design_brief.md' || fileName === 'screens.json') && dirName === 'documents') {
         logger.debug(`🎯 Detected UX design file: ${fileName}`);
-        if (currentPhase === 'design-brief-generate') {
-          logger.debug(`✅ Current phase matches: design-brief-generate`);
-          
+        if (isDocsGeneratePhase || currentPhase === 'design-brief-generate') {
+          logger.debug(`✅ Phase matches for UX doc generation`);
+
           // For UX phase, we need BOTH files to be complete (design_brief.md AND screens.json)
           const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
-          const phaseStartedAt = status.agents[currentAgent]?.phases['design-brief-generate']?.startedAt || null;
+          const phaseStartedAt = status.agents.ux?.phases['design-brief-generate']?.startedAt || null;
           const allFilesComplete = isUXWireframesComplete(projectPath, phaseStartedAt);
           logger.debug(`🎲 Both UX files complete (design brief + screens.json): ${allFilesComplete}`);
-          
+
           if (allFilesComplete) {
-            shouldUpdateStatus = true;
+            if (isDocsGeneratePhase) {
+              docGenAgent = 'ux';
+              docGenPhase = 'design-brief-generate';
+            } else {
+              shouldUpdateStatus = true;
+            }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: design-brief-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: design-brief-generate or docs-generate`);
         }
       }
       // Engineer phases
       else if (fileName === 'engineer_questions.json' && dirName === 'questions') {
         logger.debug(`🎯 Detected Engineer questions file`);
-        if (currentPhase === 'questions-generate') {
+        if (currentAgent === 'engineer' && currentPhase === 'questions-generate') {
           logger.debug(`✅ Current phase matches: questions-generate`);
           const hasReal = hasRealQuestions(content);
           logger.debug(`🎲 Has real questions: ${hasReal}`);
@@ -3523,26 +3708,31 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             shouldUpdateStatus = true;
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: questions-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentAgent}-${currentPhase}, expected: engineer-questions-generate`);
         }
       } else if (fileName === 'technical_specification.md' && dirName === 'documents') {
         logger.debug(`🎯 Detected technical specification file`);
-        if (currentPhase === 'spec-generate') {
-          logger.debug(`✅ Current phase matches: spec-generate`);
+        if (isDocsGeneratePhase || currentPhase === 'spec-generate') {
+          logger.debug(`✅ Phase matches for Engineer doc generation`);
           const hasPlaceholders = hasMarkdownPlaceholders(content);
           logger.debug(`🎲 Has placeholders: ${hasPlaceholders}`);
-          
+
           if (!hasPlaceholders) {
             // Check if technology_choices.json is also complete
             const techChoicesPath = getTechnologyChoicesPath(projectId);
-            
+
             if (fs.existsSync(techChoicesPath)) {
               const techChoicesContent = fs.readFileSync(techChoicesPath, 'utf-8');
               const choicesHasPlaceholders = !hasRealJsonContent(techChoicesContent);
               logger.debug(`🎲 Technology choices has placeholders: ${choicesHasPlaceholders}`);
-              
+
               if (!choicesHasPlaceholders) {
-            shouldUpdateStatus = true;
+                if (isDocsGeneratePhase) {
+                  docGenAgent = 'engineer';
+                  docGenPhase = 'spec-generate';
+                } else {
+                  shouldUpdateStatus = true;
+                }
               } else {
                 logger.debug(`⏳ Waiting for technology_choices.json to be complete`);
               }
@@ -3551,50 +3741,66 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate or docs-generate`);
         }
       } else if (fileName === 'technology_choices.json' && dirName === 'documents') {
         // technology_choices.json needs to be checked along with tech spec
         logger.debug(`🎯 Detected technology choices file`);
-        if (currentPhase === 'spec-generate') {
-          logger.debug(`✅ Current phase matches: spec-generate`);
+        if (isDocsGeneratePhase || currentPhase === 'spec-generate') {
+          logger.debug(`✅ Phase matches for Engineer doc generation`);
           const choicesHasPlaceholders = !hasRealJsonContent(content);
           logger.debug(`🎲 Technology choices has placeholders: ${choicesHasPlaceholders}`);
-          
+
           if (!choicesHasPlaceholders) {
-          // Check if technical_specification.md is also complete
-          const techSpecPath = getTechnicalSpecPath(projectId);
-          
-          if (fs.existsSync(techSpecPath)) {
-            const techSpecContent = fs.readFileSync(techSpecPath, 'utf-8');
+            // Check if technical_specification.md is also complete
+            const techSpecPath = getTechnicalSpecPath(projectId);
+
+            if (fs.existsSync(techSpecPath)) {
+              const techSpecContent = fs.readFileSync(techSpecPath, 'utf-8');
               const techSpecHasPlaceholders = hasMarkdownPlaceholders(techSpecContent);
               logger.debug(`🎲 Technical spec has placeholders: ${techSpecHasPlaceholders}`);
-            
+
               if (!techSpecHasPlaceholders) {
-              shouldUpdateStatus = true;
+                if (isDocsGeneratePhase) {
+                  docGenAgent = 'engineer';
+                  docGenPhase = 'spec-generate';
+                } else {
+                  shouldUpdateStatus = true;
+                }
               } else {
                 logger.debug(`⏳ Waiting for technical_specification.md to be complete`);
-            }
-          } else {
-            logger.debug(`⚠️  Technical specification not found yet`);
+              }
+            } else {
+              logger.debug(`⚠️  Technical specification not found yet`);
             }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate or docs-generate`);
         }
       } else {
         logger.debug(`⚠️  File not recognized for status updates: ${fileName} in ${dirName}`);
       }
-      
-      if (shouldUpdateStatus) {
+
+      // Handle parallel doc generation completion
+      if (docGenAgent && docGenPhase) {
+        logger.debug(`\n🎉 DOC GENERATION COMPLETE: ${docGenAgent}-${docGenPhase}`);
+
+        if (isCostEstimationEnabled()) {
+          invalidateOutputTokenCache(projectId);
+          logger.debug(`💰 [Cost] Output token cache invalidated for ${projectId}`);
+        }
+
+        logger.debug(`✅ Calling markDocGenComplete(${projectId}, ${docGenAgent}, ${docGenPhase})`);
+        markDocGenComplete(projectId, docGenAgent, docGenPhase);
+      } else if (shouldUpdateStatus) {
         logger.debug(`\n🎉 AI WORK COMPLETE DETECTED!`);
-        
+
         // Invalidate output token cache so it gets recalculated on next cost widget load
         if (isCostEstimationEnabled()) {
           invalidateOutputTokenCache(projectId);
           logger.debug(`💰 [Cost] Output token cache invalidated for ${projectId}`);
         }
-        
+
         logger.debug(`✅ Calling markAIWorkComplete(${projectId})`);
         markAIWorkComplete(projectId);
       } else {
