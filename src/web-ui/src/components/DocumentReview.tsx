@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigationGuard } from '../hooks/use-navigation-guard';
 import { logger } from '../utils/logger';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -67,6 +68,9 @@ export function DocumentReview({
   const [loadingScreens, setLoadingScreens] = useState(false);
   const [loadingAcceptanceCriteria, setLoadingAcceptanceCriteria] = useState(false);
   const [allTechChoicesMade, setAllTechChoicesMade] = useState(true);
+
+  const isDocumentDirty = isEditing && editingContent !== editedContent;
+  useNavigationGuard({ isDirty: isDocumentDirty, message: 'You have unsaved document edits. Are you sure you want to leave?' });
 
   // Update content when props change
   useEffect(() => {

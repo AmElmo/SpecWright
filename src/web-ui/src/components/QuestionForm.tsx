@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 import { useSidebarWidth } from '../hooks/use-sidebar-width';
+import { useNavigationGuard } from '../hooks/use-navigation-guard';
 import { SidebarResizeHandle } from './SidebarResizeHandle';
 
 interface Question {
@@ -63,11 +64,14 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
   const [error, setError] = useState<string>('');
   const [customAnswers, setCustomAnswers] = useState<{ [key: number]: boolean }>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isDirty, setIsDirty] = useState(false);
   const questionRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const submitSectionRef = useRef<HTMLDivElement | null>(null);
   const hasAutoFocused = useRef(false);
   const isManualScrolling = useRef(false);
   const { sidebarWidth, handleResizeStart } = useSidebarWidth();
+
+  useNavigationGuard({ isDirty, message: 'You have unsaved question answers. Are you sure you want to leave?' });
 
   useEffect(() => {
     fetchQuestions();
@@ -127,6 +131,7 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
   
   const fetchQuestions = async () => {
     try {
+      setIsDirty(false);
       setLoading(true);
       const response = await fetch(`/api/questions/${projectId}/${phase}`);
       
@@ -183,7 +188,8 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
   
   const handleAnswerChange = (index: number, answer: string, shouldAutoAdvance = true) => {
     if (!data) return;
-    
+    setIsDirty(true);
+
     const updatedQuestions = [...data.questions];
     updatedQuestions[index] = { ...updatedQuestions[index], answer };
     
@@ -223,7 +229,8 @@ export function QuestionForm({ projectId, phase, onComplete, onCancel }: Questio
       if (!response.ok) {
         throw new Error('Failed to save answers');
       }
-      
+
+      setIsDirty(false);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save answers');
