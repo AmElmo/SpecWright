@@ -22,7 +22,7 @@ export default function Home() {
           <span>SpecWright</span>
         </Link>
         <div className={styles.navLinks}>
-          <Link href="/docs">Docs</Link>
+          <Link href="/docs">Documentation</Link>
           <a
             href="https://github.com/amelmo/specwright"
             target="_blank"
@@ -71,9 +71,6 @@ export default function Home() {
               </svg>
               View on GitHub
             </a>
-            <Link href="/docs/getting-started" className={styles.docsBtn}>
-              Read the docs →
-            </Link>
           </div>
         </section>
 
