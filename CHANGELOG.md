@@ -1,3 +1,9 @@
+## [3.6.1](https://github.com/amelmo/specwright/compare/v3.6.0...v3.6.1) (2026-02-23)
+
+### Bug Fixes
+
+* **website:** fix mobile horizontal overflow causing white strip on iPhone ([#29](https://github.com/amelmo/specwright/issues/29)) ([6cdacd9](https://github.com/amelmo/specwright/commit/6cdacd9b262517c3f41cb7ea3570b6b13c333d15))
+
 ## [3.6.0](https://github.com/amelmo/specwright/compare/v3.5.0...v3.6.0) (2026-02-23)
 
 ### Features
