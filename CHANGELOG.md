@@ -1,3 +1,9 @@
+## [3.5.0](https://github.com/amelmo/specwright/compare/v3.4.1...v3.5.0) (2026-02-23)
+
+### Features
+
+* restructure workflow with unified questions and document-level approval ([#26](https://github.com/amelmo/specwright/issues/26)) ([044e524](https://github.com/amelmo/specwright/commit/044e524a236fa84f2a3bb2d1dadc8f4413e5ed04))
+
 ## [3.4.1](https://github.com/amelmo/specwright/compare/v3.4.0...v3.4.1) (2026-02-23)
 
 ### Bug Fixes
