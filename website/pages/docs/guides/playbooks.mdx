@@ -1,0 +1,54 @@
+# Playbooks & Standards
+
+A Playbook is a set of project standards and conventions that SpecWright generates by analyzing your existing codebase. Once created, the AI agents reference it during specification generation — so your specs follow your team's actual patterns, not generic defaults.
+
+## What a Playbook contains
+
+The generated `PLAYBOOK.md` typically includes:
+
+- **Project structure** — How your codebase is organized (folder structure, naming conventions)
+- **Code patterns** — Common patterns used in your project (state management, error handling, etc.)
+- **Technology stack** — What frameworks and libraries are already in use
+- **Development standards** — Formatting, linting, testing conventions
+- **Architecture decisions** — Key patterns like API structure, data flow, etc.
+
+## Generating a Playbook
+
+import { Steps } from 'nextra/components'
+
+<Steps>
+
+### Open the Playbook section
+
+In the Web UI, navigate to **Playbook** from the sidebar. Or from the CLI:
+
+```bash
+specwright playbook
+```
+
+### Generate from your codebase
+
+Click **Generate Playbook**. SpecWright analyzes your project's file structure, dependencies, and code patterns to produce a `PLAYBOOK.md` tailored to your project.
+
+### Review and refine
+
+The generated Playbook is a Markdown file you can review and edit. Remove anything that doesn't apply, and add any standards the AI may have missed.
+
+</Steps>
+
+## How Playbooks improve specifications
+
+When a Playbook exists, the AI agents use it as additional context during specification generation. For example:
+
+- The **Engineer** agent will recommend technologies consistent with your existing stack
+- The **Issue Breakdown** will reference your folder structure and naming conventions in task descriptions
+- Shipped prompts will include Playbook standards, so your AI coding tool follows your conventions
+
+## Auditing against your Playbook
+
+SpecWright can also audit generated specifications against your Playbook to check for inconsistencies — for example, if the tech spec recommends a state management library that conflicts with your existing setup.
+
+## What's next?
+
+- [Customizing AI Agents](/docs/guides/customizing-agents) — Fine-tune how the AI agents behave
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send tasks to your AI coding tool with Playbook context included

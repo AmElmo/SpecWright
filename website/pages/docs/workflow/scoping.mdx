@@ -1,0 +1,47 @@
+# Smart Scoping
+
+Not everything needs a full specification. Before generating any documents, SpecWright analyzes your request to determine the right level of effort.
+
+## How it works
+
+When you describe what you want to build, the AI Scoping agent classifies your request into one of three categories:
+
+| Classification | What it means | Example |
+|---------------|---------------|---------|
+| **Work Directly** | Too small for a spec — just implement it | "Fix the login button color" |
+| **Project** | Needs a full specification | "Add Google Sign-in to the app" |
+| **Multi-Project** | Large enough to split into multiple projects | "Build a complete e-commerce platform" |
+
+## Work Directly
+
+If your request is a small change — a bug fix, a UI tweak, a minor feature — SpecWright tells you to skip the spec and start coding. This prevents over-engineering simple tasks.
+
+Examples of "Work Directly" requests:
+- "Change the validation message on the login form"
+- "Add a loading spinner to the dashboard"
+- "Fix the broken link in the footer"
+
+## Project
+
+If your request involves meaningful new functionality, SpecWright creates a project and guides you through the four specification phases (PM → Designer → Engineer → Breakdown).
+
+Examples of "Project" requests:
+- "Build user authentication with OAuth"
+- "Create a real-time notification system"
+- "Add a video upload feature with processing"
+
+## Multi-Project
+
+If your request is large and spans multiple distinct capabilities, SpecWright breaks it into separate projects. Each project gets its own specification flow, but they're organized together as related work.
+
+For example, "Build a project management tool" might be split into:
+- **Project 1:** User authentication and team management
+- **Project 2:** Project boards with drag-and-drop
+- **Project 3:** Real-time collaboration
+
+Each project is then specced independently through the full workflow.
+## What's next?
+
+Once scoping is complete:
+- **Work Directly** → Start coding in your preferred tool
+- **Project or Multi-Project** → Continue to the [Product Manager Phase](/docs/workflow/product-manager)

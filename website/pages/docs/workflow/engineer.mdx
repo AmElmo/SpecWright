@@ -1,0 +1,44 @@
+# Engineer Phase
+
+The Engineer phase defines **how to build it**. The AI Engineer agent reviews the PRD and design brief, asks technical questions, then produces architecture documents and technology choices.
+
+## What the Engineer agent asks
+
+The Engineer agent generates questions focused on technical constraints and decisions. These typically cover:
+
+- **Technology preferences** — Do you have an existing tech stack? Any requirements?
+- **Architecture patterns** — Monolith or microservices? Server-rendered or SPA?
+- **Data storage** — What kind of database? Any caching needs?
+- **Authentication** — How should users authenticate? OAuth, JWT, sessions?
+- **Third-party services** — Any external APIs or services to integrate with?
+- **Performance and scale** — Expected traffic? Real-time requirements?
+
+## What you get
+
+### Technical specification
+
+A Markdown document covering:
+
+- **Architecture overview** — How the system is structured
+- **API design** — Key endpoints, data contracts
+- **Data model** — Database schema, relationships
+- **Implementation approach** — Build order, key technical decisions
+- **Security considerations** — Authentication, authorization, data protection
+
+### Technology choices
+
+A structured file listing every technology selected, with:
+
+- **What** — The technology or library
+- **Why** — Rationale for choosing it
+- **Trade-offs** — What alternatives were considered and why they were rejected
+
+![Technology choices with rationale in SpecWright](/screenshots/technology_choices.png)
+
+## Why it matters
+
+Technology decisions made upfront, with documented rationale, prevent mid-project pivots. When the Issue Breakdown phase creates implementation tasks, it uses the tech spec to scope work accurately — including the right frameworks, libraries, and patterns in each task.
+
+## What's next?
+
+- [Issue Breakdown](/docs/workflow/issue-breakdown) — Turn specs into implementation tasks

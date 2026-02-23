@@ -1,0 +1,91 @@
+# Output Files
+
+All specifications SpecWright generates are saved as plain Markdown and JSON files in your project's `specwright/outputs/` directory. No database, no proprietary format — just files you can read, edit, version-control, and feed into AI coding tools.
+
+## Directory structure
+
+After running a full specification workflow, your outputs look like this:
+
+```
+specwright/outputs/
+├── project_plan.json                          # Scoping result
+└── projects/
+    └── 001-user-authentication/
+        ├── project_request.md                 # Your original description
+        ├── project_status.json                # Phase progress tracking
+        ├── questions/
+        │   ├── pm_questions.json              # PM phase questions & answers
+        │   ├── ux_questions.json              # Designer phase questions & answers
+        │   └── engineer_questions.json        # Engineer phase questions & answers
+        ├── documents/
+        │   ├── prd.md                         # Product Requirements Document
+        │   ├── acceptance_criteria.json        # Testable acceptance criteria
+        │   ├── design_brief.md                # UX specification
+        │   ├── screens.json                   # Screen inventory
+        │   ├── technical_specification.md      # Architecture document
+        │   └── technology_choices.json         # Tech stack decisions
+        └── issues/
+            ├── issues.json                    # All tasks in structured format
+            ├── ENG-001.md                     # Individual issue: Login UI
+            ├── ENG-002.md                     # Individual issue: JWT Auth
+            ├── ENG-003.md                     # Individual issue: Password Reset
+            └── ...
+```
+
+## File descriptions
+
+### Project-level files
+
+| File | Format | Description |
+|------|--------|-------------|
+| `project_plan.json` | JSON | Scoping result — lists all projects and their classification |
+| `project_request.md` | Markdown | The original description you provided |
+| `project_status.json` | JSON | Tracks which phases are complete |
+
+### Questions
+
+| File | Format | Description |
+|------|--------|-------------|
+| `pm_questions.json` | JSON | PM agent's questions and your answers |
+| `ux_questions.json` | JSON | Designer agent's questions and your answers |
+| `engineer_questions.json` | JSON | Engineer agent's questions and your answers |
+
+### Specification documents
+
+| File | Format | Description |
+|------|--------|-------------|
+| `prd.md` | Markdown | Product Requirements Document with job stories, scope, and NoGos |
+| `acceptance_criteria.json` | JSON | Testable criteria in Given/When/Then format |
+| `design_brief.md` | Markdown | UX specification with navigation and interaction patterns |
+| `screens.json` | JSON | Screen inventory — every UI screen with components and behavior |
+| `technical_specification.md` | Markdown | Architecture document with API design, data model, security |
+| `technology_choices.json` | JSON | Selected technologies with rationale and trade-offs |
+
+### Issues
+
+| File | Format | Description |
+|------|--------|-------------|
+| `issues.json` | JSON | All implementation tasks in structured format |
+| `ENG-XXX.md` | Markdown | Individual issue files with full context for AI coding tools |
+
+## Version control
+
+Since all outputs are plain text, you can (and should) commit them to Git:
+
+```bash
+git add specwright/outputs/
+git commit -m "feat: add user authentication specification"
+```
+
+This lets you review specs in pull requests, track changes over time, and maintain a clear history of what was specified before implementation began.
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+The `specwright/` directory is designed to live alongside your source code. Committing specs to your repo means the specification is always tied to the codebase it describes.
+</Callout>
+
+## What's next?
+
+- [The Specification Workflow](/docs/workflow) — Understand how each file is generated
+- [CLI Commands](/docs/reference/cli) — Run the workflow from the command line

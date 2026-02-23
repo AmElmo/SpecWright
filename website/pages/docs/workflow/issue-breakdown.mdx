@@ -1,0 +1,41 @@
+# Issue Breakdown
+
+The final phase takes everything from the previous three phases — PRD, design brief, and technical specification — and breaks it into implementation-ready tasks.
+
+## How it works
+
+The AI Breakdown agent analyzes all your specification documents and produces a set of issues, each scoped as a **vertical slice** — a self-contained piece of work that delivers user-visible value.
+
+Unlike horizontal slicing (build all the database first, then all the API, then all the UI), vertical slices cut through every layer. A single issue like "Build login screen with JWT authentication" includes the UI, the API endpoint, and the database changes — everything needed to make that feature work end-to-end.
+
+## What you get
+
+Each issue includes:
+
+- **Title** — Clear, actionable description of the task
+- **Description** — Full context explaining what needs to be built
+- **Acceptance criteria** — What "done" looks like, inherited from the PRD
+- **Dependencies** — Which issues need to be completed first
+- **Specification context** — Relevant excerpts from the PRD, design brief, and tech spec
+
+![Implementation tasks organized by vertical slice](/screenshots/issue_list_page.png)
+
+## Issue format
+
+Each issue is saved as an individual Markdown file (e.g., `ENG-001.md`) with all the context an AI coding tool needs to implement it. The full list is also available in `issues.json` for programmatic access.
+
+```
+specwright/outputs/projects/001-your-project/issues/
+├── issues.json    # All issues in structured format
+├── ENG-001.md     # Login screen UI
+├── ENG-002.md     # JWT authentication API
+├── ENG-003.md     # Password reset flow
+└── ...
+```
+
+## What's next?
+
+Once issues are generated, you're ready to start building:
+
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues directly to Cursor, Claude Code, or your preferred AI coding tool
+- [Linear Integration](/docs/guides/linear-integration) — Sync issues to your Linear workspace

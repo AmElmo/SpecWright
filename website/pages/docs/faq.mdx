@@ -1,0 +1,65 @@
+# Frequently Asked Questions
+
+## Getting Started
+
+**Do I need an API key to use SpecWright?**
+
+No. SpecWright works with whatever AI coding tool you already have installed — Cursor, Claude Code, GitHub Copilot, etc. It doesn't call AI APIs directly. Instead, it orchestrates prompts and feeds them into your existing tool.
+
+**What AI coding tools does SpecWright support?**
+
+SpecWright works with Cursor, Claude Code, GitHub Copilot, Codex, Gemini CLI, and Windsurf. You select your preferred tool during onboarding, and can change it anytime in Settings.
+
+**Can I use SpecWright without the Web UI?**
+
+Yes. SpecWright has both a CLI and a Web UI. The CLI can run the full specification workflow interactively in your terminal with `specwright spec`. The Web UI provides a visual dashboard with `specwright --ui`. Both produce the same output files.
+
+**What does "Specification-Driven Development" mean?**
+
+SDD is a methodology where you create a structured specification before writing any code. Instead of jumping straight from an idea to implementation, SpecWright walks you through requirements, design, architecture, and task breakdown — so you (and your AI coding tool) know exactly what to build.
+
+## The Workflow
+
+**What happens if SpecWright says my request is "Work Directly"?**
+
+During [Smart Scoping](/docs/workflow/scoping), SpecWright analyzes your request and determines if it's small enough to implement without a full specification. If so, it tells you to just start coding — no spec needed. This prevents over-engineering simple changes like bug fixes or small tweaks.
+
+**Can I skip phases?**
+
+The phases are sequential — each one builds on the previous. The Product Manager output feeds into the Designer, which feeds into the Engineer, which feeds into Issue Breakdown. Skipping a phase means the next phase won't have the context it needs. You can, however, keep answers brief if a phase feels less relevant to your project.
+
+**Can I go back and change answers?**
+
+Yes. You can revisit any phase and update your answers. When you regenerate a phase's output, subsequent phases can be re-run with the updated context.
+
+**What are "job stories"?**
+
+Job stories are an alternative to user stories. Instead of "As a user, I want...", they follow the format: "When [situation], I want to [motivation], so I can [expected outcome]." This format focuses on the context and motivation behind a feature, which produces better specifications.
+
+## Output & Files
+
+**Where do specifications live?**
+
+All output files live in the `specwright/outputs/` directory inside your project. They're plain Markdown and JSON files — no proprietary format, no database. See [Output Files](/docs/reference/output-files) for the full structure.
+
+**Can I version-control my specs?**
+
+Yes — that's the point. Since all specs are plain text files (Markdown and JSON), you can commit them to Git, review them in pull requests, and track changes over time. This is one of the core benefits of SpecWright's file-based approach.
+
+**Can I edit the specification files manually?**
+
+Absolutely. The files are standard Markdown and JSON. You can edit them in any text editor. The Web UI will reflect your changes on the next page load.
+
+## Integrations
+
+**How does the Linear integration work?**
+
+SpecWright can sync your projects and issues to Linear. Connect your Linear workspace in Settings, then push projects and issues directly from the SpecWright dashboard. See [Linear Integration](/docs/guides/linear-integration) for setup instructions.
+
+**What is a Playbook?**
+
+A Playbook is a set of project standards and conventions that SpecWright generates by analyzing your existing codebase. It captures patterns like folder structure, naming conventions, and architectural decisions. The AI agents then use these standards when generating specifications. See [Playbooks](/docs/guides/playbooks) for details.
+
+---
+
+Still have questions? [Open an issue on GitHub](https://github.com/amelmo/specwright/issues) or [join the discussion](https://github.com/amelmo/specwright/discussions).

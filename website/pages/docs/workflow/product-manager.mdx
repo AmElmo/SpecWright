@@ -1,0 +1,49 @@
+# Product Manager Phase
+
+The PM phase defines **what** to build. The AI Product Manager agent asks you strategic questions about your project, then generates a Product Requirements Document (PRD) with job stories and acceptance criteria.
+
+## What the PM agent asks
+
+The PM agent generates 5–8 focused questions tailored to your project. These typically cover:
+
+- **Purpose and context** — What problem does this solve? Who is it for?
+- **Users and scope** — Who are the primary users? What's in scope vs. out of scope?
+- **Key requirements** — What must the feature do? What are the core behaviors?
+- **Business logic** — What rules govern the feature? What edge cases matter?
+- **Data and integrations** — What data does it need? Does it connect to external systems?
+- **Constraints** — Are there performance, security, or compatibility requirements?
+
+For each question, the AI suggests answer options based on common patterns. You can pick a suggested answer or write your own.
+## What you get
+
+After you answer the questions, the PM agent generates:
+
+### PRD (Product Requirements Document)
+
+A structured Markdown document containing:
+- **Problem statement** — What problem this project solves
+- **Solution overview** — High-level approach
+- **Job stories** — Requirements in "When [situation], I want to [action], so I can [outcome]" format
+- **Core functionality** — The must-have features
+- **Secondary functionality** — Nice-to-have features
+- **NoGos** — What is explicitly **not** being built (prevents scope creep)
+
+### Acceptance criteria
+
+Testable criteria in "Given / When / Then" format:
+
+> **Given** a user is on the login page
+> **When** they enter valid credentials and click "Sign In"
+> **Then** they are redirected to the dashboard and see a welcome message
+
+![Acceptance criteria view in SpecWright](/screenshots/acceptance_criteria.png)
+
+## Why it matters
+
+The PRD is the foundation for every subsequent phase. The Designer uses it to know what screens to design. The Engineer uses it to make architecture decisions. The Issue Breakdown uses it to define what "done" looks like for each task.
+
+Without a clear PRD, specifications drift, scope creeps, and AI coding tools generate code that doesn't match what you actually need.
+
+## What's next?
+
+- [Designer Phase](/docs/workflow/designer) — UX specifications and screen designs
