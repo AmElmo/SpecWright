@@ -1119,7 +1119,7 @@ Please analyze this request and update the scoping_plan.json file.`;
   });
 
   // Refine AI output with user feedback
-  // Uses --resume to continue a previous Claude session
+  // Tries --resume first; falls back to a fresh session with document context
   app.post('/api/refine', async (req, res) => {
     try {
       const { phase, projectId, sessionId, feedback, images } = req.body;
@@ -1128,34 +1128,27 @@ Please analyze this request and update the scoping_plan.json file.`;
         return res.status(400).json({ error: 'Feedback is required' });
       }
 
-      if (!sessionId) {
-        return res.status(400).json({ error: 'Session ID is required for refinement' });
-      }
-
       logger.debug(chalk.magenta(`\n🔄 Starting refinement for phase: ${phase}`));
-      logger.debug(chalk.cyan(`  Session ID: ${sessionId}`));
+      logger.debug(chalk.cyan(`  Session ID: ${sessionId || '(none — will use fresh session)'}`));
       logger.debug(chalk.cyan(`  Feedback: ${feedback.substring(0, 100)}...`));
       logger.debug(chalk.cyan(`  Images: ${images?.length || 0}`));
 
-      // Build the refinement prompt
-      let prompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
+      // Build the base feedback prompt
+      let feedbackPrompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
 
       // Save images to disk and reference them in the prompt
-      if (images && images.length > 0) {
-        // Determine project ID for image storage
-        const storageProjectId = projectId || '_scoping_active';
-        // Map phase to agent type
-        const agentType = (phase === 'scoping' ? 'scoping' :
-                          phase === 'pm' ? 'pm' :
-                          phase === 'ux' || phase === 'designer' ? 'ux' :
-                          phase === 'engineer' ? 'engineer' :
-                          'breakdown') as SessionAgentType;
+      const agentType = (phase === 'scoping' ? 'scoping' :
+                        phase === 'pm' ? 'pm' :
+                        phase === 'ux' || phase === 'designer' ? 'ux' :
+                        phase === 'engineer' ? 'engineer' :
+                        'breakdown') as SessionAgentType;
 
-        // Convert base64 images to buffers and save to disk
+      if (images && images.length > 0) {
+        const storageProjectId = projectId || '_scoping_active';
+
         const imagesToSave: { filename: string; data: Buffer }[] = [];
         for (let i = 0; i < images.length; i++) {
           const base64Data = images[i];
-          // Extract the actual base64 content (remove data:image/xxx;base64, prefix)
           const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
           if (matches) {
             const extension = matches[1];
@@ -1170,41 +1163,107 @@ Please analyze this request and update the scoping_plan.json file.`;
           const savedPaths = saveRefinementImages(storageProjectId, agentType, imagesToSave);
           logger.debug(chalk.cyan(`  📸 Saved ${savedPaths.length} images to disk`));
 
-          // Add image file references to prompt
-          // Claude CLI can read these files using the Read tool
-          prompt += `\n\nThe user has attached ${savedPaths.length} reference image(s). You can view them using the Read tool:`;
+          feedbackPrompt += `\n\nThe user has attached ${savedPaths.length} reference image(s). You can view them using the Read tool:`;
           for (const imagePath of savedPaths) {
-            prompt += `\n- ${imagePath}`;
+            feedbackPrompt += `\n- ${imagePath}`;
           }
-          prompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
+          feedbackPrompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
         }
       }
 
       // Broadcast that refinement has started (with isRefinement=true)
       broadcastHeadlessStarted('claude-code', phase, true);
 
-      // Execute with resume
-      const result = await executeClaudeHeadless(prompt, {
+      let result;
+
+      // Strategy 1: Try resuming the existing session
+      if (sessionId) {
+        logger.debug(chalk.cyan('  Attempting session resume...'));
+        result = await executeClaudeHeadless(feedbackPrompt, {
+          workingDir: WORKSPACE_PATH,
+          resumeSessionId: sessionId,
+          onProgress: (status: string) => {
+            broadcastHeadlessProgress(status, phase, true);
+          }
+        });
+
+        if (result.success) {
+          broadcastHeadlessCompleted('claude-code', true, phase, result.sessionId, true);
+          // Save updated session
+          if (result.sessionId && projectId) {
+            saveAgentSession(projectId, agentType, result.sessionId);
+          }
+          return res.json({ success: true, sessionId: result.sessionId || sessionId });
+        }
+
+        logger.debug(chalk.yellow(`  ⚠️ Session resume failed: ${result.error}. Falling back to fresh session...`));
+      }
+
+      // Strategy 2: Fresh session with document content as context
+      logger.debug(chalk.cyan('  Starting fresh refinement session with document context...'));
+
+      // Read the current document content from disk
+      let documentPath = '';
+      let documentLabel = '';
+      if (phase === 'pm' && projectId) {
+        documentPath = getPRDPath(projectId);
+        documentLabel = 'Product Requirements Document (PRD)';
+      } else if ((phase === 'ux' || phase === 'designer') && projectId) {
+        documentPath = getDesignBriefPath(projectId);
+        documentLabel = 'Design Brief';
+      } else if (phase === 'engineer' && projectId) {
+        documentPath = getTechnicalSpecPath(projectId);
+        documentLabel = 'Technical Specification';
+      }
+
+      let freshPrompt = '';
+      if (documentPath && fs.existsSync(documentPath)) {
+        const documentContent = fs.readFileSync(documentPath, 'utf-8');
+        freshPrompt = `You are refining a ${documentLabel} for a software project.\n\n` +
+          `Here is the current document content:\n\n---\n${documentContent}\n---\n\n` +
+          `The document is located at: ${documentPath}\n\n` +
+          `USER FEEDBACK:\n${feedback}\n\n` +
+          `Please update the document file based on this feedback. Use the Write tool to save the updated content to the same file path.`;
+      } else {
+        // No document found — use a generic prompt
+        freshPrompt = feedbackPrompt;
+      }
+
+      // Append image references if any were saved
+      if (images && images.length > 0) {
+        const storageProjectId = projectId || '_scoping_active';
+        const imagesDir = path.join(OUTPUT_DIR, 'projects', storageProjectId, 'refinement-images', agentType);
+        if (fs.existsSync(imagesDir)) {
+          const imageFiles = fs.readdirSync(imagesDir).map(f => path.join(imagesDir, f));
+          if (imageFiles.length > 0) {
+            freshPrompt += `\n\nThe user has attached ${imageFiles.length} reference image(s). You can view them using the Read tool:`;
+            for (const imagePath of imageFiles) {
+              freshPrompt += `\n- ${imagePath}`;
+            }
+            freshPrompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
+          }
+        }
+      }
+
+      result = await executeClaudeHeadless(freshPrompt, {
         workingDir: WORKSPACE_PATH,
-        resumeSessionId: sessionId,
         onProgress: (status: string) => {
           broadcastHeadlessProgress(status, phase, true);
         }
       });
 
-      // Broadcast completion with session ID for frontend (with isRefinement=true)
       broadcastHeadlessCompleted('claude-code', result.success, phase, result.sessionId, true);
 
+      // Save new session ID for future refinements
+      if (result.sessionId && projectId) {
+        saveAgentSession(projectId, agentType, result.sessionId);
+        logger.debug(chalk.green(`  💾 Saved new ${agentType} session: ${result.sessionId}`));
+      }
+
       if (result.success) {
-        res.json({
-          success: true,
-          sessionId: result.sessionId || sessionId // Return new or same session ID
-        });
+        res.json({ success: true, sessionId: result.sessionId });
       } else {
-        res.json({
-          success: false,
-          error: result.error || 'Refinement failed'
-        });
+        res.json({ success: false, error: result.error || 'Refinement failed' });
       }
     } catch (error) {
       logger.error('Error during refinement:', error);
@@ -1601,59 +1660,116 @@ Please analyze this request and update the scoping_plan.json file.`;
             logger.debug(`🧹 [Status] Clearing stale ai-working state for ${req.params.projectId}`);
             clearAIWorkingState(req.params.projectId);
             anyGenerating = false;
-            effectivePmStatus = 'not-started';
-            effectiveUxStatus = 'not-started';
-            effectiveEngineerStatus = 'not-started';
+            // Re-read statuses after clearing — clearAIWorkingState only resets
+            // 'ai-working' phases, preserving 'complete' ones. We must honour
+            // that instead of blindly resetting everything to 'not-started'.
+            const refreshed = getOrCreateStatus(req.params.projectId);
+            effectivePmStatus = refreshed.agents.pm.phases['prd-generate']?.status || 'not-started';
+            effectiveUxStatus = refreshed.agents.ux.phases['design-brief-generate']?.status || 'not-started';
+            effectiveEngineerStatus = refreshed.agents.engineer.phases['spec-generate']?.status || 'not-started';
           }
 
           // Per-file completeness checks (check on disk for granular UI)
+          // Use phase startedAt timestamps to avoid false positives from template writes
           const pid = req.params.projectId;
+          const pmStartedAt = status.agents.pm.phases['prd-generate']?.startedAt || null;
+          const uxStartedAt = status.agents.ux.phases['design-brief-generate']?.startedAt || null;
+          const engineerStartedAt = status.agents.engineer.phases['spec-generate']?.startedAt || null;
+
+          const pmFilesComplete = [
+            isFileCompletedInPhase(getPRDPath(pid), pmStartedAt),
+            isFileCompletedInPhase(getAcceptanceCriteriaPath(pid), pmStartedAt, 100)
+          ];
+          const uxFilesComplete = [
+            isFileCompletedInPhase(getDesignBriefPath(pid), uxStartedAt, 200),
+            isFileCompletedInPhase(getScreensPath(pid), uxStartedAt, 100)
+          ];
+          const engineerFilesComplete = [
+            isFileCompletedInPhase(getTechnicalSpecPath(pid), engineerStartedAt),
+            isFileCompletedInPhase(getTechnologyChoicesPath(pid), engineerStartedAt, 200)
+          ];
+
+          // Per-agent retroactive completion: if all files are genuinely complete on disk
+          // but the agent status is still ai-working, mark it complete immediately.
+          // This closes the timing gap between file writes and file watcher events.
+          if (effectivePmStatus === 'ai-working' && pmFilesComplete.every(Boolean)) {
+            logger.debug(`✨ [Status API] PM files all complete on disk, marking agent complete`);
+            markDocGenComplete(pid, 'pm', 'prd-generate');
+            effectivePmStatus = 'complete';
+          }
+          if (effectiveUxStatus === 'ai-working' && uxFilesComplete.every(Boolean)) {
+            logger.debug(`✨ [Status API] UX files all complete on disk, marking agent complete`);
+            markDocGenComplete(pid, 'ux', 'design-brief-generate');
+            effectiveUxStatus = 'complete';
+          }
+          if (effectiveEngineerStatus === 'ai-working' && engineerFilesComplete.every(Boolean)) {
+            logger.debug(`✨ [Status API] Engineer files all complete on disk, marking agent complete`);
+            markDocGenComplete(pid, 'engineer', 'spec-generate');
+            effectiveEngineerStatus = 'complete';
+          }
+
+          // Re-read status if any agents were retroactively completed
+          // (markDocGenComplete may have advanced the phase to pm-prd-review)
+          let allDocsRetroactivelyComplete = false;
+          if (effectivePmStatus === 'complete' && effectiveUxStatus === 'complete' && effectiveEngineerStatus === 'complete') {
+            status = getOrCreateStatus(req.params.projectId);
+            allDocsRetroactivelyComplete = status.currentPhase !== 'docs-generate';
+            if (allDocsRetroactivelyComplete) {
+              logger.debug(`➡️ [Status API] All docs retroactively complete, phase advanced to ${status.currentPhase}`);
+            }
+          }
+
+          // Recalculate anyGenerating after retroactive checks
+          anyGenerating = [effectivePmStatus, effectiveUxStatus, effectiveEngineerStatus].some(s => s === 'ai-working');
+
           const docsProgress = {
             pm: {
               status: effectivePmStatus,
               files: [
-                { name: 'prd.md', label: 'Product Requirements', complete: isFileCompletedInPhase(getPRDPath(pid), null) },
-                { name: 'acceptance_criteria.json', label: 'Acceptance Criteria', complete: isFileCompletedInPhase(getAcceptanceCriteriaPath(pid), null, 100) }
+                { name: 'prd.md', label: 'Product Requirements', complete: pmFilesComplete[0] },
+                { name: 'acceptance_criteria.json', label: 'Acceptance Criteria', complete: pmFilesComplete[1] }
               ]
             },
             ux: {
               status: effectiveUxStatus,
               files: [
-                { name: 'design_brief.md', label: 'Design Brief', complete: isFileCompletedInPhase(getDesignBriefPath(pid), null, 200) },
-                { name: 'screens.json', label: 'Screens & Wireframes', complete: isFileCompletedInPhase(getScreensPath(pid), null, 100) }
+                { name: 'design_brief.md', label: 'Design Brief', complete: uxFilesComplete[0] },
+                { name: 'screens.json', label: 'Screens & Wireframes', complete: uxFilesComplete[1] }
               ]
             },
             engineer: {
               status: effectiveEngineerStatus,
               files: [
-                { name: 'technical_specification.md', label: 'Technical Specification', complete: isFileCompletedInPhase(getTechnicalSpecPath(pid), null) },
-                { name: 'technology_choices.json', label: 'Technology Choices', complete: isFileCompletedInPhase(getTechnologyChoicesPath(pid), null, 200) }
+                { name: 'technical_specification.md', label: 'Technical Specification', complete: engineerFilesComplete[0] },
+                { name: 'technology_choices.json', label: 'Technology Choices', complete: engineerFilesComplete[1] }
               ]
             }
           };
 
           nextPhase = anyGenerating ? null : 'docs-generate';
 
-          res.json({
-            projectId: req.params.projectId,
-            phases: {
-              pm: { complete: false },
-              ux: { complete: false },
-              engineer: { complete: false }
-            },
-            currentPhase: 'docs-generate',
-            nextPhase,
-            needsReview: false,
-            reviewDocument: null,
-            isComplete: false,
-            needsGeneration: !anyGenerating,
-            docsProgress,
-            isGenerating: generatingStatus.isGenerating || anyGenerating,
-            generatingPhase: generatingStatus.phase || (anyGenerating ? 'docs-generate' : null),
-            generatingStartedAt: generatingStatus.startedAt
-          });
+          if (!allDocsRetroactivelyComplete) {
+            res.json({
+              projectId: req.params.projectId,
+              phases: {
+                pm: { complete: false },
+                ux: { complete: false },
+                engineer: { complete: false }
+              },
+              currentPhase: 'docs-generate',
+              nextPhase,
+              needsReview: false,
+              reviewDocument: null,
+              isComplete: false,
+              needsGeneration: !anyGenerating,
+              docsProgress,
+              isGenerating: generatingStatus.isGenerating || anyGenerating,
+              generatingPhase: generatingStatus.phase || (anyGenerating ? 'docs-generate' : null),
+              generatingStartedAt: generatingStatus.startedAt
+            });
 
-          return;
+            return;
+          }
         }
         // If we fell through, status was updated — continue with normal logic
       }

@@ -511,11 +511,6 @@ export function RefinePanel({
               >
                 Refine Document
               </button>
-              {!sessionId && (
-                <p className="text-[10px] mt-2" style={{ color: 'hsl(0 0% 56%)' }}>
-                  Session not available for refinement
-                </p>
-              )}
             </>
           )}
         </div>

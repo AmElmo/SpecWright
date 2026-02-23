@@ -201,20 +201,17 @@ export const openAIToolAndPaste = async (text: string, options?: OpenAIToolOptio
                 return { success: false, sessionId: result.sessionId, error: 'Cancelled by user' };
             }
 
-            // Headless failed, fall through to keyboard automation
+            // Headless was available and ran but failed — never fall through to
+            // keyboard automation. Only fall through when headless wasn't available
+            // in the first place (canUseHeadless returned false).
             if (result && result.error) {
                 logger.debug(chalk.yellow(`⚠️ Headless execution failed: ${result.error}`));
                 broadcastHeadlessCompleted(config.name, false, phase, result.sessionId);
-
-                if (isHeadlessOnlyTool) {
-                    return {
-                        success: false,
-                        sessionId: result.sessionId,
-                        error: `${config.name} failed in headless mode: ${result.error}`
-                    };
-                }
-
-                logger.debug(chalk.yellow('Falling back to keyboard automation...'));
+                return {
+                    success: false,
+                    sessionId: result.sessionId,
+                    error: `${config.name} failed in headless mode: ${result.error}`
+                };
             }
         } else if (isHeadlessOnlyTool) {
             const status = await getHeadlessStatusForTool(selectedTool);

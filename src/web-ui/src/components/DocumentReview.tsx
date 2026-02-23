@@ -526,7 +526,7 @@ export function DocumentReview({
       )}
 
       {/* Edit with AI panel — rendered inline below the document */}
-      {showEditWithAI && sessionId && phase && (
+      {showEditWithAI && phase && (
         <div
           ref={refinePanelRef}
           className="rounded-lg overflow-hidden"
@@ -617,7 +617,7 @@ export function DocumentReview({
                           )}
 
                           {/* Edit with AI */}
-                          {sessionId && phase && (
+                          {phase && (
                             <button
                               onClick={() => {
                                 const newValue = !showEditWithAI;
