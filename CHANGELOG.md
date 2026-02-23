@@ -1,3 +1,9 @@
+## [3.6.0](https://github.com/amelmo/specwright/compare/v3.5.0...v3.6.0) (2026-02-23)
+
+### Features
+
+* **website:** add Umami analytics integration ([#30](https://github.com/amelmo/specwright/issues/30)) ([34ecc1d](https://github.com/amelmo/specwright/commit/34ecc1d35e54a363c049ba1b7128255d11cb7eb8))
+
 ## [3.5.0](https://github.com/amelmo/specwright/compare/v3.4.1...v3.5.0) (2026-02-23)
 
 ### Features
