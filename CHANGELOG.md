@@ -1,3 +1,9 @@
+## [3.6.2](https://github.com/amelmo/specwright/compare/v3.6.1...v3.6.2) (2026-02-23)
+
+### Bug Fixes
+
+* **website:** proxy Umami script to bypass ad blockers ([#31](https://github.com/amelmo/specwright/issues/31)) ([edcb4b1](https://github.com/amelmo/specwright/commit/edcb4b165fc776622824139d4b1b2efa0a8bee31))
+
 ## [3.6.1](https://github.com/amelmo/specwright/compare/v3.6.0...v3.6.1) (2026-02-23)
 
 ### Bug Fixes
