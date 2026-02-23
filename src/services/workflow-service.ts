@@ -523,53 +523,75 @@ export const runCursorWorkflow = async (userRequest: any, projectName: string): 
     logger.debug(chalk.yellowBright('🔄 WORKFLOW PIPELINE'));
     logger.debug("");
     logger.debug(chalk.dim('Your AI squad will work through these stages:'));
-    logger.debug(chalk.magenta('  1. 🎯 Product Manager') + ' ' + chalk.dim('→ Questions & Requirements Analysis'));
-    logger.debug(chalk.cyan('  2. 🎨 Designer') + ' ' + chalk.dim('→ User Experience & Wireframes'));
-    logger.debug(chalk.blue('  3. 🔧  Engineer') + ' ' + chalk.dim('→ Technical Specification'));
+    logger.debug(chalk.magenta('  1. 🎯 Product Manager Questions'));
+    logger.debug(chalk.cyan('  2. 🎨 Designer Questions'));
+    logger.debug(chalk.blue('  3. 🔧  Engineer Questions'));
+    logger.debug(chalk.yellow('  4. 📄 Generate All Documents'));
     logger.debug("");
     logger.debug(chalk.dim('After specification is complete, run ') + chalk.cyan('specwright break') + chalk.dim(' to break down into issues.'));
     logger.debug("");
     printSeparator();
 
-    // Step 1: Product Manager (Two-Phase)
-    await showAgentProgress(userRequest, 0, false); // Show PM as "In Progress"
-    printAgent("PRODUCT MANAGER", "Strategic Questions & Requirements Analysis", "🎯");
-    
-    // Phase 1 & 2: Handle questions
+    // ================================================================
+    // PHASE 1: All Questions (Sequential)
+    // ================================================================
+
+    // Step 1: Product Manager Questions
+    await showAgentProgress(userRequest, 0, false);
+    printAgent("PRODUCT MANAGER", "Strategic Questions", "🎯");
+
     const questionsFile = await handlePMQuestions(userRequest, PROJECT_DIR);
     if (!questionsFile) {
         logger.debug(chalk.red('❌ Failed to process questions. Aborting workflow.'));
         return;
     }
-    
-    // Phase 3: Requirements Analysis
+
+    // Step 2: Designer Questions
+    await showAgentProgress(userRequest, 1, false);
+    printAgent("UX DESIGNER", "User Interaction Questions", "🎨");
+
+    const uxQuestionsFile = await handleSimpleUXQuestions(userRequest, PROJECT_DIR);
+    if (!uxQuestionsFile) {
+        logger.debug(chalk.red('❌ Failed to process user interaction questions. Aborting workflow.'));
+        return;
+    }
+
+    // Step 3: Engineer Questions
+    await showAgentProgress(userRequest, 2, false);
+    printAgent("SOFTWARE ARCHITECT", "Technical Questions", "🔧");
+
+    const architectQuestionsFile = await handleArchitectQuestions(userRequest, PROJECT_DIR);
+    if (!architectQuestionsFile) {
+        logger.debug(chalk.red('❌ Failed to process architect questions. Aborting workflow.'));
+        return;
+    }
+
+    // ================================================================
+    // PHASE 2: All Document Generation (Sequential in CLI)
+    // ================================================================
     logger.debug("");
-    logger.debug(chalk.yellowBright('📋 PHASE 3: Requirements Analysis'));
+    logger.debug(chalk.yellowBright('📄 GENERATING ALL DOCUMENTS'));
     logger.debug("");
-    logger.debug(chalk.dim('Now the Product Manager will analyze your answers and create comprehensive requirements...'));
+    logger.debug(chalk.dim('All questions answered. Now generating documents...'));
     logger.debug("");
-    
-    // Pre-create PRD file with template structure
+
+    // PM PRD
     const prdFile = getPRDPath(projectId);
     const acceptanceCriteriaFile = getAcceptanceCriteriaPath(projectId);
-    
+
     const prdTemplatePath = path.join(TEMPLATES_DIR, 'prd_template.md');
     const acTemplatePath = path.join(TEMPLATES_DIR, 'acceptance_criteria_template.json');
-    
+
     if (fs.existsSync(prdTemplatePath)) {
         const prdTemplateContent = fs.readFileSync(prdTemplatePath, 'utf8');
         fs.writeFileSync(prdFile, prdTemplateContent);
-        logger.debug(chalk.green(`✅ Pre-created ${prdFile} with template structure`));
     }
-    
+
     if (fs.existsSync(acTemplatePath)) {
         const acTemplateContent = fs.readFileSync(acTemplatePath, 'utf8');
         fs.writeFileSync(acceptanceCriteriaFile, acTemplateContent);
-        logger.debug(chalk.green(`✅ Pre-created ${acceptanceCriteriaFile} with template structure`));
     }
-    
-    logger.debug("");
-    
+
     const pmAnalysisPrompt = generatePMPRDPrompt(
         PROJECT_DIR,
         questionsFile,
@@ -583,127 +605,69 @@ export const runCursorWorkflow = async (userRequest: any, projectName: string): 
 
     await printPrompt(pmAnalysisPrompt);
     await waitForCompletion(prdFile, 'Product Manager');
-    
-    // Validation checkpoint for PRD
+
+    // UX Design Brief
+    const { designBriefFile } = await handleDesignBriefGeneration(PROJECT_DIR, uxQuestionsFile);
+    await displayScreenSummaryAndWireframes(PROJECT_DIR);
+
+    // Engineer Tech Spec
+    await handleArchitectureAnalysis(userRequest, PROJECT_DIR, architectQuestionsFile);
+    await handleTechnologySelection(PROJECT_DIR);
+
+    // ================================================================
+    // PHASE 3: Sequential Document Reviews
+    // ================================================================
+    logger.debug("");
+    logger.debug(chalk.yellowBright('📋 REVIEWING DOCUMENTS'));
+    logger.debug("");
+
+    // PRD Review
     const prdValidation = await validateAgentOutput(
         'Product Manager',
         'Product Requirements Document (PRD)',
         prdFile
     );
-    
+
     if (prdValidation === 'abort') {
         logger.debug("");
         logger.debug(chalk.yellow('⏸️  WORKFLOW PAUSED'));
-        logger.debug("");
-        logger.debug(chalk.dim('Your progress has been saved:'));
-        logger.debug(chalk.dim(`   Project ID: ${projectId}`));
-        logger.debug(chalk.dim('   Location: ') + makeClickablePath(PROJECT_DIR));
-        logger.debug("");
-        logger.debug(chalk.dim('📋 What\'s been completed:'));
-        logger.debug(chalk.dim('   ⏸️  Product Manager - In progress (not approved)'));
-        logger.debug(chalk.dim('   ⏸️  Designer - Not started'));
-        logger.debug(chalk.dim('   ⏸️  Engineer - Not started'));
-        logger.debug("");
-        logger.debug(chalk.dim('To resume this project later:'));
-        logger.debug(chalk.cyan(`   Run: specwright spec ${projectId}`));
+        logger.debug(chalk.dim(`   Run: specwright spec ${projectId}`));
         logger.debug("");
         return;
     }
-    
-    // Show progress after PM completion
-    await showAgentProgress(userRequest, 1, false); // Show PM as "Completed", UX as "In Progress"
 
-    // Step 2: Designer
-    printAgent("UX DESIGNER", "Design Brief with Screens & Wireframes", "🎨");
-    
-    // Step 1: User Interaction Questions
-    const uxQuestionsFile = await handleSimpleUXQuestions(userRequest, PROJECT_DIR);
-    if (!uxQuestionsFile) {
-        logger.debug(chalk.red('❌ Failed to process user interaction questions. Aborting workflow.'));
-        return;
-    }
-    
-    // ============================================================
-    // Generate Design Brief (screens + wireframes)
-    // ============================================================
-    const { designBriefFile } = await handleDesignBriefGeneration(PROJECT_DIR, uxQuestionsFile);
-    
-    // Display screen summary and wireframe location
-    await displayScreenSummaryAndWireframes(PROJECT_DIR);
-    
-    // Validation checkpoint for design brief
+    // Design Brief Review
     const designBriefValidation = await validateAgentOutput(
         'Designer',
         'Design Brief',
         designBriefFile
     );
-    
+
     if (designBriefValidation === 'abort') {
         logger.debug("");
         logger.debug(chalk.yellow('⏸️  WORKFLOW PAUSED'));
-        logger.debug("");
-        logger.debug(chalk.dim('Your progress has been saved:'));
-        logger.debug(chalk.dim(`   Project ID: ${projectId}`));
-        logger.debug(chalk.dim('   Location: ') + makeClickablePath(PROJECT_DIR));
-        logger.debug("");
-        logger.debug(chalk.dim('📋 What\'s been completed:'));
-        logger.debug(chalk.dim('   ✅ Product Manager - Requirements analysis'));
-        logger.debug(chalk.dim('   ⏸️  Designer - Design brief (not approved)'));
-        logger.debug(chalk.dim('   ⏸️  Engineer - Not started'));
-        logger.debug("");
-        logger.debug(chalk.dim('To resume this project later:'));
-        logger.debug(chalk.cyan(`   Run: specwright spec ${projectId}`));
+        logger.debug(chalk.dim(`   Run: specwright spec ${projectId}`));
         logger.debug("");
         return;
     }
-    
-    // Show progress after UX completion
-    await showAgentProgress(userRequest, 2, false); // Show UX as "Completed", Architect as "In Progress"
 
-    // Step 3: Engineer (3-Phase Process)
-    printAgent("SOFTWARE ARCHITECT", "Technical Specification & System Design", "🔧");
-    
-    // Phase 1: Technical Questions
-    const architectQuestionsFile = await handleArchitectQuestions(userRequest, PROJECT_DIR);
-    if (!architectQuestionsFile) {
-        logger.debug(chalk.red('❌ Failed to process architect questions. Aborting workflow.'));
-        return;
-    }
-    
-    // Phase 2: Technical Specification
-    await handleArchitectureAnalysis(userRequest, PROJECT_DIR, architectQuestionsFile);
-    
-    // Phase 3: Technology Selection (if choices were presented)
-    await handleTechnologySelection(PROJECT_DIR);
-    
-    // Validation checkpoint for technical specification
+    // Tech Spec Review
     const architectValidation = await validateAgentOutput(
         'Engineer',
         'Technical Specification',
         path.join(PROJECT_DIR, 'documents', 'technical_specification.md')
     );
-    
+
     if (architectValidation === 'abort') {
         logger.debug("");
         logger.debug(chalk.yellow('⏸️  WORKFLOW PAUSED'));
-        logger.debug("");
-        logger.debug(chalk.dim('Your progress has been saved:'));
-        logger.debug(chalk.dim(`   Project ID: ${projectId}`));
-        logger.debug(chalk.dim('   Location: ') + makeClickablePath(PROJECT_DIR));
-        logger.debug("");
-        logger.debug(chalk.dim('📋 What\'s been completed:'));
-        logger.debug(chalk.dim('   ✅ Product Manager - Requirements analysis'));
-        logger.debug(chalk.dim('   ✅ Designer - Wireframes & screen design'));
-        logger.debug(chalk.dim('   ⏸️  Engineer - In progress (not approved)'));
-        logger.debug("");
-        logger.debug(chalk.dim('To resume this project later:'));
-        logger.debug(chalk.cyan(`   Run: specwright spec ${projectId}`));
+        logger.debug(chalk.dim(`   Run: specwright spec ${projectId}`));
         logger.debug("");
         return;
     }
-    
-    // Show progress after Architect completion
-    await showAgentProgress(userRequest, 3, false); // Show Architect as "Completed"
+
+    // Show progress after all complete
+    await showAgentProgress(userRequest, 3, false);
 
     // Create session backup and symlink to latest
     try {
