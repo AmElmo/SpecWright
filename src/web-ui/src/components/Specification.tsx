@@ -876,7 +876,11 @@ export function Specification() {
     // If individually approved, show as approved
     if (approvedDocs.includes(doc)) return 'approved';
 
-    // Phase-pair mapping: which docs belong to which review phase
+    // If any docs have been individually approved, all docs have been generated
+    // (docs are generated in parallel). Non-approved docs are available for review.
+    if (approvedDocs.length > 0) return 'reviewing';
+
+    // No per-doc approvals yet — use phase-order heuristic (backward compat)
     const docPhaseMap: Record<string, string> = {
       'prd': 'pm-prd-review',
       'acceptance-criteria': 'pm-prd-review',
@@ -891,16 +895,8 @@ export function Specification() {
     const currentIdx = phaseOrder.indexOf(currentPhase);
     const docIdx = phaseOrder.indexOf(docPhase);
 
-    // If the current phase is this doc's review phase, it's available for review
     if (currentPhase === docPhase) return 'reviewing';
-
-    // Doc from a past phase
-    if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) {
-      // Backward compat: if no per-doc approvals exist, treat all past-phase docs as approved
-      if (approvedDocs.length === 0) return 'approved';
-      // Per-doc model: past-phase doc that wasn't individually approved — still reviewable
-      return 'reviewing';
-    }
+    if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'approved';
 
     return 'pending';
   };

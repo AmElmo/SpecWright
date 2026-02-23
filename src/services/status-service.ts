@@ -575,34 +575,43 @@ export function approveDocument(
     logger.debug(`  ⏭️  '${docKey}' already approved`);
   }
 
-  // Find which phase pair this doc belongs to
-  const currentPhasePair = DOC_PHASE_PAIRS[status.currentPhase];
+  // Scan phase pairs in order — advance the first fully-approved but not-yet-advanced pair.
+  // This handles stale currentPhase (e.g. stuck at pm-prd-review after doc regeneration).
+  const REVIEW_ORDER = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
 
-  if (!currentPhasePair) {
-    // Not in a review phase — just save and return
+  for (const reviewPhase of REVIEW_ORDER) {
+    const pair = DOC_PHASE_PAIRS[reviewPhase];
+    const allApproved = pair.docs.every((d) => status.approvedDocuments!.includes(d));
+
+    if (!allApproved) {
+      // First incomplete pair — stop here
+      break;
+    }
+
+    // All docs approved for this pair — check if phase already advanced
+    const agentPhaseStatus = status.agents[pair.agent].phases[pair.phase]?.status;
+    if (agentPhaseStatus === 'complete') continue; // Already done
+
+    // Phase needs advancing — fix currentPhase/currentAgent and advance
+    status.currentAgent = pair.agent;
+    status.currentPhase = reviewPhase;
     status.lastUpdatedAt = new Date().toISOString();
     writeProjectStatus(projectId, status);
-    return { status, phaseAdvanced: false };
-  }
 
-  // Check if all docs for this phase pair are now approved
-  const allDocsApproved = currentPhasePair.docs.every((d) => status.approvedDocuments!.includes(d));
-
-  if (allDocsApproved) {
-    logger.debug(`  🎉 All docs for ${status.currentPhase} approved — advancing phase`);
-    // Save the approvedDocuments first, then let completePhaseAndAdvance handle the rest
-    status.lastUpdatedAt = new Date().toISOString();
-    writeProjectStatus(projectId, status);
-
-    const advancedStatus = completePhaseAndAdvance(projectId, currentPhasePair.agent, currentPhasePair.phase);
+    logger.debug(`  🎉 All docs for ${reviewPhase} approved — advancing phase`);
+    const advancedStatus = completePhaseAndAdvance(projectId, pair.agent, pair.phase);
     return { status: advancedStatus, phaseAdvanced: true };
   }
 
-  // Not all docs approved yet — save and return
+  // No phase advanced — just save
   status.lastUpdatedAt = new Date().toISOString();
   writeProjectStatus(projectId, status);
 
-  logger.debug(`  ⏳ Phase not advancing yet — waiting for: ${currentPhasePair.docs.filter((d) => !status.approvedDocuments!.includes(d)).join(', ')}`);
+  const pendingPair = REVIEW_ORDER.map((rp) => DOC_PHASE_PAIRS[rp])
+    .find((pair) => !pair.docs.every((d) => status.approvedDocuments!.includes(d)));
+  if (pendingPair) {
+    logger.debug(`  ⏳ Phase not advancing yet — waiting for: ${pendingPair.docs.filter((d) => !status.approvedDocuments!.includes(d)).join(', ')}`);
+  }
   return { status, phaseAdvanced: false };
 }
 
