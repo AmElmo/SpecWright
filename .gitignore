@@ -23,6 +23,8 @@ npm-debug.log*
 
 # Build output
 dist/
+.next/
+out/
 
 # LLM logs and explorer cache
 src/web-ui/.explorer/

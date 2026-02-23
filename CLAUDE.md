@@ -113,6 +113,13 @@ Do NOT manually bump `version` in `package.json`.
    - `fix: ...` → patch version bump (e.g. 3.1.0 → 3.1.1)
    - `feat!: ...` or `BREAKING CHANGE:` footer → major bump
    - `chore:`, `docs:`, `style:`, `test:`, `ci:` → no release
+
+### Website-only changes
+
+The `website/` directory is a standalone Next.js + Nextra site, fully isolated
+from the CLI npm package. Changes that **only** touch `website/` must use
+`chore(website):` or `docs(website):` prefixes — never `feat:` or `fix:` —
+so that semantic-release skips them and no npm version is published.
 2. Create a PR branch, commit, push, open PR against `main`
 3. On merge to `main`, the `publish.yml` workflow:
    - Builds and type-checks
