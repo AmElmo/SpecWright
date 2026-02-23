@@ -115,6 +115,11 @@ export function Specification() {
   const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
   const [currentRunTool, setCurrentRunTool] = useState<AITool | null>(null);
 
+  // Sidebar document navigation
+  const [sidebarSelectedDoc, setSidebarSelectedDoc] = useState<string | null>(null);
+  const [sidebarDocContent, setSidebarDocContent] = useState<string>('');
+  const [sidebarDocTab, setSidebarDocTab] = useState<'main' | 'technology' | 'screens' | 'criteria'>('main');
+
   // Per-agent streaming logs for docs-generate phase
   const [agentLogs, setAgentLogs] = useState<Record<string, HeadlessLogEntry[]>>({ pm: [], ux: [], engineer: [] });
   const [agentActiveTab, setAgentActiveTab] = useState<string>('pm');
@@ -845,30 +850,82 @@ export function Specification() {
   const currentPhase = status?.currentPhase || '';
   const isReviewPhase = reviewPhases.includes(currentPhase) || status?.isComplete;
 
-  const getDocReviewStatus = (doc: 'prd' | 'design' | 'tech-spec'): 'approved' | 'reviewing' | 'pending' => {
+  type ReviewDocKey = 'prd' | 'acceptance-criteria' | 'design' | 'screens' | 'tech-spec' | 'technology-choices';
+
+  const getDocReviewStatus = (doc: ReviewDocKey): 'approved' | 'reviewing' | 'pending' => {
     if (status?.isComplete) return 'approved';
-    if (doc === 'prd') {
+    // PRD and Acceptance Criteria share the PM phase
+    if (doc === 'prd' || doc === 'acceptance-criteria') {
       if (currentPhase === 'pm-prd-review') return 'reviewing';
       if (['ux-design-brief-review', 'engineer-spec-review'].includes(currentPhase)) return 'approved';
       return 'pending';
     }
-    if (doc === 'design') {
+    // Design Brief and Screens share the UX phase
+    if (doc === 'design' || doc === 'screens') {
       if (currentPhase === 'ux-design-brief-review') return 'reviewing';
       if (currentPhase === 'engineer-spec-review') return 'approved';
       return 'pending';
     }
-    if (doc === 'tech-spec') {
+    // Tech Spec and Technology Choices share the Engineer phase
+    if (doc === 'tech-spec' || doc === 'technology-choices') {
       if (currentPhase === 'engineer-spec-review') return 'reviewing';
       return 'pending';
     }
     return 'pending';
   };
 
-  const reviewDocuments = [
-    { key: 'prd' as const, label: 'PRD', icon: '📋' },
-    { key: 'design' as const, label: 'Design Brief', icon: '🎨' },
-    { key: 'tech-spec' as const, label: 'Tech Spec', icon: '⚙️' },
+  const reviewDocuments: { key: ReviewDocKey; label: string; icon: string }[] = [
+    { key: 'prd', label: 'PRD', icon: '📋' },
+    { key: 'acceptance-criteria', label: 'Acceptance Criteria', icon: '✅' },
+    { key: 'design', label: 'Design Brief', icon: '🎨' },
+    { key: 'screens', label: 'Screens', icon: '🖼️' },
+    { key: 'tech-spec', label: 'Tech Spec', icon: '⚙️' },
+    { key: 'technology-choices', label: 'Technology Choices', icon: '🔧' },
   ];
+
+  // Map sidebar doc keys to their document path, type, and default tab
+  const docKeyInfo: Record<ReviewDocKey, { path: string; documentType: 'prd' | 'design' | 'tech-spec'; defaultTab: 'main' | 'technology' | 'screens' | 'criteria' }> = {
+    'prd': { path: 'documents/prd.md', documentType: 'prd', defaultTab: 'main' },
+    'acceptance-criteria': { path: 'documents/prd.md', documentType: 'prd', defaultTab: 'criteria' },
+    'design': { path: 'documents/design_brief.md', documentType: 'design', defaultTab: 'main' },
+    'screens': { path: 'documents/design_brief.md', documentType: 'design', defaultTab: 'screens' },
+    'tech-spec': { path: 'documents/technical_specification.md', documentType: 'tech-spec', defaultTab: 'main' },
+    'technology-choices': { path: 'documents/technical_specification.md', documentType: 'tech-spec', defaultTab: 'technology' },
+  };
+
+  const handleSidebarDocClick = async (docKey: ReviewDocKey) => {
+    const docStatus = getDocReviewStatus(docKey);
+    if (docStatus === 'pending') return;
+
+    const info = docKeyInfo[docKey];
+
+    // If clicking the doc that matches the current review, reset override
+    const isCurrentReviewDoc = status?.reviewDocument?.includes(info.path.replace('documents/', ''));
+    if (isCurrentReviewDoc && !sidebarSelectedDoc) {
+      // Just switch tab on the current review doc
+      setSidebarSelectedDoc(docKey);
+      setSidebarDocTab(info.defaultTab);
+      setSidebarDocContent(reviewDocumentContent);
+      return;
+    }
+    if (sidebarSelectedDoc === docKey) return;
+
+    setSidebarSelectedDoc(docKey);
+    setSidebarDocTab(info.defaultTab);
+
+    // Fetch the document
+    try {
+      setLoadingDocument(true);
+      const response = await fetch(`/api/specification/document/${projectId}/${info.path}`);
+      if (!response.ok) throw new Error('Failed to fetch document');
+      const data = await response.json();
+      setSidebarDocContent(data.content);
+    } catch (err) {
+      logger.error('Error fetching sidebar doc:', err);
+    } finally {
+      setLoadingDocument(false);
+    }
+  };
 
   // Sidebar component
   const Sidebar = () => {
@@ -922,17 +979,32 @@ export function Specification() {
               <ul className="space-y-0.5">
                 {reviewDocuments.map((doc) => {
                   const docStatus = getDocReviewStatus(doc.key);
-                  const isActive = (doc.key === 'prd' && currentPhase === 'pm-prd-review')
-                    || (doc.key === 'design' && currentPhase === 'ux-design-brief-review')
-                    || (doc.key === 'tech-spec' && currentPhase === 'engineer-spec-review');
+                  const isClickable = docStatus !== 'pending';
+                  // Active = explicitly selected via sidebar, or matches the current review phase (when no sidebar override)
+                  const isActive = sidebarSelectedDoc
+                    ? doc.key === sidebarSelectedDoc
+                    : ((doc.key === 'prd' || doc.key === 'acceptance-criteria') && currentPhase === 'pm-prd-review')
+                      || ((doc.key === 'design' || doc.key === 'screens') && currentPhase === 'ux-design-brief-review')
+                      || ((doc.key === 'tech-spec' || doc.key === 'technology-choices') && currentPhase === 'engineer-spec-review');
 
                   return (
                     <li key={doc.key}>
                       <div
                         className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150"
+                        onClick={() => isClickable && handleSidebarDocClick(doc.key)}
                         style={{
                           backgroundColor: isActive ? 'hsl(235 69% 97%)' : 'transparent',
-                          cursor: 'default',
+                          cursor: isClickable ? 'pointer' : 'default',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (isClickable && !isActive) {
+                            e.currentTarget.style.backgroundColor = 'hsl(0 0% 94%)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
                         }}
                       >
                         <span className="text-[14px] flex-shrink-0">{doc.icon}</span>
@@ -1564,6 +1636,23 @@ export function Specification() {
     const currentAgent = getCurrentAgent();
     const currentSessionId = sessions[currentAgent];
 
+    // Determine what to render: sidebar override or current review doc
+    const isSidebarOverride = sidebarSelectedDoc && docKeyInfo[sidebarSelectedDoc as ReviewDocKey];
+    const effectiveDocType = isSidebarOverride
+      ? docKeyInfo[sidebarSelectedDoc as ReviewDocKey].documentType
+      : getDocumentType();
+    const effectiveDocContent = isSidebarOverride
+      ? sidebarDocContent
+      : reviewDocumentContent;
+    const effectiveDocPath = isSidebarOverride
+      ? docKeyInfo[sidebarSelectedDoc as ReviewDocKey].path
+      : status.reviewDocument;
+    // Only show approve/refine controls when viewing the current review doc
+    const isViewingCurrentReview = !isSidebarOverride
+      || docKeyInfo[sidebarSelectedDoc as ReviewDocKey].path.includes(
+        status.reviewDocument.replace('documents/', '').replace('.md', '').replace('.json', '')
+      );
+
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         <Sidebar />
@@ -1598,15 +1687,17 @@ export function Specification() {
             {/* Main content - full width without flex squeeze */}
             <div className="max-w-4xl">
               <DocumentReview
+                key={sidebarSelectedDoc || 'current'}
                 projectId={projectId!}
-                documentPath={status.reviewDocument}
-                documentContent={reviewDocumentContent}
-                documentType={getDocumentType()}
-                onApprove={handleApproveDocument}
+                documentPath={effectiveDocPath}
+                documentContent={effectiveDocContent}
+                documentType={effectiveDocType}
+                onApprove={isViewingCurrentReview ? handleApproveDocument : undefined}
                 isBreakdownComplete={hasTasks}
-                sessionId={currentSessionId}
-                phase={currentAgent}
-                onRefineComplete={() => {
+                sessionId={isViewingCurrentReview ? currentSessionId : undefined}
+                phase={isViewingCurrentReview ? currentAgent : undefined}
+                initialTab={isSidebarOverride ? sidebarDocTab : undefined}
+                onRefineComplete={isViewingCurrentReview ? () => {
                   // Refresh sessions after refinement
                   fetch(`/api/sessions/${projectId}`)
                     .then(res => res.json())
@@ -1618,7 +1709,7 @@ export function Specification() {
                   if (status.reviewDocument) {
                     fetchDocumentForReview(status.reviewDocument);
                   }
-                }}
+                } : undefined}
               />
             </div>
           </div>

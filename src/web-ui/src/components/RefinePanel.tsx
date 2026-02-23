@@ -372,13 +372,13 @@ export function RefinePanel({
     );
   }
 
-  // Inline mode: full-width panel below document
+  // Inline mode: floating panel on the right side
   if (inlineMode) {
     return (
-      <div style={{ backgroundColor: 'hsl(235 69% 99%)' }}>
+      <div className="flex flex-col h-full" style={{ backgroundColor: 'hsl(235 69% 99%)' }}>
         {/* Header */}
         <div
-          className="px-5 py-3 flex items-center justify-between"
+          className="px-5 py-3 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: '1px solid hsl(235 69% 92%)' }}
         >
           <div>
@@ -392,7 +392,7 @@ export function RefinePanel({
         </div>
 
         {/* Content */}
-        <div className="p-5">
+        <div className="p-5 flex-1 overflow-y-auto">
           {isRefining ? (
             <div
               className="rounded-lg overflow-hidden"

@@ -17,12 +17,13 @@ interface DocumentReviewProps {
   documentPath: string;
   documentContent: string;
   documentType: 'prd' | 'wireframes' | 'tech-spec' | 'technology-choices' | 'design';
-  onApprove: () => void;
+  onApprove?: () => void;
   onReject?: () => void;
   isBreakdownComplete?: boolean;
   sessionId?: string;
   phase?: RefinePhase;
   onRefineComplete?: () => void;
+  initialTab?: 'main' | 'technology' | 'screens' | 'criteria';
 }
 
 export function DocumentReview({
@@ -34,6 +35,7 @@ export function DocumentReview({
   sessionId,
   phase,
   onRefineComplete,
+  initialTab,
 }: DocumentReviewProps) {
   const [approving, setApproving] = useState(false);
   const [editedContent, setEditedContent] = useState(documentContent);
@@ -55,8 +57,9 @@ export function DocumentReview({
   // Per-tab approval tracking
   const [approvedTabs, setApprovedTabs] = useState<Set<string>>(new Set());
 
-  // Restore active tab from sessionStorage
+  // Restore active tab from initialTab prop, sessionStorage, or default to 'main'
   const [activeTab, setActiveTab] = useState<'main' | 'technology' | 'screens' | 'criteria'>(() => {
+    if (initialTab) return initialTab;
     const storageKey = `activeTab_${projectId}_${documentType}`;
     const stored = sessionStorage.getItem(storageKey);
     return (stored as 'main' | 'technology' | 'screens' | 'criteria') || 'main';
@@ -259,6 +262,7 @@ export function DocumentReview({
 
   // Per-document approval handler
   const handleApproveDocument = async () => {
+    if (!onApprove) return;
     const tabs = getTabList();
 
     if (tabs.length <= 1) {
@@ -525,12 +529,21 @@ export function DocumentReview({
         )
       )}
 
-      {/* Edit with AI panel — rendered inline below the document */}
+      {/* Edit with AI panel — floating on the right side of the screen */}
       {showEditWithAI && phase && (
         <div
           ref={refinePanelRef}
-          className="rounded-lg overflow-hidden"
-          style={{ border: '1px solid hsl(235 69% 85%)' }}
+          className="fixed rounded-lg overflow-hidden shadow-xl"
+          style={{
+            border: '1px solid hsl(235 69% 85%)',
+            right: '24px',
+            top: '80px',
+            bottom: '100px',
+            width: '380px',
+            zIndex: 40,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
         >
           <RefinePanel
             phase={phase}
@@ -624,12 +637,6 @@ export function DocumentReview({
                                 setShowEditWithAI(newValue);
                                 setShowEditDropdown(false);
                                 setIsEditing(false);
-                                if (newValue) {
-                                  // Scroll to the refine panel after it renders
-                                  setTimeout(() => {
-                                    refinePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  }, 100);
-                                }
                               }}
                               className="w-full text-left px-4 py-2 text-[13px] transition-colors flex items-center gap-2"
                               style={{ color: 'hsl(0 0% 20%)' }}
