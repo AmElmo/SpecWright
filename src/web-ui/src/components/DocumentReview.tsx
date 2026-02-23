@@ -54,6 +54,31 @@ export function DocumentReview({
   const [showEditDropdown, setShowEditDropdown] = useState(false);
   const editDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Read sidebar width for footer alignment
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = localStorage.getItem('specwright-sidebar-width');
+    return stored ? parseInt(stored, 10) : 220;
+  });
+
+  // Sync sidebar width on resize (localStorage is written by the sidebar hook)
+  useEffect(() => {
+    const sync = () => {
+      const stored = localStorage.getItem('specwright-sidebar-width');
+      if (stored) {
+        const w = parseInt(stored, 10);
+        if (w !== sidebarWidth) setSidebarWidth(w);
+      }
+    };
+    // Listen for storage events from other tabs
+    window.addEventListener('storage', sync);
+    // Poll for same-tab changes during resize
+    const interval = setInterval(sync, 200);
+    return () => {
+      window.removeEventListener('storage', sync);
+      clearInterval(interval);
+    };
+  }, [sidebarWidth]);
+
   // Per-tab approval tracking
   const [approvedTabs, setApprovedTabs] = useState<Set<string>>(new Set());
 
@@ -561,8 +586,11 @@ export function DocumentReview({
 
       {/* Unified Action Bar — Sticky Footer */}
       {!isBreakdownComplete && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50">
-          <div className="max-w-4xl mx-auto">
+        <div
+          className="fixed bottom-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50"
+          style={{ left: `${sidebarWidth}px` }}
+        >
+          <div className="max-w-4xl px-6">
             <CardContent className="pt-5 pb-5">
               <div className="flex flex-col gap-3">
                 {/* Warning message when tech choices not complete */}
@@ -656,23 +684,25 @@ export function DocumentReview({
                   <div className="flex-1" />
 
                   {/* Approve Document button */}
-                  <Button
-                    onClick={handleApproveDocument}
-                    disabled={approving || !allTechChoicesMade || isEditing}
-                    variant="success"
-                    title={!allTechChoicesMade ? 'Select technologies in the "Technology Choices" tab first' : ''}
-                  >
-                    {approving ? (
-                      <>
-                        <span className="animate-spin mr-2">⏳</span>
-                        Approving...
-                      </>
-                    ) : (
-                      <>
-                        ✅ {getApproveLabel()}
-                      </>
-                    )}
-                  </Button>
+                  {onApprove && (
+                    <Button
+                      onClick={handleApproveDocument}
+                      disabled={approving || !allTechChoicesMade || isEditing}
+                      variant="success"
+                      title={!allTechChoicesMade ? 'Select technologies in the "Technology Choices" tab first' : ''}
+                    >
+                      {approving ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Approving...
+                        </>
+                      ) : (
+                        <>
+                          ✅ {getApproveLabel()}
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
