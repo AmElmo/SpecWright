@@ -36,6 +36,7 @@ interface SpecificationStatus {
   needsReview: boolean;
   reviewDocument: string | null;
   isComplete: boolean;
+  approvedDocuments?: string[];
   needsGeneration?: boolean;
   docsProgress?: {
     pm: AgentDocProgress;
@@ -118,7 +119,7 @@ export function Specification() {
   // Sidebar document navigation
   const [sidebarSelectedDoc, setSidebarSelectedDoc] = useState<string | null>(null);
   const [sidebarDocContent, setSidebarDocContent] = useState<string>('');
-  const [sidebarDocTab, setSidebarDocTab] = useState<'main' | 'technology' | 'screens' | 'criteria'>('main');
+
 
   // Per-agent streaming logs for docs-generate phase
   const [agentLogs, setAgentLogs] = useState<Record<string, HeadlessLogEntry[]>>({ pm: [], ux: [], engineer: [] });
@@ -447,20 +448,34 @@ export function Specification() {
     }
   };
   
-  const handleApproveDocument = async () => {
+  const handleApproveDocument = async (docKey?: string) => {
     if (!projectId || !status) return;
-    
+
+    // If a specific docKey is provided, use the per-document endpoint
+    const effectiveDocKey = docKey || sidebarSelectedDoc;
+
     try {
-      const response = await fetch(`/api/specification/approve/${projectId}/${status.currentPhase}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!response.ok) throw new Error('Failed to approve document');
-      
-      await response.json();
-      setIsInReviewMode(false);
-      setSidebarSelectedDoc(null);
+      if (effectiveDocKey) {
+        const response = await fetch(`/api/specification/approve-document/${projectId}/${effectiveDocKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to approve document');
+        const data = await response.json();
+        if (data.phaseAdvanced) {
+          setIsInReviewMode(false);
+          setSidebarSelectedDoc(null);
+        }
+      } else {
+        // Fallback: legacy phase-level approval (for CLI backward compat)
+        const response = await fetch(`/api/specification/approve/${projectId}/${status.currentPhase}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to approve document');
+        setIsInReviewMode(false);
+        setSidebarSelectedDoc(null);
+      }
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve document');
@@ -855,23 +870,35 @@ export function Specification() {
 
   const getDocReviewStatus = (doc: ReviewDocKey): 'approved' | 'reviewing' | 'pending' => {
     if (status?.isComplete) return 'approved';
-    // PRD and Acceptance Criteria share the PM phase
-    if (doc === 'prd' || doc === 'acceptance-criteria') {
-      if (currentPhase === 'pm-prd-review') return 'reviewing';
-      if (['ux-design-brief-review', 'engineer-spec-review'].includes(currentPhase)) return 'approved';
-      return 'pending';
+
+    const approvedDocs = status?.approvedDocuments || [];
+
+    // If individually approved, show as approved
+    if (approvedDocs.includes(doc)) return 'approved';
+
+    // Phase-pair mapping: which docs belong to which review phase
+    const docPhaseMap: Record<string, string> = {
+      'prd': 'pm-prd-review',
+      'acceptance-criteria': 'pm-prd-review',
+      'design': 'ux-design-brief-review',
+      'screens': 'ux-design-brief-review',
+      'tech-spec': 'engineer-spec-review',
+      'technology-choices': 'engineer-spec-review',
+    };
+
+    const docPhase = docPhaseMap[doc];
+
+    // If the current phase is this doc's review phase, it's available for review
+    if (currentPhase === docPhase) return 'reviewing';
+
+    // Backward compatibility: if approvedDocuments is empty, use phase-order heuristic
+    if (approvedDocs.length === 0) {
+      const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+      const currentIdx = phaseOrder.indexOf(currentPhase);
+      const docIdx = phaseOrder.indexOf(docPhase);
+      if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'approved';
     }
-    // Design Brief and Screens share the UX phase
-    if (doc === 'design' || doc === 'screens') {
-      if (currentPhase === 'ux-design-brief-review') return 'reviewing';
-      if (currentPhase === 'engineer-spec-review') return 'approved';
-      return 'pending';
-    }
-    // Tech Spec and Technology Choices share the Engineer phase
-    if (doc === 'tech-spec' || doc === 'technology-choices') {
-      if (currentPhase === 'engineer-spec-review') return 'reviewing';
-      return 'pending';
-    }
+
     return 'pending';
   };
 
@@ -884,37 +911,25 @@ export function Specification() {
     { key: 'technology-choices', label: 'Technology Choices', icon: '🔧' },
   ];
 
-  // Map sidebar doc keys to their document path, type, and default tab
-  const docKeyInfo: Record<ReviewDocKey, { path: string; documentType: 'prd' | 'design' | 'tech-spec'; defaultTab: 'main' | 'technology' | 'screens' | 'criteria' }> = {
-    'prd': { path: 'documents/prd.md', documentType: 'prd', defaultTab: 'main' },
-    'acceptance-criteria': { path: 'documents/prd.md', documentType: 'prd', defaultTab: 'criteria' },
-    'design': { path: 'documents/design_brief.md', documentType: 'design', defaultTab: 'main' },
-    'screens': { path: 'documents/design_brief.md', documentType: 'design', defaultTab: 'screens' },
-    'tech-spec': { path: 'documents/technical_specification.md', documentType: 'tech-spec', defaultTab: 'main' },
-    'technology-choices': { path: 'documents/technical_specification.md', documentType: 'tech-spec', defaultTab: 'technology' },
+  // Map sidebar doc keys to their document file path and unique documentType
+  const docKeyInfo: Record<ReviewDocKey, { path: string; documentType: 'prd' | 'design' | 'tech-spec' | 'acceptance-criteria' | 'screens' | 'technology-choices' }> = {
+    'prd': { path: 'documents/prd.md', documentType: 'prd' },
+    'acceptance-criteria': { path: 'documents/acceptance_criteria.json', documentType: 'acceptance-criteria' },
+    'design': { path: 'documents/design_brief.md', documentType: 'design' },
+    'screens': { path: 'documents/screens.json', documentType: 'screens' },
+    'tech-spec': { path: 'documents/technical_specification.md', documentType: 'tech-spec' },
+    'technology-choices': { path: 'documents/technology_choices.json', documentType: 'technology-choices' },
   };
 
   const handleSidebarDocClick = async (docKey: ReviewDocKey) => {
     const docStatus = getDocReviewStatus(docKey);
     if (docStatus === 'pending') return;
-
-    const info = docKeyInfo[docKey];
-
-    // If clicking the doc that matches the current review, reset override
-    const isCurrentReviewDoc = status?.reviewDocument?.includes(info.path.replace('documents/', ''));
-    if (isCurrentReviewDoc && !sidebarSelectedDoc) {
-      // Just switch tab on the current review doc
-      setSidebarSelectedDoc(docKey);
-      setSidebarDocTab(info.defaultTab);
-      setSidebarDocContent(reviewDocumentContent);
-      return;
-    }
     if (sidebarSelectedDoc === docKey) return;
 
+    const info = docKeyInfo[docKey];
     setSidebarSelectedDoc(docKey);
-    setSidebarDocTab(info.defaultTab);
 
-    // Fetch the document
+    // Fetch the document's own file
     try {
       setLoadingDocument(true);
       const response = await fetch(`/api/specification/document/${projectId}/${info.path}`);
@@ -1639,6 +1654,7 @@ export function Specification() {
 
     // Determine what to render: sidebar override or current review doc
     const isSidebarOverride = sidebarSelectedDoc && docKeyInfo[sidebarSelectedDoc as ReviewDocKey];
+    const effectiveDocKey = isSidebarOverride ? (sidebarSelectedDoc as ReviewDocKey) : null;
     const effectiveDocType = isSidebarOverride
       ? docKeyInfo[sidebarSelectedDoc as ReviewDocKey].documentType
       : getDocumentType();
@@ -1648,11 +1664,9 @@ export function Specification() {
     const effectiveDocPath = isSidebarOverride
       ? docKeyInfo[sidebarSelectedDoc as ReviewDocKey].path
       : status.reviewDocument;
-    // Only show approve/refine controls when viewing the current review doc
-    const isViewingCurrentReview = !isSidebarOverride
-      || docKeyInfo[sidebarSelectedDoc as ReviewDocKey].path.includes(
-        status.reviewDocument.replace('documents/', '').replace('.md', '').replace('.json', '')
-      );
+    // Determine if doc is approvable (reviewing status, not already approved)
+    const effectiveDocStatus = effectiveDocKey ? getDocReviewStatus(effectiveDocKey) : 'reviewing';
+    const canApprove = effectiveDocStatus === 'reviewing';
 
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
@@ -1693,12 +1707,11 @@ export function Specification() {
                 documentPath={effectiveDocPath}
                 documentContent={effectiveDocContent}
                 documentType={effectiveDocType}
-                onApprove={isViewingCurrentReview ? handleApproveDocument : undefined}
+                onApprove={canApprove ? () => handleApproveDocument(effectiveDocKey || undefined) : undefined}
                 isBreakdownComplete={hasTasks}
-                sessionId={isViewingCurrentReview ? currentSessionId : undefined}
-                phase={isViewingCurrentReview ? currentAgent : undefined}
-                initialTab={isSidebarOverride ? sidebarDocTab : undefined}
-                onRefineComplete={isViewingCurrentReview ? () => {
+                sessionId={canApprove ? currentSessionId : undefined}
+                phase={canApprove ? currentAgent : undefined}
+                onRefineComplete={canApprove ? () => {
                   // Refresh sessions after refinement
                   fetch(`/api/sessions/${projectId}`)
                     .then(res => res.json())

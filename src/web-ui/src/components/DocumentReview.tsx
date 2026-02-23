@@ -3,7 +3,6 @@ import { useNavigationGuard } from '../hooks/use-navigation-guard';
 import { logger } from '../utils/logger';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { MarkdownViewer } from './MarkdownViewer';
 import { TechnologyChoicesEditor } from './TechnologyChoicesEditor';
 import { AcceptanceCriteriaEditor } from './AcceptanceCriteriaEditor';
@@ -16,14 +15,13 @@ interface DocumentReviewProps {
   projectId: string;
   documentPath: string;
   documentContent: string;
-  documentType: 'prd' | 'wireframes' | 'tech-spec' | 'technology-choices' | 'design';
+  documentType: 'prd' | 'wireframes' | 'tech-spec' | 'technology-choices' | 'design' | 'acceptance-criteria' | 'screens';
   onApprove?: () => void;
   onReject?: () => void;
   isBreakdownComplete?: boolean;
   sessionId?: string;
   phase?: RefinePhase;
   onRefineComplete?: () => void;
-  initialTab?: 'main' | 'technology' | 'screens' | 'criteria';
 }
 
 export function DocumentReview({
@@ -35,7 +33,6 @@ export function DocumentReview({
   sessionId,
   phase,
   onRefineComplete,
-  initialTab,
 }: DocumentReviewProps) {
   const [approving, setApproving] = useState(false);
   const [editedContent, setEditedContent] = useState(documentContent);
@@ -79,24 +76,8 @@ export function DocumentReview({
     };
   }, [sidebarWidth]);
 
-  // Per-tab approval tracking
-  const [approvedTabs, setApprovedTabs] = useState<Set<string>>(new Set());
-
-  // Restore active tab from initialTab prop, sessionStorage, or default to 'main'
-  const [activeTab, setActiveTab] = useState<'main' | 'technology' | 'screens' | 'criteria'>(() => {
-    if (initialTab) return initialTab;
-    const storageKey = `activeTab_${projectId}_${documentType}`;
-    const stored = sessionStorage.getItem(storageKey);
-    return (stored as 'main' | 'technology' | 'screens' | 'criteria') || 'main';
-  });
-
-  const [technologyChoicesContent, setTechnologyChoicesContent] = useState<string>('');
-  const [screensContent, setScreensContent] = useState<string>('');
-  const [acceptanceCriteriaContent, setAcceptanceCriteriaContent] = useState<string>('');
-  const [loadingTechChoices, setLoadingTechChoices] = useState(false);
-  const [loadingScreens, setLoadingScreens] = useState(false);
-  const [loadingAcceptanceCriteria, setLoadingAcceptanceCriteria] = useState(false);
-  const [allTechChoicesMade, setAllTechChoicesMade] = useState(true);
+  // Whether this document type renders markdown (supports manual editing)
+  const isMarkdownDoc = documentType === 'prd' || documentType === 'design' || documentType === 'tech-spec';
 
   const isDocumentDirty = isEditing && editingContent !== editedContent;
   useNavigationGuard({ isDirty: isDocumentDirty, message: 'You have unsaved document edits. Are you sure you want to leave?' });
@@ -106,12 +87,6 @@ export function DocumentReview({
     setEditedContent(documentContent);
     setEditingContent(documentContent);
   }, [documentContent]);
-
-  // Save active tab to sessionStorage
-  useEffect(() => {
-    const storageKey = `activeTab_${projectId}_${documentType}`;
-    sessionStorage.setItem(storageKey, activeTab);
-  }, [activeTab, projectId, documentType]);
 
   // Close edit dropdown on outside click
   useEffect(() => {
@@ -133,112 +108,26 @@ export function DocumentReview({
     }
   }, [isEditing]);
 
-  // Check if all technology choices have been made
-  useEffect(() => {
-    if (documentType === 'tech-spec' && technologyChoicesContent) {
-      try {
-        const data = JSON.parse(technologyChoicesContent);
-        if (data.technology_decisions && data.technology_decisions.length > 0) {
-          const allSelected = data.technology_decisions.every((decision: any) =>
-            decision.user_choice || decision.final_decision
-          );
-          setAllTechChoicesMade(allSelected);
-        } else {
-          setAllTechChoicesMade(true);
-        }
-      } catch {
-        setAllTechChoicesMade(true);
-      }
-    } else {
-      setAllTechChoicesMade(true);
-    }
-  }, [technologyChoicesContent, documentType]);
-
-  // Fetch related content
-  useEffect(() => {
-    if (documentType === 'tech-spec') fetchTechnologyChoices();
-    if (documentType === 'design') fetchScreens();
-    if (documentType === 'prd') fetchAcceptanceCriteria();
-  }, [documentType, projectId]);
-
-  const fetchTechnologyChoices = async () => {
-    setLoadingTechChoices(true);
-    try {
-      const response = await fetch(`/api/specification/document/${projectId}/documents/technology_choices.json`);
-      if (response.ok) {
-        const data = await response.json();
-        setTechnologyChoicesContent(data.content);
-      }
-    } catch (err) {
-      logger.error('Error fetching technology choices:', err);
-    } finally {
-      setLoadingTechChoices(false);
-    }
-  };
-
-  const fetchScreens = async () => {
-    setLoadingScreens(true);
-    try {
-      const response = await fetch(`/api/specification/document/${projectId}/documents/screens.json`);
-      if (response.ok) {
-        const data = await response.json();
-        setScreensContent(data.content);
-      }
-    } catch (err) {
-      logger.error('Error fetching screens:', err);
-    } finally {
-      setLoadingScreens(false);
-    }
-  };
-
-  const fetchAcceptanceCriteria = async () => {
-    setLoadingAcceptanceCriteria(true);
-    try {
-      const response = await fetch(`/api/specification/document/${projectId}/documents/acceptance_criteria.json`);
-      if (response.ok) {
-        const data = await response.json();
-        setAcceptanceCriteriaContent(data.content);
-      }
-    } catch (err) {
-      logger.error('Error fetching acceptance criteria:', err);
-    } finally {
-      setLoadingAcceptanceCriteria(false);
-    }
-  };
-
   const getDocumentInfo = () => {
     switch (documentType) {
       case 'prd':
-        return { title: 'Product Requirements Document (PRD)', icon: '📋', description: 'Review the product requirements and acceptance criteria' };
+        return { title: 'Product Requirements Document (PRD)', icon: '📋', description: 'Review the product requirements document' };
       case 'design':
-        return { title: 'Design Brief', icon: '🎨', description: 'Review screens, user flows, and wireframes' };
+        return { title: 'Design Brief', icon: '🎨', description: 'Review the design brief with user flows and wireframes' };
       case 'wireframes':
         return { title: 'Wireframes & Design Specifications', icon: '🖼️', description: 'Review the wireframes and design details for each screen' };
       case 'tech-spec':
         return { title: 'Technical Specification', icon: '⚙️', description: 'Review the technical architecture and implementation plan' };
       case 'technology-choices':
         return { title: 'Technology Choices', icon: '⚡', description: 'Review and select your preferred technologies for each category' };
+      case 'acceptance-criteria':
+        return { title: 'Acceptance Criteria', icon: '✅', description: 'Review the acceptance criteria for each feature' };
+      case 'screens':
+        return { title: 'Screens', icon: '🖼️', description: 'Review the screen designs and layouts' };
     }
   };
 
   const docInfo = getDocumentInfo();
-
-  // Determine tab structure
-  const hasTechnologyChoices = documentType === 'tech-spec' && technologyChoicesContent;
-  const hasScreens = documentType === 'design' && screensContent;
-  const hasAcceptanceCriteria = documentType === 'prd' && acceptanceCriteriaContent;
-  const hasTabs = !!(hasTechnologyChoices || hasScreens || hasAcceptanceCriteria);
-
-  // Get the list of tabs for this document type
-  const getTabList = (): string[] => {
-    if (hasTechnologyChoices) return ['main', 'technology'];
-    if (hasAcceptanceCriteria) return ['main', 'criteria'];
-    if (hasScreens) return ['main', 'screens'];
-    return ['main'];
-  };
-
-  // The current tab is the "main" (.MD) tab
-  const isMainTab = activeTab === 'main';
 
   // Whether editing is allowed (not after breakdown)
   const canEdit = !isBreakdownComplete;
@@ -285,49 +174,16 @@ export function DocumentReview({
     }
   };
 
-  // Per-document approval handler
+  // Per-document approval handler — just calls onApprove directly
   const handleApproveDocument = async () => {
     if (!onApprove) return;
-    const tabs = getTabList();
-
-    if (tabs.length <= 1) {
-      // Single document — approve directly
-      setApproving(true);
-      try {
-        await onApprove();
-        const storageKey = `activeTab_${projectId}_${documentType}`;
-        sessionStorage.removeItem(storageKey);
-      } catch (err) {
-        logger.error('Error approving:', err);
-      } finally {
-        setApproving(false);
-      }
-      return;
-    }
-
-    // Multi-tab: mark current tab as approved
-    const newApproved = new Set(approvedTabs);
-    newApproved.add(activeTab);
-    setApprovedTabs(newApproved);
-
-    // Find next unapproved tab
-    const nextUnapproved = tabs.find((t) => !newApproved.has(t));
-
-    if (nextUnapproved) {
-      // Switch to next unapproved tab
-      setActiveTab(nextUnapproved as 'main' | 'technology' | 'screens' | 'criteria');
-    } else {
-      // All tabs approved — advance phase
-      setApproving(true);
-      try {
-        await onApprove();
-        const storageKey = `activeTab_${projectId}_${documentType}`;
-        sessionStorage.removeItem(storageKey);
-      } catch (err) {
-        logger.error('Error approving:', err);
-      } finally {
-        setApproving(false);
-      }
+    setApproving(true);
+    try {
+      await onApprove();
+    } catch (err) {
+      logger.error('Error approving:', err);
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -378,26 +234,7 @@ export function DocumentReview({
     );
   };
 
-  // Determine the approve button label
-  const getApproveLabel = () => {
-    const tabs = getTabList();
-    if (tabs.length <= 1) return 'Approve Document';
-
-    const tabNames: Record<string, string> = {
-      main: documentType === 'prd' ? 'PRD' : documentType === 'design' ? 'Design Brief' : 'Technical Specification',
-      technology: 'Technology Choices',
-      criteria: 'Acceptance Criteria',
-      screens: 'Screens',
-    };
-
-    const currentTabName = tabNames[activeTab] || 'Document';
-    const remaining = tabs.filter((t) => !approvedTabs.has(t) && t !== activeTab).length;
-
-    if (remaining === 0) {
-      return `Approve ${currentTabName} & Continue`;
-    }
-    return `Approve ${currentTabName}`;
-  };
+  const getApproveLabel = () => 'Approve Document';
 
   return (
     <div className="space-y-6 pb-52">
@@ -423,135 +260,31 @@ export function DocumentReview({
         </div>
       </div>
 
-      {/* Tabs for Engineer Review */}
-      {hasTechnologyChoices && (
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'main' | 'technology')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sticky top-0 z-10 bg-white">
-            <TabsTrigger value="main">
-              <span>📄</span>
-              <span className="ml-2">Technical Specification</span>
-              {approvedTabs.has('main') && <span className="ml-1.5 text-green-600">✓</span>}
-            </TabsTrigger>
-            <TabsTrigger value="technology">
-              <span>⚡</span>
-              <span className="ml-2">Technology Choices</span>
-              {approvedTabs.has('technology') && <span className="ml-1.5 text-green-600">✓</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="main">
-            {renderMarkdownContent()}
-          </TabsContent>
-
-          <TabsContent value="technology">
-            {loadingTechChoices ? (
-              <Card className="bg-white border-slate-200 p-8 text-center">
-                <div className="animate-pulse">
-                  <div className="text-4xl mb-4">⚡</div>
-                  <p className="text-slate-600">Loading technology choices...</p>
-                </div>
-              </Card>
-            ) : (
-              <TechnologyChoicesEditor
-                content={technologyChoicesContent}
-                projectId={projectId}
-                onSave={(content) => setTechnologyChoicesContent(content)}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+      {/* Direct content rendering based on documentType */}
+      {isMarkdownDoc && renderMarkdownContent()}
+      {documentType === 'acceptance-criteria' && (
+        <AcceptanceCriteriaEditor
+          content={editedContent}
+          projectId={projectId}
+          onSave={(content) => setEditedContent(content)}
+        />
       )}
-
-      {/* Tabs for PM Review (PRD + Acceptance Criteria) */}
-      {hasAcceptanceCriteria && (
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'main' | 'criteria')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sticky top-0 z-10 bg-white">
-            <TabsTrigger value="main">
-              <span>📋</span>
-              <span className="ml-2">PRD</span>
-              {approvedTabs.has('main') && <span className="ml-1.5 text-green-600">✓</span>}
-            </TabsTrigger>
-            <TabsTrigger value="criteria">
-              <span>✅</span>
-              <span className="ml-2">Acceptance Criteria</span>
-              {approvedTabs.has('criteria') && <span className="ml-1.5 text-green-600">✓</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="main">
-            {renderMarkdownContent()}
-          </TabsContent>
-
-          <TabsContent value="criteria">
-            {loadingAcceptanceCriteria ? (
-              <Card className="bg-white border-slate-200 p-8 text-center">
-                <div className="animate-pulse">
-                  <div className="text-4xl mb-4">✅</div>
-                  <p className="text-slate-600">Loading acceptance criteria...</p>
-                </div>
-              </Card>
-            ) : (
-              <AcceptanceCriteriaEditor
-                content={acceptanceCriteriaContent}
-                projectId={projectId}
-                onSave={(content) => setAcceptanceCriteriaContent(content)}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {/* Tabs for Designer Review */}
-      {hasScreens && !hasTechnologyChoices && !hasAcceptanceCriteria && (
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'main' | 'screens')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sticky top-0 z-10 bg-white">
-            <TabsTrigger value="main">
-              <span>📋</span>
-              <span className="ml-2">Design Brief</span>
-              {approvedTabs.has('main') && <span className="ml-1.5 text-green-600">✓</span>}
-            </TabsTrigger>
-            <TabsTrigger value="screens">
-              <span>📱</span>
-              <span className="ml-2">Screens</span>
-              {approvedTabs.has('screens') && <span className="ml-1.5 text-green-600">✓</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="main">
-            {renderMarkdownContent()}
-          </TabsContent>
-
-          <TabsContent value="screens">
-            {loadingScreens ? (
-              <Card className="bg-white border-slate-200 p-8 text-center">
-                <div className="animate-pulse">
-                  <div className="text-4xl mb-4">📱</div>
-                  <p className="text-slate-600">Loading screens...</p>
-                </div>
-              </Card>
-            ) : screensContent ? (
-              <ScreensRenderer content={screensContent} projectId={projectId} />
-            ) : (
-              <Card className="bg-white border-slate-200 p-8 text-center">
-                <div className="text-4xl mb-4">📱</div>
-                <p className="text-slate-500">No screens data available</p>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {/* Document Content for cases without tabs */}
-      {!hasTechnologyChoices && !hasScreens && !hasAcceptanceCriteria && (
-        documentType === 'technology-choices' ? (
-          <TechnologyChoicesEditor
-            content={editedContent}
-            projectId={projectId}
-            onSave={(content) => setEditedContent(content)}
-          />
+      {documentType === 'screens' && (
+        editedContent ? (
+          <ScreensRenderer content={editedContent} projectId={projectId} />
         ) : (
-          renderMarkdownContent()
+          <Card className="bg-white border-slate-200 p-8 text-center">
+            <div className="text-4xl mb-4">🖼️</div>
+            <p className="text-slate-500">No screens data available</p>
+          </Card>
         )
+      )}
+      {documentType === 'technology-choices' && (
+        <TechnologyChoicesEditor
+          content={editedContent}
+          projectId={projectId}
+          onSave={(content) => setEditedContent(content)}
+        />
       )}
 
       {/* Edit with AI panel — floating on the right side of the screen */}
@@ -593,23 +326,6 @@ export function DocumentReview({
           <div className="max-w-4xl px-6">
             <CardContent className="pt-5 pb-5">
               <div className="flex flex-col gap-3">
-                {/* Warning message when tech choices not complete */}
-                {!allTechChoicesMade && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
-                    <span className="text-yellow-600 text-lg">⚠️</span>
-                    <p className="text-sm text-yellow-800">
-                      <strong>Action Required:</strong> Select the technology you want to use in the &quot;Technology Choices&quot; tab before continuing.
-                    </p>
-                  </div>
-                )}
-
-                {/* Approved tabs indicator */}
-                {hasTabs && approvedTabs.size > 0 && (
-                  <p className="text-[12px]" style={{ color: 'hsl(142 76% 36%)' }}>
-                    {approvedTabs.size} of {getTabList().length} tabs approved
-                  </p>
-                )}
-
                 <div className="flex items-center gap-3">
                   {/* Edit dropdown — only show when editing is possible */}
                   {canEdit && !isEditing && (
@@ -636,8 +352,8 @@ export function DocumentReview({
                           className="absolute bottom-full mb-1 left-0 rounded-md shadow-lg py-1 min-w-[180px]"
                           style={{ backgroundColor: 'white', border: '1px solid hsl(0 0% 90%)' }}
                         >
-                          {/* Edit manually — only for .MD tabs */}
-                          {isMainTab && (
+                          {/* Edit manually — only for markdown docs */}
+                          {isMarkdownDoc && (
                             <button
                               onClick={() => {
                                 setIsEditing(true);
@@ -687,9 +403,8 @@ export function DocumentReview({
                   {onApprove && (
                     <Button
                       onClick={handleApproveDocument}
-                      disabled={approving || !allTechChoicesMade || isEditing}
+                      disabled={approving || isEditing}
                       variant="success"
-                      title={!allTechChoicesMade ? 'Select technologies in the "Technology Choices" tab first' : ''}
                     >
                       {approving ? (
                         <>

@@ -636,19 +636,42 @@ export function ProjectDetail() {
   };
 
   // Helper functions
-  const getDocumentStatus = (docId: string): 'complete' | 'pending' => {
+  const getDocumentStatus = (docId: string): 'complete' | 'awaiting-review' | 'pending' => {
     if (!project) return 'pending';
-    
-    switch (docId) {
-      case 'request': return project.request ? 'complete' : 'pending';
-      case 'prd': return project.prd ? 'complete' : 'pending';
-      case 'acceptance-criteria': return project.acceptanceCriteria ? 'complete' : 'pending';
-      case 'design-brief': return project.design ? 'complete' : 'pending';
-      case 'screens': return project.screens ? 'complete' : 'pending';
-      case 'tech': return project.tech ? 'complete' : 'pending';
-      case 'tech-choices': return project.techChoices ? 'complete' : 'pending';
-      default: return 'pending';
+
+    const hasContent = (() => {
+      switch (docId) {
+        case 'request': return !!project.request;
+        case 'prd': return !!project.prd;
+        case 'acceptance-criteria': return !!project.acceptanceCriteria;
+        case 'design-brief': return !!project.design;
+        case 'screens': return !!project.screens;
+        case 'tech': return !!project.tech;
+        case 'tech-choices': return !!project.techChoices;
+        default: return false;
+      }
+    })();
+
+    if (!hasContent) return 'pending';
+
+    // Request has no approval step
+    if (docId === 'request') return 'complete';
+
+    // Check phase-based approval
+    const phases = projectStatus?.phases;
+    if (projectStatus?.isComplete) return 'complete';
+
+    if (docId === 'prd' || docId === 'acceptance-criteria') {
+      return phases?.pm?.complete ? 'complete' : 'awaiting-review';
     }
+    if (docId === 'design-brief' || docId === 'screens') {
+      return phases?.ux?.complete ? 'complete' : 'awaiting-review';
+    }
+    if (docId === 'tech' || docId === 'tech-choices') {
+      return phases?.engineer?.complete ? 'complete' : 'awaiting-review';
+    }
+
+    return 'complete';
   };
 
   const getCompletedDocCount = () => {
@@ -1978,18 +2001,28 @@ export function ProjectDetail() {
                     className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left transition-colors"
                     style={{
                       backgroundColor: isActive ? 'hsl(235 69% 97%)' : 'transparent',
-                      color: isActive ? 'hsl(235 69% 50%)' : status === 'complete' ? 'hsl(0 0% 32%)' : 'hsl(0 0% 60%)',
+                      color: isActive ? 'hsl(235 69% 50%)' : status !== 'pending' ? 'hsl(0 0% 32%)' : 'hsl(0 0% 60%)',
                     }}
                   >
                     {status === 'complete' ? (
-                      <div 
+                      <div
                         className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: 'hsl(142 76% 36%)', color: 'white' }}
                       >
                         <CheckIcon />
                       </div>
+                    ) : status === 'awaiting-review' ? (
+                      <div
+                        className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: 'hsl(38 92% 50%)', color: 'white' }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      </div>
                     ) : (
-                      <div 
+                      <div
                         className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ border: '1.5px solid hsl(0 0% 80%)' }}
                       />
@@ -2127,28 +2160,37 @@ export function ProjectDetail() {
           </div>
           
           {/* Status badge */}
-          {activeSection === 'docs' && (
-            <div 
-              className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium"
-              style={{
-                backgroundColor: getDocumentStatus(activeDocType) === 'complete' 
-                  ? 'hsl(142 76% 94%)' 
-                  : 'hsl(0 0% 96%)',
-                color: getDocumentStatus(activeDocType) === 'complete' 
-                  ? 'hsl(142 76% 30%)' 
-                  : 'hsl(0 0% 46%)'
-              }}
-            >
-              {getDocumentStatus(activeDocType) === 'complete' ? (
-                <>
-                  <CheckIcon />
-                  <span>Complete</span>
-                </>
-              ) : (
-                <span>Pending</span>
-              )}
-            </div>
-          )}
+          {activeSection === 'docs' && (() => {
+            const docSt = getDocumentStatus(activeDocType);
+            return (
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium"
+                style={{
+                  backgroundColor: docSt === 'complete'
+                    ? 'hsl(142 76% 94%)'
+                    : docSt === 'awaiting-review'
+                      ? 'hsl(38 92% 95%)'
+                      : 'hsl(0 0% 96%)',
+                  color: docSt === 'complete'
+                    ? 'hsl(142 76% 30%)'
+                    : docSt === 'awaiting-review'
+                      ? 'hsl(38 92% 35%)'
+                      : 'hsl(0 0% 46%)'
+                }}
+              >
+                {docSt === 'complete' ? (
+                  <>
+                    <CheckIcon />
+                    <span>Approved</span>
+                  </>
+                ) : docSt === 'awaiting-review' ? (
+                  <span>Pending Review</span>
+                ) : (
+                  <span>Pending</span>
+                )}
+              </div>
+            );
+          })()}
         </header>
 
         {/* Content */}

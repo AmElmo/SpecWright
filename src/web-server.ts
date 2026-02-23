@@ -38,7 +38,8 @@ import {
   markDocPhaseGenerating,
   markDocGenComplete,
   checkAllDocsComplete,
-  clearAIWorkingState
+  clearAIWorkingState,
+  approveDocument
 } from './services/status-service.js';
 import { getReconciledProjectStatus } from './services/reconciliation-service.js';
 import type { AgentType } from './types/project-status.js';
@@ -1936,6 +1937,7 @@ Please analyze this request and update the scoping_plan.json file.`;
         needsReview,
         reviewDocument,
         isComplete: finalPmComplete && finalUxComplete && finalEngineerComplete,
+        approvedDocuments: status.approvedDocuments || [],
         // Include generation status for page reload restoration
         isGenerating: generatingStatus.isGenerating,
         generatingPhase: generatingStatus.phase,
@@ -2093,7 +2095,33 @@ Please analyze this request and update the scoping_plan.json file.`;
       res.status(500).json({ error: 'Failed to approve phase' });
     }
   });
-  
+
+  // Per-document approval endpoint
+  app.post('/api/specification/approve-document/:projectId/:docKey', async (req, res) => {
+    try {
+      const { projectId, docKey } = req.params;
+      const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
+
+      if (!fs.existsSync(projectPath)) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const { status: updatedStatus, phaseAdvanced } = approveDocument(projectId, docKey);
+
+      res.json({
+        success: true,
+        message: `Document '${docKey}' approved`,
+        docKey,
+        phaseAdvanced,
+        approvedDocuments: updatedStatus.approvedDocuments || [],
+        currentPhase: updatedStatus.currentPhase,
+      });
+    } catch (error) {
+      logger.error('Error approving document:', error);
+      res.status(500).json({ error: 'Failed to approve document' });
+    }
+  });
+
   // Trigger Cursor for a specific phase
   app.post('/api/specification/continue/:projectId/:phase', async (req, res) => {
     try {

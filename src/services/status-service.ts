@@ -540,6 +540,73 @@ export function markAIWorkComplete(projectId: string): ProjectStatus {
 }
 
 /**
+ * Mapping of review phases to their constituent document keys.
+ * When all docs in a phase pair are approved, the phase advances.
+ */
+const DOC_PHASE_PAIRS: Record<string, { agent: AgentType; phase: string; docs: string[] }> = {
+  'pm-prd-review': { agent: 'pm', phase: 'prd-review', docs: ['prd', 'acceptance-criteria'] },
+  'ux-design-brief-review': { agent: 'ux', phase: 'design-brief-review', docs: ['design', 'screens'] },
+  'engineer-spec-review': { agent: 'engineer', phase: 'spec-review', docs: ['tech-spec', 'technology-choices'] },
+};
+
+/**
+ * Approve a single document within a review phase.
+ * Adds the docKey to status.approvedDocuments, then checks if all docs
+ * for the current phase pair are approved. If so, advances the phase.
+ */
+export function approveDocument(
+  projectId: string,
+  docKey: string
+): { status: ProjectStatus; phaseAdvanced: boolean } {
+  logger.debug(`\n📄 [Status Service] approveDocument: ${docKey} for ${projectId}`);
+
+  const status = getOrCreateStatus(projectId);
+
+  // Initialize approvedDocuments if missing
+  if (!status.approvedDocuments) {
+    status.approvedDocuments = [];
+  }
+
+  // Add docKey if not already approved
+  if (!status.approvedDocuments.includes(docKey)) {
+    status.approvedDocuments.push(docKey);
+    logger.debug(`  ✅ Added '${docKey}' to approvedDocuments: [${status.approvedDocuments.join(', ')}]`);
+  } else {
+    logger.debug(`  ⏭️  '${docKey}' already approved`);
+  }
+
+  // Find which phase pair this doc belongs to
+  const currentPhasePair = DOC_PHASE_PAIRS[status.currentPhase];
+
+  if (!currentPhasePair) {
+    // Not in a review phase — just save and return
+    status.lastUpdatedAt = new Date().toISOString();
+    writeProjectStatus(projectId, status);
+    return { status, phaseAdvanced: false };
+  }
+
+  // Check if all docs for this phase pair are now approved
+  const allDocsApproved = currentPhasePair.docs.every((d) => status.approvedDocuments!.includes(d));
+
+  if (allDocsApproved) {
+    logger.debug(`  🎉 All docs for ${status.currentPhase} approved — advancing phase`);
+    // Save the approvedDocuments first, then let completePhaseAndAdvance handle the rest
+    status.lastUpdatedAt = new Date().toISOString();
+    writeProjectStatus(projectId, status);
+
+    const advancedStatus = completePhaseAndAdvance(projectId, currentPhasePair.agent, currentPhasePair.phase);
+    return { status: advancedStatus, phaseAdvanced: true };
+  }
+
+  // Not all docs approved yet — save and return
+  status.lastUpdatedAt = new Date().toISOString();
+  writeProjectStatus(projectId, status);
+
+  logger.debug(`  ⏳ Phase not advancing yet — waiting for: ${currentPhasePair.docs.filter((d) => !status.approvedDocuments!.includes(d)).join(', ')}`);
+  return { status, phaseAdvanced: false };
+}
+
+/**
  * Mark all 3 doc-generate phases as 'ai-working' simultaneously
  * Called when user clicks "Generate All Documents"
  */
