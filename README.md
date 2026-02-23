@@ -4,11 +4,7 @@
 
 # SpecWright
 
-**AI-Powered Specification Engine**
-
-Transform ideas into implementation-ready specifications using an AI squad of specialists.
-
-![SpecWright Interface](./docs/screenshots/issues_page.png)
+Generate structured, implementation-ready specifications from a project idea — before you write a single line of code.
 
 [![npm version](https://img.shields.io/npm/v/specwright.svg)](https://www.npmjs.com/package/specwright)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -16,224 +12,68 @@ Transform ideas into implementation-ready specifications using an AI squad of sp
 [![CI](https://github.com/amelmo/specwright/workflows/CI/badge.svg)](https://github.com/amelmo/specwright/actions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
-[Installation](#-installation) • [Quick Start](#-quick-start) • [Features](#-features) • [Documentation](#-documentation) • [Contributing](#-contributing)
+[Quick Start](#quick-start) · [How It Works](#how-it-works) · [Screenshots](#screenshots) · [Documentation](#documentation) · [Contributing](#contributing)
 
 </div>
 
----
+![SpecWright Interface](./docs/screenshots/issues_page.png)
 
-## 🎯 What is SpecWright?
+SpecWright is a CLI + Web UI that runs AI specialists through a structured workflow — Product Manager, Designer, Engineer, Issue Breakdown — to produce PRDs, wireframes, architecture docs, and implementation tasks. The output is file-based, version-controllable, and designed to feed directly into AI coding tools like Cursor, Windsurf, and GitHub Copilot.
 
-SpecWright implements **Specification-Driven Development (SDD)**, a methodology where AI specialists collaborate to transform your project ideas into detailed, structured specifications before you write a single line of code.
+## Quick Start
 
-### The Problem
-
-Starting a new project or feature often means:
-- ❌ Writing code before understanding requirements
-- ❌ Missing edge cases and user needs
-- ❌ Inconsistent documentation
-- ❌ Technical debt from rushed decisions
-
-### The Solution
-
-SpecWright is a **Web UI for Specification-Driven Development** that automates the spec workflow for AI coding tools.
-
-You can download the CLI here: https://www.npmjs.com/package/specwright
-
-**How it works:**
-- 🌐 **Web interface** for browsing and managing specifications
-- 🤖 **Automated prompts** injected into your AI coding tool (Cursor, Windsurf, GitHub Copilot)
-- 📋 **Context-aware** - automatically provides the right context at every step
-- 🔄 **Seamless handoff** - specs flow directly into implementation
-
-The AI Squad works through each phase:
-
-```
-📋 Product Manager → 🎨 Designer → 🔧 Engineer → 📊 Issue Breakdown
-```
-
-Each specialist creates structured outputs that feed into your AI coding assistant with the right prompts and context, ready for implementation.
-
----
-
-## 📸 Interface Highlights
-
-<table>
-<tr>
-<td width="50%">
-
-### Project Dashboard
-
-![Project Dashboard](./docs/screenshots/project_page.png)
-
-Browse all projects, view progress, and track implementation tasks.
-
-</td>
-<td width="50%">
-
-### Specification Viewer
-
-![Specification Viewer](./docs/screenshots/screens_page.png)
-
-Rich viewing experience for PRDs, designs, and technical specs.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Issue Breakdown
-
-![Issue Breakdown](./docs/screenshots/issue_list_page.png)
-
-Implementation tasks organized by vertical slice with clear acceptance criteria.
-
-</td>
-<td width="50%">
-
-### Technology Choices
-
-![Technology Choices](./docs/screenshots/technology_choices.png)
-
-Visual display of selected technologies with rationale and trade-offs.
-
-</td>
-</tr>
-</table>
-
----
-
-## ✨ Features
-
-<table>
-<tr>
-<td width="50%">
-
-### 🤖 AI Squad of Specialists
-- **Product Manager**: Requirements, job stories, acceptance criteria
-- **UX Designer**: Screen inventory, wireframes, user flows
-- **Engineer**: Technical architecture, technology choices
-- **Issue Breakdown**: Task breakdown using vertical slicing
-
-</td>
-<td width="50%">
-
-### 🎯 Smart Scoping
-Automatically classifies work:
-- **Work Directly**: Small changes (just code it!)
-- **Single Project**: One cohesive capability
-- **Multiple Projects**: Break down large initiatives
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🖥️ Dual Interface
-- **Terminal CLI**: Fast, keyboard-driven workflow
-- **Web UI**: Visual exploration and browsing
-- **Cursor Integration**: Built-in commands
-
-</td>
-<td width="50%">
-
-### 📚 Project Playbook
-- Generate technical standards
-- Audit compliance
-- Track architectural evolution
-- Version-controlled principles
-
-</td>
-</tr>
-</table>
-
----
-
-## 🚀 Installation
-
-### Prerequisites
-
-- **Node.js** 18 or higher
-- **npm** 9 or higher
-
-### Global Installation (Recommended)
+**Prerequisites:** Node.js 18+, npm 9+
 
 ```bash
-# Install globally
 npm install -g specwright
+```
 
-# Initialize in your project
+```bash
+# Initialize in your project directory
 cd /path/to/your/project
 specwright init
-```
 
-### Local Development
-
-```bash
-git clone https://github.com/amelmo/specwright.git
-cd specwright
-npm install
-npm run build
-```
-
----
-
-## ⚡ Quick Start
-
-### 1. Scope Your Work
-
-```bash
+# Scope your work — the AI determines if you need a full spec or can code directly
 specwright new
-```
 
-The AI analyzes your request and determines if you need:
-- A full project specification, or
-- Just implement directly (no spec needed)
-
-### 2. Generate Specifications (For Projects)
-
-```bash
+# Generate specifications (if a full spec is needed)
 specwright spec
-```
 
-The AI squad works through each phase:
-1. **Product Manager** - Creates PRD with job stories
-2. **Designer** - Designs screens and wireframes
-3. **Engineer** - Selects technologies and architecture
-4. **Issue Breakdown** - Breaks down into implementation tasks
-
-### 3. Browse Your Projects
-
-```bash
+# Browse projects and specs in a visual dashboard
 specwright view
 ```
 
-Visual dashboard showing:
-- All projects and their status
-- Implementation tasks (issues)
-- Progress tracking
+## How It Works
 
----
+SpecWright implements Specification-Driven Development: AI specialists collaborate in sequence, each phase producing structured outputs that feed into the next.
 
-## 📖 Documentation
+```mermaid
+graph TD
+    A[User Request] --> B[Scope Analysis]
+    B --> C[Product Manager]
+    C --> D[UX Designer]
+    D --> E[Engineer]
+    E --> F[Issue Breakdown]
+    F --> G[Implementation]
+```
 
-| Document | Description |
-|----------|-------------|
-| [QUICKSTART.md](QUICKSTART.md) | Get started in 5 minutes |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture details |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [SECURITY.md](SECURITY.md) | Security policy |
+| Phase | Specialist | Output |
+|-------|-----------|--------|
+| **1. Scope** | AI classifier | Determines if you need a full spec or can implement directly |
+| **2. Product** | Product Manager | PRD with job stories and acceptance criteria |
+| **3. Design** | UX Designer | Screen inventory, wireframes, user flows |
+| **4. Architecture** | Engineer | Technology choices, technical architecture |
+| **5. Breakdown** | Tech Lead | Implementation tasks organized by vertical slice |
 
----
+Each phase's output is injected as context into your AI coding tool, giving it the right prompts and specifications at every step.
 
-## 🎨 Example Output
+### Output Structure
 
-SpecWright generates structured, version-controllable specifications:
+Specs are saved as version-controllable files in your project:
 
 ```
 outputs/
-├── project_plan.json              # Overall scope
+├── project_plan.json
 └── projects/
     └── 001-user-authentication/
         ├── project_request.md
@@ -253,97 +93,85 @@ outputs/
                 └── ENG-003.md               # Password Reset
 ```
 
----
+## Screenshots
 
-## 🛠️ Technology Stack
+<table>
+<tr>
+<td width="50%">
 
-<div align="center">
+**Project Dashboard**
 
-| Category | Technologies |
+![Project Dashboard](./docs/screenshots/project_page.png)
+
+Browse all projects, view progress, and track implementation status.
+
+</td>
+<td width="50%">
+
+**Specification Viewer**
+
+![Specification Viewer](./docs/screenshots/screens_page.png)
+
+Rich viewing for PRDs, screen designs, and technical specs.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Issue Breakdown**
+
+![Issue Breakdown](./docs/screenshots/issue_list_page.png)
+
+Implementation tasks organized by vertical slice with acceptance criteria.
+
+</td>
+<td width="50%">
+
+**Technology Choices**
+
+![Technology Choices](./docs/screenshots/technology_choices.png)
+
+Selected technologies with rationale, trade-offs, and alternatives.
+
+</td>
+</tr>
+</table>
+
+## Documentation
+
+| Document | Description |
 |----------|-------------|
-| **Language** | TypeScript 5.x |
-| **Runtime** | Node.js 18+ |
-| **CLI** | Inquirer, Chalk, Consola |
-| **Web UI** | React 18, Vite, TailwindCSS, Radix UI |
-| **Build** | TypeScript Compiler, Vite |
+| [QUICKSTART.md](QUICKSTART.md) | Get started in 5 minutes |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture and tech stack |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [SECURITY.md](SECURITY.md) | Security policy |
 
-</div>
+## Contributing
 
----
-
-## 📊 Workflow
-
-```mermaid
-graph TD
-    A[User Request] --> B[Scope Analysis]
-    B --> C[Product Manager]
-    C --> D[UX Designer]
-    D --> E[Engineer]
-    E --> F[Issue Breakdown]
-    F --> G[Implementation]
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Setup
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ```bash
-# Clone and install
 git clone https://github.com/amelmo/specwright.git
 cd specwright
 npm install
 
-# Run in development
-npm run dev          # CLI
-npm run dev:ui       # Web UI
-npm run type-check   # Type checking
+npm run dev          # CLI in debug mode
+npm run dev:ui       # Web UI with Vite HMR
+npm run type-check   # TypeScript checking
 ```
 
----
+## Acknowledgments
 
-## 📝 License
+SpecWright builds on ideas from [Jobs-to-be-Done](https://jtbd.info/) (job stories over feature lists), [Shape Up](https://basecamp.com/shapeup) (shaping work before committing), and [Linear](https://linear.app/) (clean issue hierarchy and vertical slices).
 
-MIT License - see [LICENSE](LICENSE) for details.
+## License
 
----
-
-## 🙏 Acknowledgments
-
-Built with ❤️ for **Specification-Driven Development**
-
-### Inspired By
-
-SpecWright builds upon proven methodologies and tools:
-
-- **[Jobs-to-be-Done Framework](https://jtbd.info/)** - Using job stories to capture user needs and context, focusing on the "why" behind features rather than just "what" users want.
-
-- **[Shape Up](https://basecamp.com/shapeup)** - 37signals' approach to product development emphasizing:
-  - Shaping work before committing to it
-  - Making trade-offs explicit
-  - Clear boundaries on No-Gos when writing specs
-
-- **[Linear](https://linear.app/)** - The gold standard for issue tracking, inspiring our Project and Issues hierarchy of information:
-  - Clean, fast interface design
-  - Vertical slice organization
-
-These frameworks inform SpecWright's AI-powered approach to specification-driven development.
-
----
-
-## 📬 Contact & Support
-
-- **Issues**: [GitHub Issues](https://github.com/amelmo/specwright/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/amelmo/specwright/discussions)
-- **Email**: [julien@argil.io](mailto:julien@argil.io)
-
----
+MIT — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**[⭐ Star us on GitHub](https://github.com/amelmo/specwright)** • **[📦 View on npm](https://www.npmjs.com/package/specwright)**
+**[View on npm](https://www.npmjs.com/package/specwright)** · **[Report an Issue](https://github.com/amelmo/specwright/issues)** · **[Discussions](https://github.com/amelmo/specwright/discussions)**
 
 </div>
