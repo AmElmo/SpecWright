@@ -1,3 +1,9 @@
+## [3.4.1](https://github.com/amelmo/specwright/compare/v3.4.0...v3.4.1) (2026-02-23)
+
+### Bug Fixes
+
+* **website:** override next-mdx-remote to v6 for CVE-2026-0969 ([#24](https://github.com/amelmo/specwright/issues/24)) ([17530dc](https://github.com/amelmo/specwright/commit/17530dc7218d99a1d722025bde123c57d768acf3))
+
 ## [3.4.0](https://github.com/amelmo/specwright/compare/v3.3.0...v3.4.0) (2026-02-16)
 
 ### Features

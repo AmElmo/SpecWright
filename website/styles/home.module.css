@@ -1,0 +1,389 @@
+/* ── Base ── */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #09090b;
+  color: #fafafa;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Nav ── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.navLogo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: #fafafa;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.navLinks a {
+  color: #a1a1aa;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.navLinks a:hover {
+  color: #fafafa;
+}
+
+.ghLink {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  padding: 5rem 2rem 3rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #818cf8;
+  border: 1px solid #3730a3;
+  border-radius: 100px;
+  padding: 0.35rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin: 0 0 1.5rem;
+}
+
+.think {
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.spec {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ship {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: #a1a1aa;
+  margin: 0 0 2.5rem;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── CTA ── */
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.installBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  padding: 0.7rem 1.25rem;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, monospace;
+  font-size: 0.95rem;
+  color: #fafafa;
+  user-select: all;
+  cursor: text;
+}
+
+.prompt {
+  color: #6366f1;
+  user-select: none;
+}
+
+.installBlock code {
+  color: #fafafa;
+}
+
+.docsBtn {
+  display: inline-block;
+  color: #a1a1aa;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.7rem 1.25rem;
+  border-radius: 8px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.docsBtn:hover {
+  color: #fafafa;
+  background: #18181b;
+}
+
+/* ── Screenshot ── */
+.screenshotSection {
+  padding: 2rem 2rem 4rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.screenshotWrap {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 25px 80px -12px rgba(99, 102, 241, 0.15),
+    0 8px 32px -8px rgba(0, 0, 0, 0.5);
+}
+
+.screenshot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Problem Section ── */
+.problemSection {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 4rem 2rem 2rem;
+}
+
+.problemSection h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 1rem;
+  line-height: 1.2;
+}
+
+.problemSub {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #71717a;
+  margin: 0;
+}
+
+.problemSub strong {
+  color: #a1a1aa;
+}
+
+/* ── Features (AI Squad) ── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 3rem 2rem 4rem;
+}
+
+.featureIcon {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.feature h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+  color: #fafafa;
+}
+
+.feature p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #71717a;
+  margin: 0;
+}
+
+/* ── Workflow ── */
+.workflow {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.workflow h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 2.5rem;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.stepNum {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #6366f1;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
+.step strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+  color: #fafafa;
+}
+
+.step p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #71717a;
+  margin: 0;
+}
+
+/* ── Highlights ── */
+.highlights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  border-top: 1px solid #18181b;
+}
+
+.highlight h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: #fafafa;
+}
+
+.highlight p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #71717a;
+  margin: 0;
+}
+
+/* ── Final CTA ── */
+.finalCta {
+  text-align: center;
+  padding: 5rem 2rem;
+  border-top: 1px solid #18181b;
+}
+
+.finalCta h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 1.5rem;
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: auto;
+  text-align: center;
+  padding: 2rem;
+  border-top: 1px solid #18181b;
+  color: #52525b;
+  font-size: 0.8rem;
+}
+
+.footer a {
+  color: #71717a;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: #a1a1aa;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .title {
+    font-size: 2.75rem;
+  }
+
+  .features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .highlights {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .hero {
+    padding: 3.5rem 1.5rem 2rem;
+  }
+
+  .screenshotSection {
+    padding: 1.5rem 1rem 3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .features {
+    grid-template-columns: 1fr;
+  }
+}

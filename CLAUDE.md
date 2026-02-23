@@ -113,6 +113,13 @@ Do NOT manually bump `version` in `package.json`.
    - `fix: ...` → patch version bump (e.g. 3.1.0 → 3.1.1)
    - `feat!: ...` or `BREAKING CHANGE:` footer → major bump
    - `chore:`, `docs:`, `style:`, `test:`, `ci:` → no release
+
+### Website-only changes
+
+The `website/` directory is a standalone Next.js + Nextra site, fully isolated
+from the CLI npm package. Changes that **only** touch `website/` must use
+`chore(website):` or `docs(website):` prefixes — never `feat:` or `fix:` —
+so that semantic-release skips them and no npm version is published.
 2. Create a PR branch, commit, push, open PR against `main`
 3. On merge to `main`, the `publish.yml` workflow:
    - Builds and type-checks
@@ -124,6 +131,15 @@ Do NOT manually bump `version` in `package.json`.
 ### Branch naming
 
 Use `AmElmo/<descriptive-name>` prefix for feature branches.
+
+## Git Workflow
+
+- **Commit after every completed unit of work.** Never let changes accumulate.
+- After implementing a feature, fixing a bug, or completing any discrete task, immediately stage and commit with a clear, conventional commit message.
+- Commit granularity: prefer small, atomic commits (one logical change per commit).
+- Format: `type(scope): description` (e.g., `feat(auth): add login endpoint`, `fix(ui): correct button alignment`)
+- Never wait for the user to ask you to commit. Committing is part of completing the task.
+- Do NOT bundle unrelated changes into a single commit.
 
 ## Formatting
 
