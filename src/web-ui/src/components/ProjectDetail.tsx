@@ -48,6 +48,7 @@ interface ProjectStatus {
   };
   currentPhase: string;
   isComplete: boolean;
+  approvedDocuments?: string[];
 }
 
 interface Issue {
@@ -635,7 +636,26 @@ export function ProjectDetail() {
     }
   };
 
-  // Helper functions
+  // Helper functions — uses the same approvedDocuments + currentPhase source as Specification.tsx
+  const docPhaseMap: Record<string, string> = {
+    'prd': 'pm-prd-review',
+    'acceptance-criteria': 'pm-prd-review',
+    'design-brief': 'ux-design-brief-review',
+    'screens': 'ux-design-brief-review',
+    'tech': 'engineer-spec-review',
+    'tech-choices': 'engineer-spec-review',
+  };
+
+  // Map ProjectDetail doc IDs to the approvedDocuments keys used by the API
+  const docIdToApprovalKey: Record<string, string> = {
+    'prd': 'prd',
+    'acceptance-criteria': 'acceptance-criteria',
+    'design-brief': 'design',
+    'screens': 'screens',
+    'tech': 'tech-spec',
+    'tech-choices': 'technology-choices',
+  };
+
   const getDocumentStatus = (docId: string): 'complete' | 'awaiting-review' | 'pending' => {
     if (!project) return 'pending';
 
@@ -657,21 +677,29 @@ export function ProjectDetail() {
     // Request has no approval step
     if (docId === 'request') return 'complete';
 
-    // Check phase-based approval
-    const phases = projectStatus?.phases;
     if (projectStatus?.isComplete) return 'complete';
 
-    if (docId === 'prd' || docId === 'acceptance-criteria') {
-      return phases?.pm?.complete ? 'complete' : 'awaiting-review';
-    }
-    if (docId === 'design-brief' || docId === 'screens') {
-      return phases?.ux?.complete ? 'complete' : 'awaiting-review';
-    }
-    if (docId === 'tech' || docId === 'tech-choices') {
-      return phases?.engineer?.complete ? 'complete' : 'awaiting-review';
+    const approvedDocs = projectStatus?.approvedDocuments || [];
+    const approvalKey = docIdToApprovalKey[docId];
+    const currentPhase = projectStatus?.currentPhase || '';
+
+    // If individually approved, show as complete
+    if (approvalKey && approvedDocs.includes(approvalKey)) return 'complete';
+
+    const docPhase = docPhaseMap[docId];
+
+    // If the current phase is this doc's review phase, it's awaiting review
+    if (currentPhase === docPhase) return 'awaiting-review';
+
+    // Backward compatibility: if approvedDocuments is empty, use phase-order heuristic
+    if (approvedDocs.length === 0 && docPhase) {
+      const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+      const currentIdx = phaseOrder.indexOf(currentPhase);
+      const docIdx = phaseOrder.indexOf(docPhase);
+      if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'complete';
     }
 
-    return 'complete';
+    return hasContent ? 'awaiting-review' : 'pending';
   };
 
   const getCompletedDocCount = () => {
