@@ -79,6 +79,9 @@ export function DocumentReview({
   // Whether this document type renders markdown (supports manual editing)
   const isMarkdownDoc = documentType === 'prd' || documentType === 'design' || documentType === 'tech-spec';
 
+  // For technology-choices: track whether all selections have been made
+  const [allTechChoicesMade, setAllTechChoicesMade] = useState(documentType !== 'technology-choices');
+
   const isDocumentDirty = isEditing && editingContent !== editedContent;
   useNavigationGuard({ isDirty: isDocumentDirty, message: 'You have unsaved document edits. Are you sure you want to leave?' });
 
@@ -87,6 +90,27 @@ export function DocumentReview({
     setEditedContent(documentContent);
     setEditingContent(documentContent);
   }, [documentContent]);
+
+  // Check if all technology choices have been made (only for technology-choices docs)
+  useEffect(() => {
+    if (documentType !== 'technology-choices') {
+      setAllTechChoicesMade(true);
+      return;
+    }
+    try {
+      const data = JSON.parse(editedContent);
+      if (data.technology_decisions && data.technology_decisions.length > 0) {
+        const allSelected = data.technology_decisions.every(
+          (decision: any) => decision.user_choice || decision.final_decision
+        );
+        setAllTechChoicesMade(allSelected);
+      } else {
+        setAllTechChoicesMade(true);
+      }
+    } catch {
+      setAllTechChoicesMade(true);
+    }
+  }, [editedContent, documentType]);
 
   // Close edit dropdown on outside click
   useEffect(() => {
@@ -326,6 +350,16 @@ export function DocumentReview({
           <div className="max-w-4xl px-6">
             <CardContent className="pt-5 pb-5">
               <div className="flex flex-col gap-3">
+                {/* Warning when technology choices not all selected */}
+                {!allTechChoicesMade && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
+                    <span className="text-yellow-600 text-lg">⚠️</span>
+                    <p className="text-sm text-yellow-800">
+                      <strong>Action Required:</strong> Select a technology for every category before approving.
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
                   {/* Edit dropdown — only show when editing is possible */}
                   {canEdit && !isEditing && (
@@ -403,8 +437,9 @@ export function DocumentReview({
                   {onApprove && (
                     <Button
                       onClick={handleApproveDocument}
-                      disabled={approving || isEditing}
+                      disabled={approving || isEditing || !allTechChoicesMade}
                       variant="success"
+                      title={!allTechChoicesMade ? 'Select a technology for every category first' : ''}
                     >
                       {approving ? (
                         <>

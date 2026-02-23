@@ -887,16 +887,19 @@ export function Specification() {
     };
 
     const docPhase = docPhaseMap[doc];
+    const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+    const currentIdx = phaseOrder.indexOf(currentPhase);
+    const docIdx = phaseOrder.indexOf(docPhase);
 
     // If the current phase is this doc's review phase, it's available for review
     if (currentPhase === docPhase) return 'reviewing';
 
-    // Backward compatibility: if approvedDocuments is empty, use phase-order heuristic
-    if (approvedDocs.length === 0) {
-      const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
-      const currentIdx = phaseOrder.indexOf(currentPhase);
-      const docIdx = phaseOrder.indexOf(docPhase);
-      if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'approved';
+    // Doc from a past phase
+    if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) {
+      // Backward compat: if no per-doc approvals exist, treat all past-phase docs as approved
+      if (approvedDocs.length === 0) return 'approved';
+      // Per-doc model: past-phase doc that wasn't individually approved — still reviewable
+      return 'reviewing';
     }
 
     return 'pending';

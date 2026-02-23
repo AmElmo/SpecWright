@@ -687,16 +687,19 @@ export function ProjectDetail() {
     if (approvalKey && approvedDocs.includes(approvalKey)) return 'complete';
 
     const docPhase = docPhaseMap[docId];
+    const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+    const currentIdx = phaseOrder.indexOf(currentPhase);
+    const docIdx = docPhase ? phaseOrder.indexOf(docPhase) : -1;
 
     // If the current phase is this doc's review phase, it's awaiting review
     if (currentPhase === docPhase) return 'awaiting-review';
 
-    // Backward compatibility: if approvedDocuments is empty, use phase-order heuristic
-    if (approvedDocs.length === 0 && docPhase) {
-      const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
-      const currentIdx = phaseOrder.indexOf(currentPhase);
-      const docIdx = phaseOrder.indexOf(docPhase);
-      if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'complete';
+    // Doc from a past phase
+    if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) {
+      // Backward compat: if no per-doc approvals exist, treat all past-phase docs as complete
+      if (approvedDocs.length === 0) return 'complete';
+      // Per-doc model: past-phase doc not individually approved — still awaiting review
+      return 'awaiting-review';
     }
 
     return hasContent ? 'awaiting-review' : 'pending';
