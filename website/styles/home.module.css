@@ -63,7 +63,9 @@
 }
 
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -147,22 +149,26 @@
   color: #fafafa;
 }
 
-.docsBtn {
-  display: inline-block;
-  color: #a1a1aa;
+.ghBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fafafa;
   font-size: 0.95rem;
   font-weight: 500;
   text-decoration: none;
   padding: 0.7rem 1.25rem;
+  border: 1px solid #27272a;
   border-radius: 8px;
+  background: #18181b;
   transition:
-    color 0.15s,
+    border-color 0.15s,
     background 0.15s;
 }
 
-.docsBtn:hover {
-  color: #fafafa;
-  background: #18181b;
+.ghBtn:hover {
+  border-color: #3f3f46;
+  background: #27272a;
 }
 
 /* ── Screenshot ── */
