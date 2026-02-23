@@ -48,6 +48,7 @@ interface ProjectStatus {
   };
   currentPhase: string;
   isComplete: boolean;
+  approvedDocuments?: string[];
 }
 
 interface Issue {
@@ -381,7 +382,8 @@ export function ProjectDetail() {
           const settingsData = await settingsRes.json();
           if (settingsData.settings) {
             setProjectSettings(settingsData.settings);
-            setHasExistingSettings(true);
+            // Only skip the config modal if the user explicitly confirmed settings
+            setHasExistingSettings(!!settingsData.settings.settingsConfirmed);
           }
         }
       } catch (err) {
@@ -634,20 +636,70 @@ export function ProjectDetail() {
     }
   };
 
-  // Helper functions
-  const getDocumentStatus = (docId: string): 'complete' | 'pending' => {
+  // Helper functions — uses the same approvedDocuments + currentPhase source as Specification.tsx
+  const docPhaseMap: Record<string, string> = {
+    'prd': 'pm-prd-review',
+    'acceptance-criteria': 'pm-prd-review',
+    'design-brief': 'ux-design-brief-review',
+    'screens': 'ux-design-brief-review',
+    'tech': 'engineer-spec-review',
+    'tech-choices': 'engineer-spec-review',
+  };
+
+  // Map ProjectDetail doc IDs to the approvedDocuments keys used by the API
+  const docIdToApprovalKey: Record<string, string> = {
+    'prd': 'prd',
+    'acceptance-criteria': 'acceptance-criteria',
+    'design-brief': 'design',
+    'screens': 'screens',
+    'tech': 'tech-spec',
+    'tech-choices': 'technology-choices',
+  };
+
+  const getDocumentStatus = (docId: string): 'complete' | 'awaiting-review' | 'pending' => {
     if (!project) return 'pending';
-    
-    switch (docId) {
-      case 'request': return project.request ? 'complete' : 'pending';
-      case 'prd': return project.prd ? 'complete' : 'pending';
-      case 'acceptance-criteria': return project.acceptanceCriteria ? 'complete' : 'pending';
-      case 'design-brief': return project.design ? 'complete' : 'pending';
-      case 'screens': return project.screens ? 'complete' : 'pending';
-      case 'tech': return project.tech ? 'complete' : 'pending';
-      case 'tech-choices': return project.techChoices ? 'complete' : 'pending';
-      default: return 'pending';
-    }
+
+    const hasContent = (() => {
+      switch (docId) {
+        case 'request': return !!project.request;
+        case 'prd': return !!project.prd;
+        case 'acceptance-criteria': return !!project.acceptanceCriteria;
+        case 'design-brief': return !!project.design;
+        case 'screens': return !!project.screens;
+        case 'tech': return !!project.tech;
+        case 'tech-choices': return !!project.techChoices;
+        default: return false;
+      }
+    })();
+
+    if (!hasContent) return 'pending';
+
+    // Request has no approval step
+    if (docId === 'request') return 'complete';
+
+    if (projectStatus?.isComplete) return 'complete';
+
+    const approvedDocs = projectStatus?.approvedDocuments || [];
+    const approvalKey = docIdToApprovalKey[docId];
+    const currentPhase = projectStatus?.currentPhase || '';
+
+    // If individually approved, show as complete
+    if (approvalKey && approvedDocs.includes(approvalKey)) return 'complete';
+
+    // If any docs have been individually approved, all docs have been generated
+    // (docs are generated in parallel). Non-approved docs are awaiting review.
+    if (approvedDocs.length > 0) return 'awaiting-review';
+
+    // No per-doc approvals yet — use phase-order heuristic (backward compat)
+    const docPhase = docPhaseMap[docId];
+    const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+    const currentIdx = phaseOrder.indexOf(currentPhase);
+    const docIdx = docPhase ? phaseOrder.indexOf(docPhase) : -1;
+
+    if (currentPhase === docPhase) return 'awaiting-review';
+    if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'complete';
+
+    return hasContent ? 'awaiting-review' : 'pending';
   };
 
   const getCompletedDocCount = () => {
@@ -1977,18 +2029,28 @@ export function ProjectDetail() {
                     className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left transition-colors"
                     style={{
                       backgroundColor: isActive ? 'hsl(235 69% 97%)' : 'transparent',
-                      color: isActive ? 'hsl(235 69% 50%)' : status === 'complete' ? 'hsl(0 0% 32%)' : 'hsl(0 0% 60%)',
+                      color: isActive ? 'hsl(235 69% 50%)' : status !== 'pending' ? 'hsl(0 0% 32%)' : 'hsl(0 0% 60%)',
                     }}
                   >
                     {status === 'complete' ? (
-                      <div 
+                      <div
                         className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: 'hsl(142 76% 36%)', color: 'white' }}
                       >
                         <CheckIcon />
                       </div>
+                    ) : status === 'awaiting-review' ? (
+                      <div
+                        className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: 'hsl(38 92% 50%)', color: 'white' }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      </div>
                     ) : (
-                      <div 
+                      <div
                         className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ border: '1.5px solid hsl(0 0% 80%)' }}
                       />
@@ -2126,28 +2188,37 @@ export function ProjectDetail() {
           </div>
           
           {/* Status badge */}
-          {activeSection === 'docs' && (
-            <div 
-              className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium"
-              style={{
-                backgroundColor: getDocumentStatus(activeDocType) === 'complete' 
-                  ? 'hsl(142 76% 94%)' 
-                  : 'hsl(0 0% 96%)',
-                color: getDocumentStatus(activeDocType) === 'complete' 
-                  ? 'hsl(142 76% 30%)' 
-                  : 'hsl(0 0% 46%)'
-              }}
-            >
-              {getDocumentStatus(activeDocType) === 'complete' ? (
-                <>
-                  <CheckIcon />
-                  <span>Complete</span>
-                </>
-              ) : (
-                <span>Pending</span>
-              )}
-            </div>
-          )}
+          {activeSection === 'docs' && (() => {
+            const docSt = getDocumentStatus(activeDocType);
+            return (
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium"
+                style={{
+                  backgroundColor: docSt === 'complete'
+                    ? 'hsl(142 76% 94%)'
+                    : docSt === 'awaiting-review'
+                      ? 'hsl(38 92% 95%)'
+                      : 'hsl(0 0% 96%)',
+                  color: docSt === 'complete'
+                    ? 'hsl(142 76% 30%)'
+                    : docSt === 'awaiting-review'
+                      ? 'hsl(38 92% 35%)'
+                      : 'hsl(0 0% 46%)'
+                }}
+              >
+                {docSt === 'complete' ? (
+                  <>
+                    <CheckIcon />
+                    <span>Approved</span>
+                  </>
+                ) : docSt === 'awaiting-review' ? (
+                  <span>Pending Review</span>
+                ) : (
+                  <span>Pending</span>
+                )}
+              </div>
+            );
+          })()}
         </header>
 
         {/* Content */}
@@ -2182,9 +2253,9 @@ export function ProjectDetail() {
               </label>
               <div className="space-y-2">
                 {[
-                  { value: 'light', label: 'Light', desc: '3-5 questions', emoji: '⚡' },
-                  { value: 'standard', label: 'Standard', desc: '5-8 questions (recommended)', emoji: '⚖️' },
-                  { value: 'thorough', label: 'Thorough', desc: '8-12 questions', emoji: '🔬' }
+                  { value: 'light', label: 'Light', desc: '5-8 questions total', emoji: '⚡' },
+                  { value: 'standard', label: 'Standard', desc: '8-12 questions total (recommended)', emoji: '⚖️' },
+                  { value: 'thorough', label: 'Thorough', desc: '12-18 questions total', emoji: '🔬' }
                 ].map((option) => (
                   <button
                     key={option.value}

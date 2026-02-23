@@ -88,7 +88,10 @@ export interface ProjectStatus {
   
   // Cost tracking for token usage estimation
   costTracking?: CostTracking;
-  
+
+  // Per-document approval tracking (doc keys that have been individually approved)
+  approvedDocuments?: string[];
+
   createdAt: string;
   lastUpdatedAt: string;
 }

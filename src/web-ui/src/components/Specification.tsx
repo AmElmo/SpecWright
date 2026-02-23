@@ -13,6 +13,17 @@ import specwrightLogo from '@/assets/logos/specwright_logo.svg';
 import { useSidebarWidth } from '../hooks/use-sidebar-width';
 import { SidebarResizeHandle } from './SidebarResizeHandle';
 
+interface DocFileProgress {
+  name: string;
+  label: string;
+  complete: boolean;
+}
+
+interface AgentDocProgress {
+  status: string;
+  files: DocFileProgress[];
+}
+
 interface SpecificationStatus {
   projectId: string;
   phases: {
@@ -25,6 +36,15 @@ interface SpecificationStatus {
   needsReview: boolean;
   reviewDocument: string | null;
   isComplete: boolean;
+  approvedDocuments?: string[];
+  needsGeneration?: boolean;
+  docsProgress?: {
+    pm: AgentDocProgress;
+    ux: AgentDocProgress;
+    engineer: AgentDocProgress;
+  };
+  isGenerating?: boolean;
+  generatingPhase?: string | null;
 }
 
 // Log entry for streaming progress
@@ -96,6 +116,16 @@ export function Specification() {
   const [lastProgressTime, setLastProgressTime] = useState<number | null>(null);
   const [currentRunTool, setCurrentRunTool] = useState<AITool | null>(null);
 
+  // Sidebar document navigation
+  const [sidebarSelectedDoc, setSidebarSelectedDoc] = useState<string | null>(null);
+  const [sidebarDocContent, setSidebarDocContent] = useState<string>('');
+
+
+  // Per-agent streaming logs for docs-generate phase
+  const [agentLogs, setAgentLogs] = useState<Record<string, HeadlessLogEntry[]>>({ pm: [], ux: [], engineer: [] });
+  const [agentActiveTab, setAgentActiveTab] = useState<string>('pm');
+  const [agentCompleted, setAgentCompleted] = useState<Record<string, boolean>>({ pm: false, ux: false, engineer: false });
+
   const activeToolName = currentRunTool ? AI_TOOL_NAMES[currentRunTool] : aiToolName;
 
   const showQuestionForm = status?.currentPhase === 'pm-questions-answer' || 
@@ -106,65 +136,123 @@ export function Specification() {
     status?.currentPhase === 'ux-questions-answer' ? 'ux' :
     status?.currentPhase === 'engineer-questions-answer' ? 'engineer' : null;
   
+  // Map WS event phase to agent key for per-agent log routing
+  const phaseToAgent = (phase?: string): string | null => {
+    if (!phase) return null;
+    if (phase.startsWith('pm')) return 'pm';
+    if (phase.startsWith('ux')) return 'ux';
+    if (phase.startsWith('engineer')) return 'engineer';
+    return null;
+  };
+
   useRealtimeUpdates((event) => {
     // Refinement events have isRefinement=true and are handled by RefinePanel
-    // We should ignore them here to avoid interfering with the main page state
     const isRefinementEvent = event.isRefinement === true;
+    const isDocsGenerate = triggeringPhase === 'docs-generate';
+    const eventAgent = phaseToAgent(event.phase);
 
     // Track headless mode and streaming logs - but not for refinement events
     if (event.type === 'headless_started' && !isRefinementEvent) {
-      setIsHeadlessMode(true);
-      setHeadlessLogs([]); // Clear previous logs
-      setLogIdCounter(0);
-      setLastProgressTime(Date.now());
-      // Add initial log entry
-      const startEntry: HeadlessLogEntry = {
-        id: 0,
-        message: `Starting ${activeToolName}...`,
-        icon: '🚀',
-        timestamp: new Date()
-      };
-      setHeadlessLogs([startEntry]);
-      setLogIdCounter(1);
-      // Transition from "Sending..." to "Sent" when headless execution starts
+      if (isDocsGenerate && eventAgent) {
+        // Per-agent: add start entry to the specific agent's log
+        const startEntry: HeadlessLogEntry = {
+          id: Date.now(),
+          message: `Starting ${activeToolName}...`,
+          icon: '🚀',
+          timestamp: new Date()
+        };
+        setAgentLogs(prev => ({ ...prev, [eventAgent]: [startEntry] }));
+        setAgentCompleted(prev => ({ ...prev, [eventAgent]: false }));
+      } else {
+        // Single-agent mode (non-docs-generate)
+        setIsHeadlessMode(true);
+        setHeadlessLogs([]);
+        setLogIdCounter(0);
+        setLastProgressTime(Date.now());
+        const startEntry: HeadlessLogEntry = {
+          id: 0,
+          message: `Starting ${activeToolName}...`,
+          icon: '🚀',
+          timestamp: new Date()
+        };
+        setHeadlessLogs([startEntry]);
+        setLogIdCounter(1);
+      }
       setAutomationStatus('sent');
     }
     if (event.type === 'headless_progress' && event.status && !isRefinementEvent) {
-      // Accumulate progress messages for streaming display
       const message = event.status;
-      const newEntry: HeadlessLogEntry = {
-        id: logIdCounter,
-        message,
-        icon: getActionIcon(message),
-        timestamp: new Date()
-      };
-      setHeadlessLogs(prev => [...prev, newEntry]);
-      setLogIdCounter(prev => prev + 1);
-      // Reset thinking indicator timer
-      setLastProgressTime(Date.now());
+      if (isDocsGenerate && eventAgent) {
+        // Per-agent: append to the specific agent's log
+        const newEntry: HeadlessLogEntry = {
+          id: Date.now() + Math.random(),
+          message,
+          icon: getActionIcon(message),
+          timestamp: new Date()
+        };
+        setAgentLogs(prev => ({
+          ...prev,
+          [eventAgent]: [...(prev[eventAgent] || []), newEntry]
+        }));
+      } else {
+        // Single-agent mode
+        const newEntry: HeadlessLogEntry = {
+          id: logIdCounter,
+          message,
+          icon: getActionIcon(message),
+          timestamp: new Date()
+        };
+        setHeadlessLogs(prev => [...prev, newEntry]);
+        setLogIdCounter(prev => prev + 1);
+        setLastProgressTime(Date.now());
+      }
     }
     if (event.type === 'headless_completed' && !isRefinementEvent) {
-      // Add final log entry
-      const message = event.success ? 'Task completed successfully' : 'Task failed, retrying...';
-      const finalEntry: HeadlessLogEntry = {
-        id: logIdCounter,
-        message,
-        icon: event.success ? '✅' : '⚠️',
-        timestamp: new Date()
-      };
-      setHeadlessLogs(prev => [...prev, finalEntry]);
+      const message = event.success ? 'Task completed successfully' : 'Task failed';
+      if (isDocsGenerate && eventAgent) {
+        // Per-agent: mark completed
+        const finalEntry: HeadlessLogEntry = {
+          id: Date.now(),
+          message,
+          icon: event.success ? '✅' : '⚠️',
+          timestamp: new Date()
+        };
+        setAgentLogs(prev => ({
+          ...prev,
+          [eventAgent]: [...(prev[eventAgent] || []), finalEntry]
+        }));
+        setAgentCompleted(prev => ({ ...prev, [eventAgent]: true }));
+      } else {
+        // Single-agent mode
+        const finalEntry: HeadlessLogEntry = {
+          id: logIdCounter,
+          message,
+          icon: event.success ? '✅' : '⚠️',
+          timestamp: new Date()
+        };
+        setHeadlessLogs(prev => [...prev, finalEntry]);
+        setLastProgressTime(null);
+        setTimeout(() => {
+          setHeadlessLogs([]);
+          setIsHeadlessMode(false);
+        }, 3000);
+      }
+    }
+    // Handle headless cancellation - reset all working state
+    if (event.type === 'headless_cancelled') {
+      setTriggeringPhase(null);
+      setAutomationStatus(null);
+      setIsHeadlessMode(false);
+      setHeadlessLogs([]);
       setLastProgressTime(null);
-      // Clear logs after a moment
-      setTimeout(() => {
-        setHeadlessLogs([]);
-        setIsHeadlessMode(false);
-      }, 3000);
+      setBreakingDown(false);
+      setCurrentRunTool(null);
+      setAgentLogs({ pm: [], ux: [], engineer: [] });
+      setAgentCompleted({ pm: false, ux: false, engineer: false });
     }
     // Handle early session capture - enables RefinePanel immediately
-    // This should still work for refinement to capture updated session IDs
     if (event.type === 'session_captured' && event.sessionId) {
       logger.debug('Session captured early:', event.sessionId);
-      // Determine which agent this session belongs to based on current phase
       if (status?.currentPhase) {
         if (status.currentPhase.startsWith('pm-')) {
           setSessions(prev => ({ ...prev, pm: event.sessionId }));
@@ -234,7 +322,10 @@ export function Specification() {
         logger.debug('Restoring generation state from server:', data.generatingPhase);
         setTriggeringPhase(data.generatingPhase);
         setAutomationStatus('sent');
-        setIsHeadlessMode(true);
+        // For docs-generate, don't set isHeadlessMode — per-agent logs are used instead
+        if (data.generatingPhase !== 'docs-generate') {
+          setIsHeadlessMode(true);
+        }
       }
 
       if (data.needsReview && data.reviewDocument) {
@@ -280,6 +371,31 @@ export function Specification() {
     }
   };
   
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    if (!projectId || cancelling) return;
+    setCancelling(true);
+    try {
+      await fetch(`/api/headless/cancel/${projectId}`, { method: 'POST' });
+      // State reset is handled by the headless_cancelled WebSocket event
+    } catch (err) {
+      logger.error('Failed to cancel:', err);
+      // Fallback: reset state locally if the API call fails
+      setTriggeringPhase(null);
+      setAutomationStatus(null);
+      setIsHeadlessMode(false);
+      setHeadlessLogs([]);
+      setLastProgressTime(null);
+      setBreakingDown(false);
+      setCurrentRunTool(null);
+      setAgentLogs({ pm: [], ux: [], engineer: [] });
+      setAgentCompleted({ pm: false, ux: false, engineer: false });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const triggerBreakdown = async (toolOverride?: AITool) => {
     if (!projectId) return;
 
@@ -332,19 +448,34 @@ export function Specification() {
     }
   };
   
-  const handleApproveDocument = async () => {
+  const handleApproveDocument = async (docKey?: string) => {
     if (!projectId || !status) return;
-    
+
+    // If a specific docKey is provided, use the per-document endpoint
+    const effectiveDocKey = docKey || sidebarSelectedDoc;
+
     try {
-      const response = await fetch(`/api/specification/approve/${projectId}/${status.currentPhase}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!response.ok) throw new Error('Failed to approve document');
-      
-      await response.json();
-      setIsInReviewMode(false);
+      if (effectiveDocKey) {
+        const response = await fetch(`/api/specification/approve-document/${projectId}/${effectiveDocKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to approve document');
+        const data = await response.json();
+        if (data.phaseAdvanced) {
+          setIsInReviewMode(false);
+          setSidebarSelectedDoc(null);
+        }
+      } else {
+        // Fallback: legacy phase-level approval (for CLI backward compat)
+        const response = await fetch(`/api/specification/approve/${projectId}/${status.currentPhase}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to approve document');
+        setIsInReviewMode(false);
+        setSidebarSelectedDoc(null);
+      }
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve document');
@@ -384,17 +515,12 @@ export function Specification() {
       
       if (triggeringPhase === 'pm-questions-generate' && data.currentPhase === 'pm-questions-answer') {
         setTriggeringPhase(null);
-      } else if (triggeringPhase === 'pm-prd-generate' && (data.currentPhase === 'pm-prd-review' || data.phases.pm.complete)) {
-        setTriggeringPhase(null);
       } else if (triggeringPhase === 'ux-questions-generate' && data.currentPhase === 'ux-questions-answer') {
-        setTriggeringPhase(null);
-      } else if (triggeringPhase === 'ux-design-brief-generate' && data.currentPhase === 'ux-design-brief-review') {
-        setTriggeringPhase(null);
-      } else if (triggeringPhase === 'ux-wireframes-generate' && (data.currentPhase === 'ux-wireframes-review' || data.phases.ux.complete)) {
         setTriggeringPhase(null);
       } else if (triggeringPhase === 'engineer-questions-generate' && data.currentPhase === 'engineer-questions-answer') {
         setTriggeringPhase(null);
-      } else if (triggeringPhase === 'engineer-spec-generate' && (data.currentPhase === 'engineer-spec-review' || data.phases.engineer.complete)) {
+      } else if (triggeringPhase === 'docs-generate' && (data.currentPhase === 'pm-prd-review' || data.needsReview)) {
+        // All docs generated, moved to review phase
         setTriggeringPhase(null);
       }
     } catch (err) {
@@ -404,36 +530,88 @@ export function Specification() {
   
   const triggerPhase = async (phase: string, toolOverride?: AITool) => {
     if (!projectId) return;
-    
+
     try {
       setCurrentRunTool(toolOverride || null);
       setTriggeringPhase(phase);
       setAutomationStatus('sending');
       setError('');
-      
-      const response = await fetch(`/api/specification/continue/${projectId}/${phase}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...(toolOverride ? { aiTool: toolOverride } : {})
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.prompt) {
-        setLastPrompt(data.prompt);
-      }
-      
-      if (data.success) {
-        // Automation succeeded - keep "sent" visible at the top
-        setAutomationStatus('sent');
-      } else {
-        // Automation failed - show copy prompt button prominently
-        if (data.message || data.error) {
-          setError(data.message || data.error);
+
+      if (phase === 'docs-generate') {
+        // Reset per-agent streaming state
+        setAgentLogs({ pm: [], ux: [], engineer: [] });
+        setAgentCompleted({ pm: false, ux: false, engineer: false });
+        setAgentActiveTab('pm');
+
+        // Determine which agents still need generation (skip already-complete ones)
+        const allDocPhases = [
+          { phase: 'pm-prd', agent: 'pm' },
+          { phase: 'ux-design-brief', agent: 'ux' },
+          { phase: 'engineer-spec-generate', agent: 'engineer' },
+        ];
+        const docsProgress = status?.docsProgress;
+        const pendingPhases = allDocPhases.filter(d => {
+          const agentProgress = docsProgress?.[d.agent as keyof typeof docsProgress];
+          return agentProgress?.status !== 'complete';
+        });
+
+        if (pendingPhases.length === 0) {
+          // All docs already complete — just refresh status
+          setTriggeringPhase(null);
+          setAutomationStatus(null);
+          await fetchStatus();
+          return;
         }
-        setAutomationStatus('failed');
+
+        // Fire parallel requests only for incomplete agents
+        const results = await Promise.allSettled(
+          pendingPhases.map(({ phase: docPhase }) =>
+            fetch(`/api/specification/continue/${projectId}/${docPhase}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...(toolOverride ? { aiTool: toolOverride } : {})
+              })
+            }).then(r => r.json())
+          )
+        );
+
+        const anySuccess = results.some(r => r.status === 'fulfilled' && r.value.success);
+        const anyFailed = results.some(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+
+        if (anySuccess) {
+          setAutomationStatus('sent');
+          // Auto-select first pending agent's tab
+          setAgentActiveTab(pendingPhases[0].agent);
+        }
+        if (anyFailed && !anySuccess) {
+          setError('Failed to trigger document generation');
+          setAutomationStatus('failed');
+          setTriggeringPhase(null);
+        }
+      } else {
+        const response = await fetch(`/api/specification/continue/${projectId}/${phase}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...(toolOverride ? { aiTool: toolOverride } : {})
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.prompt) {
+          setLastPrompt(data.prompt);
+        }
+
+        if (data.success) {
+          setAutomationStatus('sent');
+        } else {
+          if (data.message || data.error) {
+            setError(data.message || data.error);
+          }
+          setAutomationStatus('failed');
+        }
       }
     } catch (err) {
       setError('Failed to trigger phase');
@@ -482,38 +660,55 @@ export function Specification() {
   
   const getPhaseStatus = (phaseName: string): PhaseStatus => {
     if (!status) return 'pending';
-    
+
+    // Unified flow: 4 steps — PM Questions, UX Questions, Engineer Questions, Documents
     if (phaseName === 'pm') {
-      if (status.phases.pm.complete) return 'complete';
+      // PM is complete when pm-questions-answer is done
+      const pmQuestionsAnswered = status.currentPhase !== 'pm-questions-generate' &&
+        status.currentPhase !== 'pm-questions-answer';
+      if (pmQuestionsAnswered || status.phases.pm.complete) return 'complete';
       if (status.currentPhase.startsWith('pm')) return 'in-progress';
       return 'pending';
     }
-    
+
     if (phaseName === 'ux') {
-      if (status.phases.ux.complete) return 'complete';
-      if (status.currentPhase === 'ux') return 'in-progress';
-      if (status.phases.pm.complete) return 'pending';
+      const uxQuestionsAnswered = status.currentPhase !== 'pm-questions-generate' &&
+        status.currentPhase !== 'pm-questions-answer' &&
+        status.currentPhase !== 'ux-questions-generate' &&
+        status.currentPhase !== 'ux-questions-answer';
+      if (uxQuestionsAnswered || status.phases.ux.complete) return 'complete';
+      if (status.currentPhase.startsWith('ux')) return 'in-progress';
       return 'pending';
     }
-    
+
     if (phaseName === 'engineer') {
-      if (status.phases.engineer.complete) return 'complete';
-      if (status.currentPhase === 'engineer') return 'in-progress';
-      if (status.phases.pm.complete && status.phases.ux.complete) return 'pending';
+      const engineerQuestionsAnswered = ['docs-generate', 'pm-prd-review', 'ux-design-brief-review',
+        'engineer-spec-review', 'complete'].includes(status.currentPhase);
+      if (engineerQuestionsAnswered || status.phases.engineer.complete) return 'complete';
+      if (status.currentPhase.startsWith('engineer')) return 'in-progress';
       return 'pending';
     }
-    
+
+    if (phaseName === 'documents') {
+      if (status.isComplete) return 'complete';
+      if (['docs-generate', 'pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'].includes(status.currentPhase)) {
+        return 'in-progress';
+      }
+      return 'pending';
+    }
+
     return 'pending';
   };
   
   const getPhaseInfo = (phase: string) => {
     const phases: Record<string, { agent: string; action: string; description: string }> = {
-      'pm-questions-generate': { agent: 'Product Manager', action: 'Generating Questions', description: 'Creating strategic questions about requirements' },
+      'pm-questions-generate': { agent: 'Product Manager', action: 'Analyzing Codebase & Generating Questions', description: 'Reviewing your entire codebase to ask targeted questions about requirements' },
       'pm-prd-generate': { agent: 'Product Manager', action: 'Writing PRD', description: 'Creating the Product Requirements Document' },
-      'ux-questions-generate': { agent: 'Designer', action: 'Generating Questions', description: 'Creating UX and design questions' },
+      'ux-questions-generate': { agent: 'Designer', action: 'Analyzing UI & Generating Questions', description: 'Reviewing your components and UI patterns to ask relevant design questions' },
       'ux-design-brief-generate': { agent: 'Designer', action: 'Creating Design Brief', description: 'Designing screens and user flows' },
-      'engineer-questions-generate': { agent: 'Engineer', action: 'Generating Questions', description: 'Creating technical architecture questions' },
+      'engineer-questions-generate': { agent: 'Engineer', action: 'Analyzing Architecture & Generating Questions', description: 'Reviewing your tech stack and codebase to ask precise technical questions' },
       'engineer-spec-generate': { agent: 'Engineer', action: 'Writing Tech Spec', description: 'Creating technical specification' },
+      'docs-generate': { agent: 'All Agents', action: 'Generating Documents', description: 'Creating PRD, Design Brief, and Technical Spec in parallel' },
     };
     return phases[phase] || { agent: 'AI', action: 'Processing', description: 'Working on the next step' };
   };
@@ -545,10 +740,15 @@ export function Specification() {
         description: 'The Engineer will ask questions about technical constraints and infrastructure.',
         buttonText: 'Generate Questions'
       },
-      'engineer-spec-generate': { 
-        title: 'Generate Technical Spec', 
+      'engineer-spec-generate': {
+        title: 'Generate Technical Spec',
         description: 'The Engineer will create a detailed technical specification.',
         buttonText: 'Generate Tech Spec'
+      },
+      'docs-generate': {
+        title: 'Generate All Documents',
+        description: 'All three agents will work in parallel to create the PRD, Design Brief, and Technical Specification.',
+        buttonText: 'Generate All Documents'
       },
     };
     return info[phase] || { title: 'Continue', description: 'Continue to the next phase.', buttonText: 'Continue' };
@@ -564,6 +764,7 @@ export function Specification() {
   const pmStatus = getPhaseStatus('pm');
   const uxStatus = getPhaseStatus('ux');
   const engineerStatus = getPhaseStatus('engineer');
+  const docsStatus = getPhaseStatus('documents');
   const nextActionPhase = status?.nextPhase || null;
 
   // Phase icons
@@ -593,14 +794,24 @@ export function Specification() {
     </svg>
   );
 
+  // Documents icon for 4th step
+  const DocumentsIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 18H17V16H7V18ZM7 14H17V12H7V14ZM5 22C4.45 22 3.979 21.804 3.587 21.413C3.196 21.021 3 20.55 3 20V4C3 3.45 3.196 2.979 3.587 2.587C3.979 2.196 4.45 2 5 2H14L20 8V20C20 20.55 19.804 21.021 19.413 21.413C19.021 21.804 18.55 22 18 22H5Z" fill="currentColor" fillOpacity="0.2"/>
+      <path d="M5 22C4.45 22 3.979 21.804 3.587 21.413C3.196 21.021 3 20.55 3 20V4C3 3.45 3.196 2.979 3.587 2.587C3.979 2.196 4.45 2 5 2H14L20 8V20C20 20.55 19.804 21.021 19.413 21.413C19.021 21.804 18.55 22 18 22H5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M14 2V8H20" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  );
+
   // Phase indicator component - keeps original icon, changes color when complete
-  const PhaseIndicator = ({ name, status: phaseStatus, phaseType }: { name: string; status: PhaseStatus; phaseType: 'pm' | 'ux' | 'engineer' }) => {
+  const PhaseIndicator = ({ name, status: phaseStatus, phaseType }: { name: string; status: PhaseStatus; phaseType: 'pm' | 'ux' | 'engineer' | 'documents' }) => {
     const getIcon = () => {
       // Always show the agent's icon, never replace with checkmark
       switch (phaseType) {
         case 'pm': return <ProductManagerIcon />;
         case 'ux': return <DesignerIcon />;
         case 'engineer': return <EngineerIcon />;
+        case 'documents': return <DocumentsIcon />;
       }
     };
 
@@ -650,6 +861,87 @@ export function Specification() {
 
   const { sidebarWidth, handleResizeStart } = useSidebarWidth();
 
+  // Determine document review statuses for sidebar
+  const reviewPhases = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+  const currentPhase = status?.currentPhase || '';
+  const isReviewPhase = reviewPhases.includes(currentPhase) || status?.isComplete;
+
+  type ReviewDocKey = 'prd' | 'acceptance-criteria' | 'design' | 'screens' | 'tech-spec' | 'technology-choices';
+
+  const getDocReviewStatus = (doc: ReviewDocKey): 'approved' | 'reviewing' | 'pending' => {
+    if (status?.isComplete) return 'approved';
+
+    const approvedDocs = status?.approvedDocuments || [];
+
+    // If individually approved, show as approved
+    if (approvedDocs.includes(doc)) return 'approved';
+
+    // If any docs have been individually approved, all docs have been generated
+    // (docs are generated in parallel). Non-approved docs are available for review.
+    if (approvedDocs.length > 0) return 'reviewing';
+
+    // No per-doc approvals yet — use phase-order heuristic (backward compat)
+    const docPhaseMap: Record<string, string> = {
+      'prd': 'pm-prd-review',
+      'acceptance-criteria': 'pm-prd-review',
+      'design': 'ux-design-brief-review',
+      'screens': 'ux-design-brief-review',
+      'tech-spec': 'engineer-spec-review',
+      'technology-choices': 'engineer-spec-review',
+    };
+
+    const docPhase = docPhaseMap[doc];
+    const phaseOrder = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+    const currentIdx = phaseOrder.indexOf(currentPhase);
+    const docIdx = phaseOrder.indexOf(docPhase);
+
+    if (currentPhase === docPhase) return 'reviewing';
+    if (currentIdx >= 0 && docIdx >= 0 && docIdx < currentIdx) return 'approved';
+
+    return 'pending';
+  };
+
+  const reviewDocuments: { key: ReviewDocKey; label: string; icon: string }[] = [
+    { key: 'prd', label: 'PRD', icon: '📋' },
+    { key: 'acceptance-criteria', label: 'Acceptance Criteria', icon: '✅' },
+    { key: 'design', label: 'Design Brief', icon: '🎨' },
+    { key: 'screens', label: 'Screens', icon: '🖼️' },
+    { key: 'tech-spec', label: 'Tech Spec', icon: '⚙️' },
+    { key: 'technology-choices', label: 'Technology Choices', icon: '🔧' },
+  ];
+
+  // Map sidebar doc keys to their document file path and unique documentType
+  const docKeyInfo: Record<ReviewDocKey, { path: string; documentType: 'prd' | 'design' | 'tech-spec' | 'acceptance-criteria' | 'screens' | 'technology-choices' }> = {
+    'prd': { path: 'documents/prd.md', documentType: 'prd' },
+    'acceptance-criteria': { path: 'documents/acceptance_criteria.json', documentType: 'acceptance-criteria' },
+    'design': { path: 'documents/design_brief.md', documentType: 'design' },
+    'screens': { path: 'documents/screens.json', documentType: 'screens' },
+    'tech-spec': { path: 'documents/technical_specification.md', documentType: 'tech-spec' },
+    'technology-choices': { path: 'documents/technology_choices.json', documentType: 'technology-choices' },
+  };
+
+  const handleSidebarDocClick = async (docKey: ReviewDocKey) => {
+    const docStatus = getDocReviewStatus(docKey);
+    if (docStatus === 'pending') return;
+    if (sidebarSelectedDoc === docKey) return;
+
+    const info = docKeyInfo[docKey];
+    setSidebarSelectedDoc(docKey);
+
+    // Fetch the document's own file
+    try {
+      setLoadingDocument(true);
+      const response = await fetch(`/api/specification/document/${projectId}/${info.path}`);
+      if (!response.ok) throw new Error('Failed to fetch document');
+      const data = await response.json();
+      setSidebarDocContent(data.content);
+    } catch (err) {
+      logger.error('Error fetching sidebar doc:', err);
+    } finally {
+      setLoadingDocument(false);
+    }
+  };
+
   // Sidebar component
   const Sidebar = () => {
     const mainNavItems = navItems.filter(item => item.label !== 'Settings');
@@ -666,7 +958,7 @@ export function Specification() {
             <span className="font-semibold text-[18px]" style={{ color: 'hsl(0 0% 9%)' }}>SpecWright</span>
           </Link>
         </div>
-        <nav className="flex-1 p-2">
+        <nav className="flex-1 p-2 overflow-y-auto">
           <ul className="space-y-0.5">
             {mainNavItems.map((item) => (
               <li key={item.path}>
@@ -689,6 +981,85 @@ export function Specification() {
               </li>
             ))}
           </ul>
+
+          {/* Document review navigation */}
+          {isReviewPhase && (
+            <div className="mt-4 pt-3 border-t" style={{ borderColor: 'hsl(0 0% 92%)' }}>
+              <p
+                className="px-2.5 text-[11px] font-semibold uppercase tracking-wider mb-2"
+                style={{ color: 'hsl(0 0% 46%)' }}
+              >
+                Documents
+              </p>
+              <ul className="space-y-0.5">
+                {reviewDocuments.map((doc) => {
+                  const docStatus = getDocReviewStatus(doc.key);
+                  const isClickable = docStatus !== 'pending';
+                  // Active = explicitly selected via sidebar, or matches the current review phase (when no sidebar override)
+                  const isActive = sidebarSelectedDoc
+                    ? doc.key === sidebarSelectedDoc
+                    : ((doc.key === 'prd' || doc.key === 'acceptance-criteria') && currentPhase === 'pm-prd-review')
+                      || ((doc.key === 'design' || doc.key === 'screens') && currentPhase === 'ux-design-brief-review')
+                      || ((doc.key === 'tech-spec' || doc.key === 'technology-choices') && currentPhase === 'engineer-spec-review');
+
+                  return (
+                    <li key={doc.key}>
+                      <div
+                        className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150"
+                        onClick={() => isClickable && handleSidebarDocClick(doc.key)}
+                        style={{
+                          backgroundColor: isActive ? 'hsl(235 69% 97%)' : 'transparent',
+                          cursor: isClickable ? 'pointer' : 'default',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (isClickable && !isActive) {
+                            e.currentTarget.style.backgroundColor = 'hsl(0 0% 94%)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        <span className="text-[14px] flex-shrink-0">{doc.icon}</span>
+                        <span
+                          className="text-[13px] font-medium flex-1 min-w-0 truncate"
+                          style={{
+                            color: isActive ? 'hsl(235 69% 50%)' : docStatus === 'approved' ? 'hsl(0 0% 32%)' : 'hsl(0 0% 56%)',
+                          }}
+                        >
+                          {doc.label}
+                        </span>
+                        {docStatus === 'approved' && (
+                          <span
+                            className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: 'hsl(142 76% 94%)', color: 'hsl(142 76% 36%)' }}
+                          >
+                            <CheckIcon />
+                          </span>
+                        )}
+                        {docStatus === 'reviewing' && (
+                          <span
+                            className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'hsl(235 69% 95%)', color: 'hsl(235 69% 50%)' }}
+                          >
+                            Review
+                          </span>
+                        )}
+                        {docStatus === 'pending' && (
+                          <span
+                            className="flex-shrink-0 w-5 h-5 rounded-full"
+                            style={{ border: '1.5px solid hsl(0 0% 82%)' }}
+                          />
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </nav>
         {/* Cost widget and Settings at bottom */}
         <div className="mt-auto">
@@ -804,11 +1175,13 @@ export function Specification() {
               {/* Progress indicator */}
               <div className="rounded-lg p-5 mb-6" style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px solid hsl(0 0% 92%)' }}>
                 <div className="flex items-center justify-center gap-4">
-                  <PhaseIndicator name="Product Manager" status={pmStatus} phaseType="pm" />
+                  <PhaseIndicator name="PM Questions" status={pmStatus} phaseType="pm" />
                   <ConnectorLine complete={pmStatus === 'complete'} />
-                  <PhaseIndicator name="Designer" status={uxStatus} phaseType="ux" />
+                  <PhaseIndicator name="Design Questions" status={uxStatus} phaseType="ux" />
                   <ConnectorLine complete={uxStatus === 'complete'} />
-                  <PhaseIndicator name="Engineer" status={engineerStatus} phaseType="engineer" />
+                  <PhaseIndicator name="Engineer Questions" status={engineerStatus} phaseType="engineer" />
+                  <ConnectorLine complete={engineerStatus === 'complete'} />
+                  <PhaseIndicator name="Documents" status={docsStatus} phaseType="documents" />
                 </div>
               </div>
 
@@ -918,22 +1291,35 @@ export function Specification() {
                     {phaseInfo.agent === 'Product Manager' && <ProductManagerIcon />}
                     {phaseInfo.agent === 'Designer' && <DesignerIcon />}
                     {phaseInfo.agent === 'Engineer' && <EngineerIcon />}
-                    {!['Product Manager', 'Designer', 'Engineer'].includes(phaseInfo.agent) && (
+                    {phaseInfo.agent === 'All Agents' && (
+                      <div className="flex items-center justify-center gap-0.5" style={{ transform: 'scale(0.7)' }}>
+                        <ProductManagerIcon />
+                        <DesignerIcon />
+                        <EngineerIcon />
+                      </div>
+                    )}
+                    {!['Product Manager', 'Designer', 'Engineer', 'All Agents'].includes(phaseInfo.agent) && (
                       <div className="linear-spinner" style={{ width: '24px', height: '24px' }}></div>
                     )}
                   </div>
                 </div>
                 
                 <h2 className="text-[18px] font-semibold mb-2 relative" style={{ color: 'hsl(0 0% 9%)' }}>
-                  {phaseInfo.agent} is working...
+                  {phaseInfo.agent} {phaseInfo.agent === 'All Agents' ? 'are' : 'is'} working...
                 </h2>
                 <p className="text-[14px] font-medium mb-1 relative" style={{ color: 'hsl(235 69% 61%)' }}>
                   {phaseInfo.action}
                 </p>
-                <p className="text-[13px] mb-4 relative" style={{ color: 'hsl(0 0% 46%)' }}>
+                <p className="text-[13px] mb-2 relative" style={{ color: 'hsl(0 0% 46%)' }}>
                   {phaseInfo.description}
                 </p>
-                
+                {triggeringPhase?.includes('questions-generate') && (
+                  <p className="text-[12px] mb-4 relative" style={{ color: 'hsl(0 0% 62%)', fontStyle: 'italic' }}>
+                    This may take a few minutes — your agent is reviewing the entire codebase to ask the most relevant questions.
+                  </p>
+                )}
+                {!triggeringPhase?.includes('questions-generate') && <div className="mb-2" />}
+
                 {/* Animated progress bar */}
                 <div 
                   className="w-48 h-1 mx-auto rounded-full mb-4 overflow-hidden relative"
@@ -949,8 +1335,143 @@ export function Specification() {
                   />
                 </div>
                 
-                {/* Documents being generated - show all documents for each phase */}
-                {(() => {
+                {/* Documents being generated - per-agent cards for docs-generate, pills for others */}
+                {triggeringPhase === 'docs-generate' ? (() => {
+                  const agents = [
+                    { key: 'pm' as const, icon: <ProductManagerIcon />, agent: 'Product Manager' },
+                    { key: 'ux' as const, icon: <DesignerIcon />, agent: 'Designer' },
+                    { key: 'engineer' as const, icon: <EngineerIcon />, agent: 'Engineer' },
+                  ];
+                  const completedCount = agents.filter(a => status?.docsProgress?.[a.key]?.status === 'complete').length;
+                  return (
+                    <div className="relative w-full max-w-lg mx-auto">
+                      <p className="text-[12px] font-medium mb-3" style={{ color: 'hsl(0 0% 46%)' }}>
+                        {completedCount === 3
+                          ? 'All documents generated'
+                          : `${completedCount} of 3 agents complete`}
+                      </p>
+                      <div className="space-y-3">
+                        {agents.map((a) => {
+                          const agentProgress = status?.docsProgress?.[a.key];
+                          const agentStatus = agentProgress?.status || 'ai-working';
+                          const isAgentComplete = agentStatus === 'complete';
+                          const files = agentProgress?.files || [];
+                          const logs = agentLogs[a.key] || [];
+                          const isExpanded = agentActiveTab === a.key;
+                          const lastLog = logs.length > 0 ? logs[logs.length - 1] : null;
+                          return (
+                            <div
+                              key={a.key}
+                              className="rounded-lg overflow-hidden transition-all"
+                              style={{
+                                backgroundColor: isAgentComplete ? 'hsl(142 76% 97%)' : 'hsl(0 0% 99%)',
+                                border: `1px solid ${isAgentComplete ? 'hsl(142 76% 88%)' : 'hsl(0 0% 90%)'}`,
+                              }}
+                            >
+                              {/* Agent header — clickable to expand/collapse streaming */}
+                              <button
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                                onClick={() => setAgentActiveTab(isExpanded ? '' : a.key)}
+                              >
+                                <div
+                                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{
+                                    backgroundColor: isAgentComplete ? 'hsl(142 76% 90%)' : 'hsl(235 69% 93%)',
+                                    color: isAgentComplete ? 'hsl(142 76% 30%)' : 'hsl(235 69% 50%)',
+                                  }}
+                                >
+                                  {a.icon}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[12px] font-medium" style={{ color: 'hsl(0 0% 20%)' }}>
+                                    {a.agent}
+                                  </p>
+                                  {/* Last streaming message preview (when collapsed and working) */}
+                                  {!isExpanded && !isAgentComplete && lastLog && (
+                                    <p className="text-[10px] font-mono truncate" style={{ color: 'hsl(0 0% 55%)' }}>
+                                      {lastLog.icon} {lastLog.message}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {isAgentComplete ? (
+                                    <div className="flex items-center gap-1.5" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                        <path d="M3 8L6.5 11.5L13 5" stroke="hsl(142 76% 36%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                      <span className="text-[11px] font-medium" style={{ color: 'hsl(142 76% 30%)' }}>Done</span>
+                                    </div>
+                                  ) : (
+                                    <div className="linear-spinner" style={{ width: '16px', height: '16px' }}></div>
+                                  )}
+                                </div>
+                              </button>
+
+                              {/* Per-file progress */}
+                              {files.length > 0 && (
+                                <div className="px-4 pb-2" style={{ borderTop: `1px solid ${isAgentComplete ? 'hsl(142 76% 90%)' : 'hsl(0 0% 93%)'}` }}>
+                                  <div className="pt-2 space-y-1">
+                                    {files.map((file) => (
+                                      <div key={file.name} className="flex items-center gap-2">
+                                        {file.complete ? (
+                                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                            <path d="M3 8L6.5 11.5L13 5" stroke="hsl(142 76% 36%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        ) : (
+                                          <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
+                                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(0 0% 70%)' }}></div>
+                                          </div>
+                                        )}
+                                        <span className="text-[11px]" style={{ color: file.complete ? 'hsl(142 76% 30%)' : 'hsl(0 0% 50%)' }}>
+                                          {file.label}
+                                        </span>
+                                        <span className="text-[10px] font-mono" style={{ color: 'hsl(0 0% 70%)' }}>
+                                          {file.name}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Expandable streaming log */}
+                              {isExpanded && !isAgentComplete && logs.length > 0 && (
+                                <div
+                                  className="overflow-hidden text-left"
+                                  style={{ backgroundColor: 'hsl(220 13% 10%)', borderTop: '1px solid hsl(220 13% 20%)' }}
+                                >
+                                  <div
+                                    className="p-3 max-h-[140px] overflow-y-auto"
+                                    style={{ scrollBehavior: 'smooth' }}
+                                    ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+                                  >
+                                    <div className="space-y-1">
+                                      {logs.slice(-20).map((log, index, arr) => (
+                                        <div
+                                          key={log.id}
+                                          className="flex items-start gap-2"
+                                          style={{
+                                            opacity: index === arr.length - 1 ? 1 : 0.6,
+                                            animation: 'fadeIn 0.2s ease-out'
+                                          }}
+                                        >
+                                          <span className="text-[11px] flex-shrink-0 w-4 text-center">{log.icon}</span>
+                                          <span className="text-[11px] font-mono leading-relaxed" style={{ color: 'hsl(220 10% 75%)' }}>
+                                            {log.message}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })() : (() => {
                   const getDocumentsForPhase = () => {
                     switch (triggeringPhase) {
                       case 'pm-questions-generate':
@@ -972,8 +1493,8 @@ export function Specification() {
                   const documents = getDocumentsForPhase();
                   return (
                     <div className="flex flex-wrap justify-center gap-2 relative">
-                      {documents.map((doc, index) => (
-                        <div 
+                      {documents.map((doc) => (
+                        <div
                           key={doc}
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
                           style={{ backgroundColor: 'hsl(235 69% 97%)', border: '1px solid hsl(235 69% 90%)' }}
@@ -988,13 +1509,12 @@ export function Specification() {
                   );
                 })()}
 
-                {/* Headless Streaming Log Display */}
-                {isHeadlessMode && headlessLogs.length > 0 && (
+                {/* Headless Streaming Log Display (single-agent mode only, not docs-generate) */}
+                {triggeringPhase !== 'docs-generate' && isHeadlessMode && headlessLogs.length > 0 && (
                   <div
                     className="rounded-lg mt-6 overflow-hidden text-left relative"
                     style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
                   >
-                    {/* Header */}
                     <div
                       className="px-4 py-2 flex items-center gap-2"
                       style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
@@ -1004,7 +1524,6 @@ export function Specification() {
                         {activeToolName}
                       </span>
                     </div>
-                    {/* Log entries */}
                     <div
                       className="p-3 max-h-[200px] overflow-y-auto"
                       style={{ scrollBehavior: 'smooth' }}
@@ -1054,10 +1573,34 @@ export function Specification() {
                   }
                 `}</style>
 
-                <p className="text-[11px] mt-4" style={{ color: 'hsl(0 0% 60%)' }}>
+                <p className="text-[11px] mt-4 relative" style={{ color: 'hsl(0 0% 60%)' }}>
                   {isHeadlessMode ? `${activeToolName} is executing the task automatically.` : 'This may take a minute. The page will update automatically.'}
                 </p>
-                
+
+                {/* Cancel button */}
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="relative mt-4 px-4 py-1.5 rounded-md text-[12px] font-medium transition-colors"
+                  style={{
+                    color: 'hsl(0 0% 46%)',
+                    backgroundColor: 'transparent',
+                    border: '1px solid hsl(0 0% 88%)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'hsl(0 72% 97%)';
+                    e.currentTarget.style.borderColor = 'hsl(0 72% 80%)';
+                    e.currentTarget.style.color = 'hsl(0 72% 45%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'hsl(0 0% 88%)';
+                    e.currentTarget.style.color = 'hsl(0 0% 46%)';
+                  }}
+                >
+                  {cancelling ? 'Cancelling...' : 'Cancel'}
+                </button>
+
                 {lastPrompt && (
                   <div className="mt-6 pt-6" style={{ borderTop: '1px solid hsl(0 0% 92%)' }}>
                     <p className="text-[12px] mb-3" style={{ color: 'hsl(0 0% 46%)' }}>
@@ -1108,6 +1651,22 @@ export function Specification() {
     const currentAgent = getCurrentAgent();
     const currentSessionId = sessions[currentAgent];
 
+    // Determine what to render: sidebar override or current review doc
+    const isSidebarOverride = sidebarSelectedDoc && docKeyInfo[sidebarSelectedDoc as ReviewDocKey];
+    const effectiveDocKey = isSidebarOverride ? (sidebarSelectedDoc as ReviewDocKey) : null;
+    const effectiveDocType = isSidebarOverride
+      ? docKeyInfo[sidebarSelectedDoc as ReviewDocKey].documentType
+      : getDocumentType();
+    const effectiveDocContent = isSidebarOverride
+      ? sidebarDocContent
+      : reviewDocumentContent;
+    const effectiveDocPath = isSidebarOverride
+      ? docKeyInfo[sidebarSelectedDoc as ReviewDocKey].path
+      : status.reviewDocument;
+    // Determine if doc is approvable (reviewing status, not already approved)
+    const effectiveDocStatus = effectiveDocKey ? getDocReviewStatus(effectiveDocKey) : 'reviewing';
+    const canApprove = effectiveDocStatus === 'reviewing';
+
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(0 0% 98%)' }}>
         <Sidebar />
@@ -1142,15 +1701,16 @@ export function Specification() {
             {/* Main content - full width without flex squeeze */}
             <div className="max-w-4xl">
               <DocumentReview
+                key={sidebarSelectedDoc || 'current'}
                 projectId={projectId!}
-                documentPath={status.reviewDocument}
-                documentContent={reviewDocumentContent}
-                documentType={getDocumentType()}
-                onApprove={handleApproveDocument}
+                documentPath={effectiveDocPath}
+                documentContent={effectiveDocContent}
+                documentType={effectiveDocType}
+                onApprove={canApprove ? () => handleApproveDocument(effectiveDocKey || undefined) : undefined}
                 isBreakdownComplete={hasTasks}
-                sessionId={currentSessionId}
-                phase={currentAgent}
-                onRefineComplete={() => {
+                sessionId={canApprove ? currentSessionId : undefined}
+                phase={canApprove ? currentAgent : undefined}
+                onRefineComplete={canApprove ? () => {
                   // Refresh sessions after refinement
                   fetch(`/api/sessions/${projectId}`)
                     .then(res => res.json())
@@ -1162,7 +1722,7 @@ export function Specification() {
                   if (status.reviewDocument) {
                     fetchDocumentForReview(status.reviewDocument);
                   }
-                }}
+                } : undefined}
               />
             </div>
           </div>
@@ -1220,11 +1780,13 @@ export function Specification() {
               {/* Progress indicator */}
               <div className="rounded-lg p-5 mb-6" style={{ backgroundColor: 'hsl(0 0% 100%)', border: '1px solid hsl(0 0% 92%)' }}>
                 <div className="flex items-center justify-center gap-4">
-                  <PhaseIndicator name="Product Manager" status={pmStatus} phaseType="pm" />
+                  <PhaseIndicator name="PM Questions" status={pmStatus} phaseType="pm" />
                   <ConnectorLine complete={pmStatus === 'complete'} />
-                  <PhaseIndicator name="Designer" status={uxStatus} phaseType="ux" />
+                  <PhaseIndicator name="Design Questions" status={uxStatus} phaseType="ux" />
                   <ConnectorLine complete={uxStatus === 'complete'} />
-                  <PhaseIndicator name="Engineer" status={engineerStatus} phaseType="engineer" />
+                  <PhaseIndicator name="Engineer Questions" status={engineerStatus} phaseType="engineer" />
+                  <ConnectorLine complete={engineerStatus === 'complete'} />
+                  <PhaseIndicator name="Documents" status={docsStatus} phaseType="documents" />
                 </div>
               </div>
 
@@ -1495,6 +2057,30 @@ export function Specification() {
                 <p className="text-[11px] mt-4 relative" style={{ color: 'hsl(0 0% 60%)' }}>
                   {isHeadlessMode ? `${activeToolName} is executing the task automatically.` : 'This typically takes 2-3 minutes.'}
                 </p>
+
+                {/* Cancel button */}
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="relative mt-4 px-4 py-1.5 rounded-md text-[12px] font-medium transition-colors"
+                  style={{
+                    color: 'hsl(0 0% 46%)',
+                    backgroundColor: 'transparent',
+                    border: '1px solid hsl(0 0% 88%)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'hsl(0 72% 97%)';
+                    e.currentTarget.style.borderColor = 'hsl(0 72% 80%)';
+                    e.currentTarget.style.color = 'hsl(0 72% 45%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'hsl(0 0% 88%)';
+                    e.currentTarget.style.color = 'hsl(0 0% 46%)';
+                  }}
+                >
+                  {cancelling ? 'Cancelling...' : 'Cancel'}
+                </button>
               </div>
             )}
 

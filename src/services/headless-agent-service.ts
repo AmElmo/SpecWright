@@ -8,10 +8,51 @@
  * The AI still writes to files, and file watching still detects completion.
  */
 
-import { spawn } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import { logger } from '../utils/logger.js';
 import chalk from 'chalk';
 import type { AITool } from './settings-service.js';
+
+// ── Process Registry ──────────────────────────────────────────────
+// Module-level map of running headless processes, keyed by processKey.
+// Used by the cancel API to send SIGTERM to running agents.
+const activeProcesses = new Map<string, ChildProcess>();
+// Keys that were explicitly cancelled by the user (not failed).
+// Checked in close handlers to distinguish cancel from genuine failure.
+const cancelledKeys = new Set<string>();
+
+/**
+ * Cancel a single headless process by its registry key.
+ * Returns true if the process was found and killed.
+ */
+export function cancelHeadlessProcess(key: string): boolean {
+    const proc = activeProcesses.get(key);
+    if (!proc) return false;
+
+    logger.debug(chalk.yellow(`🛑 Cancelling headless process: ${key}`));
+    cancelledKeys.add(key);
+    proc.kill('SIGTERM');
+    activeProcesses.delete(key);
+    return true;
+}
+
+/**
+ * Cancel all headless processes whose key starts with the given projectId.
+ * Returns the number of processes killed.
+ */
+export function cancelAllProjectProcesses(projectId: string): number {
+    let count = 0;
+    for (const [key, proc] of activeProcesses) {
+        if (key.includes(`:${projectId}:`) || key.includes(`:${projectId}`)) {
+            logger.debug(chalk.yellow(`🛑 Cancelling headless process: ${key}`));
+            cancelledKeys.add(key);
+            proc.kill('SIGTERM');
+            activeProcesses.delete(key);
+            count++;
+        }
+    }
+    return count;
+}
 
 export interface HeadlessOptions {
     workingDir?: string;
@@ -20,10 +61,12 @@ export interface HeadlessOptions {
     onProgress?: (message: string) => void; // Callback for streaming progress
     onSessionId?: (sessionId: string) => void; // Callback when session ID is captured (early)
     resumeSessionId?: string; // Session ID to resume (for refinement/continuation)
+    processKey?: string; // Registry key for cancel support (e.g., 'spec:myproject:pm-prd')
 }
 
 export interface HeadlessResult {
     success: boolean;
+    cancelled?: boolean; // true when the process was killed by user-initiated cancel
     error?: string;
     sessionId?: string; // Claude CLI session ID for --resume support
 }
@@ -279,7 +322,8 @@ export async function executeClaudeHeadless(
         timeout = 5 * 60 * 1000, // 5 minutes default
         onProgress,
         onSessionId,
-        resumeSessionId
+        resumeSessionId,
+        processKey
     } = options;
 
     const isResume = !!resumeSessionId;
@@ -319,6 +363,11 @@ export async function executeClaudeHeadless(
             // Use 'pipe' for stdout/stderr so we can capture the output
             stdio: ['inherit', 'pipe', 'pipe']
         });
+
+        // Register in process registry for cancel support
+        if (processKey) {
+            activeProcesses.set(processKey, proc);
+        }
 
         let stderr = '';
         let buffer = '';
@@ -375,6 +424,17 @@ export async function executeClaudeHeadless(
 
         proc.on('close', (code) => {
             clearTimeout(timeoutId);
+            const wasCancelled = processKey ? cancelledKeys.delete(processKey) : false;
+            if (processKey) activeProcesses.delete(processKey);
+
+            if (wasCancelled) {
+                logger.debug(chalk.yellow(`\n🛑 Claude CLI was cancelled by user (exit code ${code})`));
+                if (onProgress) {
+                    onProgress('🛑 Cancelled');
+                }
+                resolve({ success: false, cancelled: true, sessionId: capturedSessionId });
+                return;
+            }
 
             if (code === 0) {
                 logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -404,6 +464,7 @@ export async function executeClaudeHeadless(
 
         proc.on('error', (err) => {
             clearTimeout(timeoutId);
+            if (processKey) activeProcesses.delete(processKey);
             logger.debug(chalk.red('❌ Failed to spawn Claude CLI:'), err.message);
 
             if (onProgress) {
@@ -428,7 +489,8 @@ export async function executeCursorHeadless(
 ): Promise<HeadlessResult> {
     const {
         workingDir,
-        timeout = 5 * 60 * 1000 // 5 minutes default
+        timeout = 5 * 60 * 1000, // 5 minutes default
+        processKey
     } = options;
 
     // Verify API key is available
@@ -456,6 +518,10 @@ export async function executeCursorHeadless(
             stdio: ['pipe', 'pipe', 'pipe']
         });
 
+        if (processKey) {
+            activeProcesses.set(processKey, proc);
+        }
+
         let stderr = '';
 
         proc.stdout.on('data', (data) => {
@@ -480,6 +546,14 @@ export async function executeCursorHeadless(
 
         proc.on('close', (code) => {
             clearTimeout(timeoutId);
+            const wasCancelled = processKey ? cancelledKeys.delete(processKey) : false;
+            if (processKey) activeProcesses.delete(processKey);
+
+            if (wasCancelled) {
+                logger.debug(chalk.yellow(`\n🛑 Cursor CLI was cancelled by user (exit code ${code})`));
+                resolve({ success: false, cancelled: true });
+                return;
+            }
 
             if (code === 0) {
                 logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -497,6 +571,7 @@ export async function executeCursorHeadless(
 
         proc.on('error', (err) => {
             clearTimeout(timeoutId);
+            if (processKey) activeProcesses.delete(processKey);
             logger.debug(chalk.red('❌ Failed to spawn Cursor CLI:'), err.message);
             resolve({
                 success: false,
@@ -517,7 +592,8 @@ export async function executeCodexHeadless(
     const {
         workingDir,
         timeout = 5 * 60 * 1000,
-        onProgress
+        onProgress,
+        processKey
     } = options;
 
     logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -536,6 +612,10 @@ export async function executeCodexHeadless(
             env: process.env,
             stdio: ['pipe', 'pipe', 'pipe']
         });
+
+        if (processKey) {
+            activeProcesses.set(processKey, proc);
+        }
 
         let stderr = '';
         let buffer = '';
@@ -572,6 +652,14 @@ export async function executeCodexHeadless(
 
         proc.on('close', (code) => {
             clearTimeout(timeoutId);
+            const wasCancelled = processKey ? cancelledKeys.delete(processKey) : false;
+            if (processKey) activeProcesses.delete(processKey);
+
+            if (wasCancelled) {
+                logger.debug(chalk.yellow(`\n🛑 Codex CLI was cancelled by user (exit code ${code})`));
+                resolve({ success: false, cancelled: true });
+                return;
+            }
 
             if (code === 0) {
                 logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -590,6 +678,7 @@ export async function executeCodexHeadless(
 
         proc.on('error', (err) => {
             clearTimeout(timeoutId);
+            if (processKey) activeProcesses.delete(processKey);
             logger.debug(chalk.red('❌ Failed to spawn Codex CLI:'), err.message);
             resolve({
                 success: false,
@@ -610,7 +699,8 @@ export async function executeGeminiHeadless(
     const {
         workingDir,
         timeout = 5 * 60 * 1000,
-        onProgress
+        onProgress,
+        processKey
     } = options;
 
     logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -629,6 +719,10 @@ export async function executeGeminiHeadless(
             env: process.env,
             stdio: ['pipe', 'pipe', 'pipe']
         });
+
+        if (processKey) {
+            activeProcesses.set(processKey, proc);
+        }
 
         let stderr = '';
         let buffer = '';
@@ -665,6 +759,14 @@ export async function executeGeminiHeadless(
 
         proc.on('close', (code) => {
             clearTimeout(timeoutId);
+            const wasCancelled = processKey ? cancelledKeys.delete(processKey) : false;
+            if (processKey) activeProcesses.delete(processKey);
+
+            if (wasCancelled) {
+                logger.debug(chalk.yellow(`\n🛑 Gemini CLI was cancelled by user (exit code ${code})`));
+                resolve({ success: false, cancelled: true });
+                return;
+            }
 
             if (code === 0) {
                 logger.debug(chalk.magenta('\n' + '═'.repeat(60)));
@@ -683,6 +785,7 @@ export async function executeGeminiHeadless(
 
         proc.on('error', (err) => {
             clearTimeout(timeoutId);
+            if (processKey) activeProcesses.delete(processKey);
             logger.debug(chalk.red('❌ Failed to spawn Gemini CLI:'), err.message);
             resolve({
                 success: false,

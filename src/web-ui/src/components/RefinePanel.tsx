@@ -35,6 +35,7 @@ interface RefinePanelProps {
   onRefineComplete?: () => void;
   disabled?: boolean;
   floatingMode?: boolean; // If true, renders as a floating panel in the margin
+  inlineMode?: boolean; // If true, renders as full-width inline panel below document
 }
 
 export function RefinePanel({
@@ -43,7 +44,8 @@ export function RefinePanel({
   sessionId,
   onRefineComplete,
   disabled = false,
-  floatingMode = false
+  floatingMode = false,
+  inlineMode = false,
 }: RefinePanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -366,6 +368,152 @@ export function RefinePanel({
             )}
           </div>
         )}
+      </div>
+    );
+  }
+
+  // Inline mode: floating panel on the right side
+  if (inlineMode) {
+    return (
+      <div className="flex flex-col h-full" style={{ backgroundColor: 'hsl(235 69% 99%)' }}>
+        {/* Header */}
+        <div
+          className="px-5 py-3 flex items-center justify-between flex-shrink-0"
+          style={{ borderBottom: '1px solid hsl(235 69% 92%)' }}
+        >
+          <div>
+            <h3 className="text-[13px] font-semibold flex items-center gap-2" style={{ color: 'hsl(235 69% 40%)' }}>
+              <span>✨</span> Edit with AI
+            </h3>
+            <p className="text-[11px] mt-0.5" style={{ color: 'hsl(0 0% 46%)' }}>
+              Describe what you'd like changed and AI will update the document
+            </p>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 flex-1 overflow-y-auto">
+          {isRefining ? (
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ backgroundColor: 'hsl(220 13% 10%)', border: '1px solid hsl(220 13% 20%)' }}
+            >
+              <div
+                className="px-3 py-2 flex items-center gap-2"
+                style={{ backgroundColor: 'hsl(220 13% 14%)', borderBottom: '1px solid hsl(220 13% 20%)' }}
+              >
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(142 76% 46%)' }} />
+                <span className="text-[10px] font-medium" style={{ color: 'hsl(220 10% 60%)' }}>
+                  Refining...
+                </span>
+              </div>
+              <div
+                className="p-2 max-h-[250px] overflow-y-auto"
+                ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+              >
+                <div className="space-y-1">
+                  {headlessLogs.map((log, index) => (
+                    <div
+                      key={log.id}
+                      className="flex items-start gap-1.5"
+                      style={{ opacity: index === headlessLogs.length - 1 ? 1 : 0.7 }}
+                    >
+                      <span className="text-[11px] flex-shrink-0">{log.icon}</span>
+                      <span
+                        className="text-[11px] font-mono leading-relaxed"
+                        style={{ color: 'hsl(220 10% 75%)' }}
+                      >
+                        {log.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <textarea
+                className="w-full p-3 rounded-md text-[13px] mb-3 min-h-[100px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
+                style={{
+                  backgroundColor: 'hsl(0 0% 100%)',
+                  border: '1px solid hsl(0 0% 88%)',
+                  color: 'hsl(0 0% 9%)',
+                }}
+                placeholder="Describe what you'd like changed..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                disabled={disabled}
+                autoFocus
+              />
+
+              {/* Image upload */}
+              <div className="flex items-center gap-3 mb-3">
+                {uploadedImages.length > 0 && (
+                  <div className="flex gap-2">
+                    {uploadedImages.map(img => (
+                      <div
+                        key={img.id}
+                        className="relative w-10 h-10 rounded-md overflow-hidden group"
+                        style={{ border: '1px solid hsl(0 0% 90%)' }}
+                      >
+                        <img src={img.preview} alt="Upload preview" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeImage(img.id)}
+                          className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <span className="text-white text-[12px]">&#10005;</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {uploadedImages.length < MAX_IMAGES && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={disabled}
+                    className="text-[12px] flex items-center gap-1 transition-colors"
+                    style={{ color: 'hsl(0 0% 46%)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(0 0% 20%)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(0 0% 46%)'; }}
+                  >
+                    <span>📎</span> Attach image ({uploadedImages.length}/{MAX_IMAGES})
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+
+              {error && (
+                <div
+                  className="rounded-md p-2 mb-3"
+                  style={{ backgroundColor: 'hsl(0 84% 97%)', border: '1px solid hsl(0 84% 90%)' }}
+                >
+                  <p className="text-[11px]" style={{ color: 'hsl(0 84% 45%)' }}>
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={handleRefine}
+                disabled={!canRefine}
+                className="px-4 py-2 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                style={{
+                  backgroundColor: canRefine ? 'hsl(235 69% 61%)' : 'hsl(0 0% 90%)',
+                  color: canRefine ? 'white' : 'hsl(0 0% 46%)',
+                }}
+              >
+                Refine Document
+              </button>
+            </>
+          )}
+        </div>
       </div>
     );
   }

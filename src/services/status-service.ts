@@ -225,41 +225,13 @@ export function advanceToNextPhase(projectId: string): ProjectStatus {
     return status;
   }
   
-  // Get phase list for current agent
-  const phaseList = getPhaseList(currentAgent);
-  const currentIndex = phaseList.indexOf(currentPhase);
-  
-  if (currentIndex === -1) {
-    logger.error(`Unknown phase: ${currentPhase} for agent ${currentAgent}`);
-    return status;
-  }
-  
   // Check if current phase is complete
   if (agentStatus.phases[currentPhase]?.status !== 'complete') {
     return status;
   }
-  
-  // Move to next phase in same agent
-  if (currentIndex < phaseList.length - 1) {
-    const nextPhase = phaseList[currentIndex + 1];
-    status.currentPhase = `${currentAgent}-${nextPhase}`;
-    agentStatus.currentPhase = nextPhase;
-    
-    // Set appropriate status for the new phase
-    if (!agentStatus.phases[nextPhase]) {
-      agentStatus.phases[nextPhase] = { status: 'not-started' };
-    }
-    
-    // If next phase is a review or answer phase, set status to awaiting-user or user-reviewing
-    if (HUMAN_REQUIRED_PHASES.includes(nextPhase)) {
-      if (nextPhase === 'questions-answer') {
-        agentStatus.phases[nextPhase].status = 'awaiting-user';
-      } else if (nextPhase.endsWith('-review')) {
-        agentStatus.phases[nextPhase].status = 'user-reviewing';
-      }
-    }
-  } else {
-    // Agent complete, move to next agent
+
+  // Unified flow transitions (same logic as completePhaseAndAdvance Step 2)
+  if (currentPhase === 'questions-answer') {
     if (currentAgent === 'pm') {
       status.currentAgent = 'ux';
       status.currentPhase = 'ux-questions-generate';
@@ -269,11 +241,35 @@ export function advanceToNextPhase(projectId: string): ProjectStatus {
       status.currentPhase = 'engineer-questions-generate';
       status.agents.engineer.currentPhase = 'questions-generate';
     } else if (currentAgent === 'engineer') {
-      status.currentAgent = 'complete';
-      status.currentPhase = 'complete';
+      status.currentPhase = 'docs-generate';
+    }
+  } else if (currentPhase === 'questions-generate') {
+    status.currentPhase = `${currentAgent}-questions-answer`;
+    agentStatus.currentPhase = 'questions-answer';
+    if (!agentStatus.phases['questions-answer']) {
+      agentStatus.phases['questions-answer'] = { status: 'not-started' };
+    }
+    agentStatus.phases['questions-answer'].status = 'awaiting-user';
+  } else {
+    // Standard within-agent advancement for other phases
+    const phaseList = getPhaseList(currentAgent);
+    const currentIndex = phaseList.indexOf(currentPhase);
+
+    if (currentIndex >= 0 && currentIndex < phaseList.length - 1) {
+      const nextPhase = phaseList[currentIndex + 1];
+      status.currentPhase = `${currentAgent}-${nextPhase}`;
+      agentStatus.currentPhase = nextPhase;
+      if (!agentStatus.phases[nextPhase]) {
+        agentStatus.phases[nextPhase] = { status: 'not-started' };
+      }
+      if (HUMAN_REQUIRED_PHASES.includes(nextPhase)) {
+        if (nextPhase.endsWith('-review')) {
+          agentStatus.phases[nextPhase].status = 'user-reviewing';
+        }
+      }
     }
   }
-  
+
   // Set timestamp before writing
   status.lastUpdatedAt = new Date().toISOString();
   writeProjectStatus(projectId, status);
@@ -343,55 +339,100 @@ export function completePhaseAndAdvance(
   logger.debug(`✅ [Status Service] Phase marked complete: ${agent}-${phase}`);
   
   // === STEP 2: Advance to next phase (in memory only) ===
+  // UNIFIED QUESTIONS FLOW: Questions are sequential across agents, then all docs generate in parallel
+  // PM questions → UX questions → Engineer questions → docs-generate → sequential reviews
   const currentAgent = status.currentAgent;
-  
+
   if (currentAgent !== 'complete') {
     const currentAgentStatus = status.agents[currentAgent];
     const currentPhase = currentAgentStatus.currentPhase;
-    
+
     if (currentPhase) {
-      // Get phase list for current agent
-      const phaseList = getPhaseList(currentAgent);
-      const currentIndex = phaseList.indexOf(currentPhase);
-      
-      if (currentIndex >= 0 && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
-        // Move to next phase in same agent
-        if (currentIndex < phaseList.length - 1) {
-          const nextPhase = phaseList[currentIndex + 1];
-          status.currentPhase = `${currentAgent}-${nextPhase}`;
-          currentAgentStatus.currentPhase = nextPhase;
-          
-          // Set appropriate status for the new phase
-          if (!currentAgentStatus.phases[nextPhase]) {
-            currentAgentStatus.phases[nextPhase] = { status: 'not-started' };
+      // Handle unified flow transitions
+      if (currentPhase === 'questions-answer' && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
+        // After questions-answer: skip doc generation, jump to next agent's questions
+        if (currentAgent === 'pm') {
+          status.currentAgent = 'ux';
+          status.currentPhase = 'ux-questions-generate';
+          status.agents.ux.currentPhase = 'questions-generate';
+          logger.debug(`➡️  [Status Service] PM questions done, moving to UX questions`);
+        } else if (currentAgent === 'ux') {
+          status.currentAgent = 'engineer';
+          status.currentPhase = 'engineer-questions-generate';
+          status.agents.engineer.currentPhase = 'questions-generate';
+          logger.debug(`➡️  [Status Service] UX questions done, moving to Engineer questions`);
+        } else if (currentAgent === 'engineer') {
+          // All questions done — move to docs-generate (parallel doc generation phase)
+          status.currentPhase = 'docs-generate';
+          logger.debug(`➡️  [Status Service] All questions done, moving to docs-generate`);
+        }
+      } else if (currentPhase === 'questions-generate' && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
+        // questions-generate → questions-answer (same agent, same as before)
+        const nextPhase = 'questions-answer';
+        status.currentPhase = `${currentAgent}-${nextPhase}`;
+        currentAgentStatus.currentPhase = nextPhase;
+        if (!currentAgentStatus.phases[nextPhase]) {
+          currentAgentStatus.phases[nextPhase] = { status: 'not-started' };
+        }
+        currentAgentStatus.phases[nextPhase].status = 'awaiting-user';
+        logger.debug(`➡️  [Status Service] Advanced to: ${status.currentPhase}`);
+      } else if (currentPhase === 'prd-review' && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
+        // After PM PRD review → UX design brief review
+        status.currentAgent = 'ux';
+        status.currentPhase = 'ux-design-brief-review';
+        status.agents.ux.currentPhase = 'design-brief-review';
+        if (!status.agents.ux.phases['design-brief-review']) {
+          status.agents.ux.phases['design-brief-review'] = { status: 'not-started' };
+        }
+        status.agents.ux.phases['design-brief-review'].status = 'user-reviewing';
+        logger.debug(`➡️  [Status Service] PRD review done, moving to Design Brief review`);
+      } else if (currentPhase === 'design-brief-review' && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
+        // After UX design brief review → Engineer spec review
+        status.currentAgent = 'engineer';
+        status.currentPhase = 'engineer-spec-review';
+        status.agents.engineer.currentPhase = 'spec-review';
+        if (!status.agents.engineer.phases['spec-review']) {
+          status.agents.engineer.phases['spec-review'] = { status: 'not-started' };
+        }
+        status.agents.engineer.phases['spec-review'].status = 'user-reviewing';
+        logger.debug(`➡️  [Status Service] Design Brief review done, moving to Spec review`);
+      } else if (currentPhase === 'spec-review' && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
+        // After Engineer spec review → project complete
+        // Mark all agents as complete
+        for (const agentKey of ['pm', 'ux', 'engineer'] as AgentType[]) {
+          const agentSt = status.agents[agentKey];
+          agentSt.status = 'complete';
+          if (!agentSt.completedAt) {
+            agentSt.completedAt = new Date().toISOString();
           }
-          
-          // If next phase is a review or answer phase, set status to awaiting-user or user-reviewing
-          if (HUMAN_REQUIRED_PHASES.includes(nextPhase)) {
-            if (nextPhase === 'questions-answer') {
-              currentAgentStatus.phases[nextPhase].status = 'awaiting-user';
-            } else if (nextPhase.endsWith('-review')) {
-              currentAgentStatus.phases[nextPhase].status = 'user-reviewing';
+        }
+        status.currentAgent = 'complete';
+        status.currentPhase = 'complete';
+        logger.debug(`➡️  [Status Service] Spec review done, project complete!`);
+      } else {
+        // Fallback: standard within-agent advancement for doc generation phases
+        const phaseList = getPhaseList(currentAgent);
+        const currentIndex = phaseList.indexOf(currentPhase);
+
+        if (currentIndex >= 0 && currentAgentStatus.phases[currentPhase]?.status === 'complete') {
+          if (currentIndex < phaseList.length - 1) {
+            const nextPhase = phaseList[currentIndex + 1];
+            status.currentPhase = `${currentAgent}-${nextPhase}`;
+            currentAgentStatus.currentPhase = nextPhase;
+
+            if (!currentAgentStatus.phases[nextPhase]) {
+              currentAgentStatus.phases[nextPhase] = { status: 'not-started' };
             }
-          }
-          
-          logger.debug(`➡️  [Status Service] Advanced to next phase: ${status.currentPhase}`);
-        } else {
-          // Agent complete, move to next agent
-          if (currentAgent === 'pm') {
-            status.currentAgent = 'ux';
-            status.currentPhase = 'ux-questions-generate';
-            status.agents.ux.currentPhase = 'questions-generate';
-            logger.debug(`➡️  [Status Service] PM complete, moving to UX`);
-          } else if (currentAgent === 'ux') {
-            status.currentAgent = 'engineer';
-            status.currentPhase = 'engineer-questions-generate';
-            status.agents.engineer.currentPhase = 'questions-generate';
-            logger.debug(`➡️  [Status Service] UX complete, moving to Engineer`);
-          } else if (currentAgent === 'engineer') {
-            status.currentAgent = 'complete';
-            status.currentPhase = 'complete';
-            logger.debug(`➡️  [Status Service] Engineer complete, project finished!`);
+
+            if (HUMAN_REQUIRED_PHASES.includes(nextPhase)) {
+              if (nextPhase === 'questions-answer') {
+                currentAgentStatus.phases[nextPhase].status = 'awaiting-user';
+              } else if (nextPhase.endsWith('-review')) {
+                currentAgentStatus.phases[nextPhase].status = 'user-reviewing';
+              }
+            }
+
+            logger.debug(`➡️  [Status Service] Advanced to next phase: ${status.currentPhase}`);
           }
         }
       }
@@ -464,39 +505,269 @@ export function markAIWorkStarted(projectId: string): ProjectStatus {
  */
 export function markAIWorkComplete(projectId: string): ProjectStatus {
   logger.debug(`\n✨ [Status Service] markAIWorkComplete called for ${projectId}`);
-  
+
   const status = getOrCreateStatus(projectId);
-  
+
   if (status.currentAgent === 'complete') {
     logger.debug(`⚠️  [Status Service] Project already complete`);
     return status;
   }
-  
+
   const agent = status.currentAgent;
   const phase = status.agents[agent].currentPhase;
-  
+
   logger.debug(`👤 [Status Service] Agent: ${agent}`);
   logger.debug(`📍 [Status Service] Current phase: ${phase}`);
   logger.debug(`📊 [Status Service] Full phase name: ${status.currentPhase}`);
-  
+
   if (!phase) {
     logger.debug(`⚠️  [Status Service] No current phase, skipping`);
     return status;
   }
-  
+
   // AI work is complete - mark phase as complete and advance to next phase!
   // This handles: questions-generate → questions-answer (awaiting user)
   //               prd-generate → prd-review (user reviewing)
-  //               inventory-generate → inventory-review (user reviewing)
-  //               wireframes-generate → wireframes-review (user reviewing)
+  //               design-brief-generate → design-brief-review (user reviewing)
   //               spec-generate → spec-review (user reviewing)
   logger.debug(`✅ [Status Service] Marking phase complete and advancing to next phase...`);
-  
+
   const updatedStatus = completePhaseAndAdvance(projectId, agent, phase);
-  
+
   logger.debug(`✅ [Status Service] Phase advanced! New phase: ${updatedStatus.currentPhase}`);
-  
+
   return updatedStatus;
+}
+
+/**
+ * Mapping of review phases to their constituent document keys.
+ * When all docs in a phase pair are approved, the phase advances.
+ */
+const DOC_PHASE_PAIRS: Record<string, { agent: AgentType; phase: string; docs: string[] }> = {
+  'pm-prd-review': { agent: 'pm', phase: 'prd-review', docs: ['prd', 'acceptance-criteria'] },
+  'ux-design-brief-review': { agent: 'ux', phase: 'design-brief-review', docs: ['design', 'screens'] },
+  'engineer-spec-review': { agent: 'engineer', phase: 'spec-review', docs: ['tech-spec', 'technology-choices'] },
+};
+
+/**
+ * Approve a single document within a review phase.
+ * Adds the docKey to status.approvedDocuments, then checks if all docs
+ * for the current phase pair are approved. If so, advances the phase.
+ */
+export function approveDocument(
+  projectId: string,
+  docKey: string
+): { status: ProjectStatus; phaseAdvanced: boolean } {
+  logger.debug(`\n📄 [Status Service] approveDocument: ${docKey} for ${projectId}`);
+
+  const status = getOrCreateStatus(projectId);
+
+  // Initialize approvedDocuments if missing
+  if (!status.approvedDocuments) {
+    status.approvedDocuments = [];
+  }
+
+  // Add docKey if not already approved
+  if (!status.approvedDocuments.includes(docKey)) {
+    status.approvedDocuments.push(docKey);
+    logger.debug(`  ✅ Added '${docKey}' to approvedDocuments: [${status.approvedDocuments.join(', ')}]`);
+  } else {
+    logger.debug(`  ⏭️  '${docKey}' already approved`);
+  }
+
+  // Scan phase pairs in order — advance the first fully-approved but not-yet-advanced pair.
+  // This handles stale currentPhase (e.g. stuck at pm-prd-review after doc regeneration).
+  const REVIEW_ORDER = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+
+  for (const reviewPhase of REVIEW_ORDER) {
+    const pair = DOC_PHASE_PAIRS[reviewPhase];
+    const allApproved = pair.docs.every((d) => status.approvedDocuments!.includes(d));
+
+    if (!allApproved) {
+      // First incomplete pair — stop here
+      break;
+    }
+
+    // All docs approved for this pair — check if phase already advanced
+    const agentPhaseStatus = status.agents[pair.agent].phases[pair.phase]?.status;
+    if (agentPhaseStatus === 'complete') continue; // Already done
+
+    // Phase needs advancing — fix currentPhase/currentAgent and advance
+    status.currentAgent = pair.agent;
+    status.currentPhase = reviewPhase;
+    status.lastUpdatedAt = new Date().toISOString();
+    writeProjectStatus(projectId, status);
+
+    logger.debug(`  🎉 All docs for ${reviewPhase} approved — advancing phase`);
+    const advancedStatus = completePhaseAndAdvance(projectId, pair.agent, pair.phase);
+    return { status: advancedStatus, phaseAdvanced: true };
+  }
+
+  // No phase advanced — just save
+  status.lastUpdatedAt = new Date().toISOString();
+  writeProjectStatus(projectId, status);
+
+  const pendingPair = REVIEW_ORDER.map((rp) => DOC_PHASE_PAIRS[rp])
+    .find((pair) => !pair.docs.every((d) => status.approvedDocuments!.includes(d)));
+  if (pendingPair) {
+    logger.debug(`  ⏳ Phase not advancing yet — waiting for: ${pendingPair.docs.filter((d) => !status.approvedDocuments!.includes(d)).join(', ')}`);
+  }
+  return { status, phaseAdvanced: false };
+}
+
+/**
+ * Mark all 3 doc-generate phases as 'ai-working' simultaneously
+ * Called when user clicks "Generate All Documents"
+ */
+export function markAllDocsGenerating(projectId: string): ProjectStatus {
+  logger.debug(`\n🚀 [Status Service] markAllDocsGenerating called for ${projectId}`);
+
+  const status = getOrCreateStatus(projectId);
+
+  // Mark each agent's doc-generate phase as ai-working
+  const docPhases: { agent: AgentType; phase: string }[] = [
+    { agent: 'pm', phase: 'prd-generate' },
+    { agent: 'ux', phase: 'design-brief-generate' },
+    { agent: 'engineer', phase: 'spec-generate' }
+  ];
+
+  for (const { agent, phase } of docPhases) {
+    if (!status.agents[agent].phases[phase]) {
+      status.agents[agent].phases[phase] = { status: 'not-started' };
+    }
+    status.agents[agent].phases[phase].status = 'ai-working';
+    status.agents[agent].phases[phase].startedAt = new Date().toISOString();
+    status.agents[agent].currentPhase = phase;
+  }
+
+  status.currentPhase = 'docs-generate';
+  status.lastUpdatedAt = new Date().toISOString();
+  writeProjectStatus(projectId, status);
+
+  logger.debug(`✅ [Status Service] All doc phases marked as ai-working`);
+  return status;
+}
+
+/**
+ * Mark a single agent's doc-generate phase as 'ai-working'.
+ * Skips agents already marked as 'complete' so partial re-triggers work correctly.
+ * Also ensures status.currentPhase is set to 'docs-generate'.
+ */
+export function markDocPhaseGenerating(projectId: string, agent: AgentType, phase: string): ProjectStatus {
+  logger.debug(`\n🚀 [Status Service] markDocPhaseGenerating: ${agent}/${phase}`);
+
+  const status = getOrCreateStatus(projectId);
+
+  if (status.currentPhase !== 'docs-generate') {
+    status.currentPhase = 'docs-generate';
+  }
+
+  if (!status.agents[agent].phases[phase]) {
+    status.agents[agent].phases[phase] = { status: 'not-started' };
+  }
+
+  // Only set to ai-working if not already complete
+  if (status.agents[agent].phases[phase].status !== 'complete') {
+    status.agents[agent].phases[phase].status = 'ai-working';
+    status.agents[agent].phases[phase].startedAt = new Date().toISOString();
+    status.agents[agent].currentPhase = phase;
+    logger.debug(`  ✅ Marked ${agent}/${phase} as ai-working`);
+  } else {
+    logger.debug(`  ⏭️  Skipped ${agent}/${phase} — already complete`);
+  }
+
+  status.lastUpdatedAt = new Date().toISOString();
+  writeProjectStatus(projectId, status);
+
+  return status;
+}
+
+/**
+ * Clear all 'ai-working' phases back to 'not-started' (for cancel / stale state recovery).
+ * Only resets phases that are currently 'ai-working' so completed work is preserved.
+ */
+export function clearAIWorkingState(projectId: string): ProjectStatus {
+  logger.debug(`\n🛑 [Status Service] clearAIWorkingState called for ${projectId}`);
+
+  const status = getOrCreateStatus(projectId);
+  const agents: AgentType[] = ['pm', 'ux', 'engineer'];
+
+  for (const agent of agents) {
+    const agentStatus = status.agents[agent];
+    for (const [phaseName, phaseData] of Object.entries(agentStatus.phases)) {
+      if (phaseData.status === 'ai-working') {
+        phaseData.status = 'not-started';
+        delete phaseData.startedAt;
+        logger.debug(`  ↩️  Reset ${agent}/${phaseName} from ai-working → not-started`);
+      }
+    }
+  }
+
+  status.lastUpdatedAt = new Date().toISOString();
+  writeProjectStatus(projectId, status);
+
+  logger.debug(`✅ [Status Service] All ai-working phases cleared`);
+  return status;
+}
+
+/**
+ * Mark a specific agent's doc generation as complete during parallel docs-generate phase
+ */
+export function markDocGenComplete(projectId: string, agent: AgentType, phase: string): ProjectStatus {
+  logger.debug(`\n✨ [Status Service] markDocGenComplete: ${agent}-${phase}`);
+
+  const status = getOrCreateStatus(projectId);
+
+  const agentStatus = status.agents[agent];
+  if (!agentStatus.phases[phase]) {
+    agentStatus.phases[phase] = { status: 'not-started' };
+  }
+
+  agentStatus.phases[phase].status = 'complete';
+  agentStatus.phases[phase].completedAt = new Date().toISOString();
+
+  // Add history entry
+  status.history.push({
+    phase: `${agent}-${phase}`,
+    startedAt: agentStatus.phases[phase].startedAt || new Date().toISOString(),
+    completedAt: agentStatus.phases[phase].completedAt,
+    status: 'complete'
+  });
+
+  // Check if ALL doc-generate phases are complete
+  const allDocsComplete = checkAllDocsComplete(status);
+
+  if (allDocsComplete) {
+    // Advance to PM PRD review
+    status.currentAgent = 'pm';
+    status.currentPhase = 'pm-prd-review';
+    status.agents.pm.currentPhase = 'prd-review';
+    if (!status.agents.pm.phases['prd-review']) {
+      status.agents.pm.phases['prd-review'] = { status: 'not-started' };
+    }
+    status.agents.pm.phases['prd-review'].status = 'user-reviewing';
+    logger.debug(`➡️  [Status Service] All docs complete, advancing to PM PRD review`);
+  }
+
+  status.lastUpdatedAt = new Date().toISOString();
+  writeProjectStatus(projectId, status);
+
+  return status;
+}
+
+/**
+ * Check if all 3 doc-generate phases are complete
+ */
+export function checkAllDocsComplete(status: ProjectStatus): boolean {
+  const docPhases: { agent: AgentType; phase: string }[] = [
+    { agent: 'pm', phase: 'prd-generate' },
+    { agent: 'ux', phase: 'design-brief-generate' },
+    { agent: 'engineer', phase: 'spec-generate' }
+  ];
+
+  return docPhases.every(({ agent, phase }) =>
+    status.agents[agent].phases[phase]?.status === 'complete'
+  );
 }
 
 /**

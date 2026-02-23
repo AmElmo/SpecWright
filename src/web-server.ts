@@ -13,13 +13,13 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 import { fileURLToPath } from 'url';
-import { getExistingProjects, enrichProjectsWithProgress, getAllIssues, isPMPRDComplete, isUXWireframesComplete, isArchitectComplete, isPMQuestionsGenerated, isPMQuestionsAnswered, isUXDesignBriefComplete, createProjectFolder } from './services/project-service.js';
+import { getExistingProjects, enrichProjectsWithProgress, getAllIssues, isPMPRDComplete, isUXWireframesComplete, isArchitectComplete, isPMQuestionsGenerated, isPMQuestionsAnswered, isUXDesignBriefComplete, isFileCompletedInPhase, createProjectFolder } from './services/project-service.js';
 import { logger } from './utils/logger.js';
 import { OUTPUT_DIR, TEMPLATES_DIR } from './config/constants.js';
 import { openCursorAndPaste, type OpenAIToolResult } from './utils/clipboard.js';
 import { finalizeScopingPlan } from './services/scoping-service.js';
-import { executeClaudeHeadless } from './services/headless-agent-service.js';
-import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted } from './services/websocket-service.js';
+import { executeClaudeHeadless, cancelAllProjectProcesses } from './services/headless-agent-service.js';
+import { broadcastHeadlessStarted, broadcastHeadlessProgress, broadcastHeadlessCompleted, broadcastHeadlessCancelled } from './services/websocket-service.js';
 import { saveScopingSession, saveAgentSession, getAgentSession, getAllSessions, saveRefinementImages, type AgentType as SessionAgentType } from './services/session-service.js';
 import {
   getOrCreateStatus,
@@ -33,7 +33,13 @@ import {
   updateProjectSettings,
   getProjectSettings,
   updateProjectIcon,
-  getProjectIcon
+  getProjectIcon,
+  markAllDocsGenerating,
+  markDocPhaseGenerating,
+  markDocGenComplete,
+  checkAllDocsComplete,
+  clearAIWorkingState,
+  approveDocument
 } from './services/status-service.js';
 import { getReconciledProjectStatus } from './services/reconciliation-service.js';
 import type { AgentType } from './types/project-status.js';
@@ -100,7 +106,8 @@ import {
   getSpecGeneratingPhase,
   markBreakdownGenerating,
   markBreakdownComplete,
-  isBreakdownGenerating
+  isBreakdownGenerating,
+  getActiveGenerations
 } from './services/generation-tracker-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -228,6 +235,32 @@ export async function startWebServer(port = 5174) {
     }
   });
   
+  // Get all active AI generations (for global indicator)
+  app.get('/api/generations/active', (req, res) => {
+    try {
+      const active = getActiveGenerations();
+      const projects = getExistingProjects();
+
+      const generations = Array.from(active.entries()).map(([key, entry]) => {
+        const projectName = entry.projectId
+          ? projects.find((p: { id: string; description: string }) => p.id === entry.projectId)?.description || entry.projectId
+          : undefined;
+        return {
+          key,
+          phase: entry.phase,
+          projectId: entry.projectId,
+          projectName,
+          startedAt: entry.startedAt.toISOString(),
+        };
+      });
+
+      res.json({ generations });
+    } catch (error) {
+      logger.error('Error fetching active generations:', error);
+      res.status(500).json({ error: 'Failed to fetch active generations' });
+    }
+  });
+
   // Get workspace info (repository name, etc.)
   app.get('/api/workspace-info', (req, res) => {
     try {
@@ -1087,7 +1120,7 @@ Please analyze this request and update the scoping_plan.json file.`;
   });
 
   // Refine AI output with user feedback
-  // Uses --resume to continue a previous Claude session
+  // Tries --resume first; falls back to a fresh session with document context
   app.post('/api/refine', async (req, res) => {
     try {
       const { phase, projectId, sessionId, feedback, images } = req.body;
@@ -1096,34 +1129,27 @@ Please analyze this request and update the scoping_plan.json file.`;
         return res.status(400).json({ error: 'Feedback is required' });
       }
 
-      if (!sessionId) {
-        return res.status(400).json({ error: 'Session ID is required for refinement' });
-      }
-
       logger.debug(chalk.magenta(`\n🔄 Starting refinement for phase: ${phase}`));
-      logger.debug(chalk.cyan(`  Session ID: ${sessionId}`));
+      logger.debug(chalk.cyan(`  Session ID: ${sessionId || '(none — will use fresh session)'}`));
       logger.debug(chalk.cyan(`  Feedback: ${feedback.substring(0, 100)}...`));
       logger.debug(chalk.cyan(`  Images: ${images?.length || 0}`));
 
-      // Build the refinement prompt
-      let prompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
+      // Build the base feedback prompt
+      let feedbackPrompt = `USER FEEDBACK:\n${feedback}\n\nPlease refine your previous output based on this feedback.`;
 
       // Save images to disk and reference them in the prompt
-      if (images && images.length > 0) {
-        // Determine project ID for image storage
-        const storageProjectId = projectId || '_scoping_active';
-        // Map phase to agent type
-        const agentType = (phase === 'scoping' ? 'scoping' :
-                          phase === 'pm' ? 'pm' :
-                          phase === 'ux' || phase === 'designer' ? 'ux' :
-                          phase === 'engineer' ? 'engineer' :
-                          'breakdown') as SessionAgentType;
+      const agentType = (phase === 'scoping' ? 'scoping' :
+                        phase === 'pm' ? 'pm' :
+                        phase === 'ux' || phase === 'designer' ? 'ux' :
+                        phase === 'engineer' ? 'engineer' :
+                        'breakdown') as SessionAgentType;
 
-        // Convert base64 images to buffers and save to disk
+      if (images && images.length > 0) {
+        const storageProjectId = projectId || '_scoping_active';
+
         const imagesToSave: { filename: string; data: Buffer }[] = [];
         for (let i = 0; i < images.length; i++) {
           const base64Data = images[i];
-          // Extract the actual base64 content (remove data:image/xxx;base64, prefix)
           const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
           if (matches) {
             const extension = matches[1];
@@ -1138,41 +1164,107 @@ Please analyze this request and update the scoping_plan.json file.`;
           const savedPaths = saveRefinementImages(storageProjectId, agentType, imagesToSave);
           logger.debug(chalk.cyan(`  📸 Saved ${savedPaths.length} images to disk`));
 
-          // Add image file references to prompt
-          // Claude CLI can read these files using the Read tool
-          prompt += `\n\nThe user has attached ${savedPaths.length} reference image(s). You can view them using the Read tool:`;
+          feedbackPrompt += `\n\nThe user has attached ${savedPaths.length} reference image(s). You can view them using the Read tool:`;
           for (const imagePath of savedPaths) {
-            prompt += `\n- ${imagePath}`;
+            feedbackPrompt += `\n- ${imagePath}`;
           }
-          prompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
+          feedbackPrompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
         }
       }
 
       // Broadcast that refinement has started (with isRefinement=true)
       broadcastHeadlessStarted('claude-code', phase, true);
 
-      // Execute with resume
-      const result = await executeClaudeHeadless(prompt, {
+      let result;
+
+      // Strategy 1: Try resuming the existing session
+      if (sessionId) {
+        logger.debug(chalk.cyan('  Attempting session resume...'));
+        result = await executeClaudeHeadless(feedbackPrompt, {
+          workingDir: WORKSPACE_PATH,
+          resumeSessionId: sessionId,
+          onProgress: (status: string) => {
+            broadcastHeadlessProgress(status, phase, true);
+          }
+        });
+
+        if (result.success) {
+          broadcastHeadlessCompleted('claude-code', true, phase, result.sessionId, true);
+          // Save updated session
+          if (result.sessionId && projectId) {
+            saveAgentSession(projectId, agentType, result.sessionId);
+          }
+          return res.json({ success: true, sessionId: result.sessionId || sessionId });
+        }
+
+        logger.debug(chalk.yellow(`  ⚠️ Session resume failed: ${result.error}. Falling back to fresh session...`));
+      }
+
+      // Strategy 2: Fresh session with document content as context
+      logger.debug(chalk.cyan('  Starting fresh refinement session with document context...'));
+
+      // Read the current document content from disk
+      let documentPath = '';
+      let documentLabel = '';
+      if (phase === 'pm' && projectId) {
+        documentPath = getPRDPath(projectId);
+        documentLabel = 'Product Requirements Document (PRD)';
+      } else if ((phase === 'ux' || phase === 'designer') && projectId) {
+        documentPath = getDesignBriefPath(projectId);
+        documentLabel = 'Design Brief';
+      } else if (phase === 'engineer' && projectId) {
+        documentPath = getTechnicalSpecPath(projectId);
+        documentLabel = 'Technical Specification';
+      }
+
+      let freshPrompt = '';
+      if (documentPath && fs.existsSync(documentPath)) {
+        const documentContent = fs.readFileSync(documentPath, 'utf-8');
+        freshPrompt = `You are refining a ${documentLabel} for a software project.\n\n` +
+          `Here is the current document content:\n\n---\n${documentContent}\n---\n\n` +
+          `The document is located at: ${documentPath}\n\n` +
+          `USER FEEDBACK:\n${feedback}\n\n` +
+          `Please update the document file based on this feedback. Use the Write tool to save the updated content to the same file path.`;
+      } else {
+        // No document found — use a generic prompt
+        freshPrompt = feedbackPrompt;
+      }
+
+      // Append image references if any were saved
+      if (images && images.length > 0) {
+        const storageProjectId = projectId || '_scoping_active';
+        const imagesDir = path.join(OUTPUT_DIR, 'projects', storageProjectId, 'refinement-images', agentType);
+        if (fs.existsSync(imagesDir)) {
+          const imageFiles = fs.readdirSync(imagesDir).map(f => path.join(imagesDir, f));
+          if (imageFiles.length > 0) {
+            freshPrompt += `\n\nThe user has attached ${imageFiles.length} reference image(s). You can view them using the Read tool:`;
+            for (const imagePath of imageFiles) {
+              freshPrompt += `\n- ${imagePath}`;
+            }
+            freshPrompt += `\n\nPlease use the Read tool to view these images and incorporate the visual feedback into your refinement.`;
+          }
+        }
+      }
+
+      result = await executeClaudeHeadless(freshPrompt, {
         workingDir: WORKSPACE_PATH,
-        resumeSessionId: sessionId,
         onProgress: (status: string) => {
           broadcastHeadlessProgress(status, phase, true);
         }
       });
 
-      // Broadcast completion with session ID for frontend (with isRefinement=true)
       broadcastHeadlessCompleted('claude-code', result.success, phase, result.sessionId, true);
 
+      // Save new session ID for future refinements
+      if (result.sessionId && projectId) {
+        saveAgentSession(projectId, agentType, result.sessionId);
+        logger.debug(chalk.green(`  💾 Saved new ${agentType} session: ${result.sessionId}`));
+      }
+
       if (result.success) {
-        res.json({
-          success: true,
-          sessionId: result.sessionId || sessionId // Return new or same session ID
-        });
+        res.json({ success: true, sessionId: result.sessionId });
       } else {
-        res.json({
-          success: false,
-          error: result.error || 'Refinement failed'
-        });
+        res.json({ success: false, error: result.error || 'Refinement failed' });
       }
     } catch (error) {
       logger.error('Error during refinement:', error);
@@ -1210,7 +1302,8 @@ Please analyze this request and update the scoping_plan.json file.`;
       }
       
       // Save settings to project_status.json using status service
-      updateProjectSettings(projectId, settings);
+      // Mark settingsConfirmed so the UI knows the user explicitly chose these
+      updateProjectSettings(projectId, { ...settings, settingsConfirmed: true });
       
       res.json({ success: true });
     } catch (error) {
@@ -1530,10 +1623,162 @@ Please analyze this request and update the scoping_plan.json file.`;
       let reviewDocument: string | null = null;
       let nextPhase: string | null = null;
       
+      // Handle docs-generate phase (parallel doc generation)
+      if (status.currentPhase === 'docs-generate') {
+        // Check if all 3 doc sets exist retroactively
+        const projectPath2 = path.join(OUTPUT_DIR, 'projects', req.params.projectId);
+        const allDocsExist = isPMPRDComplete(projectPath2, null) &&
+          isUXWireframesComplete(projectPath2, null) &&
+          isArchitectComplete(projectPath2, null);
+
+        if (allDocsExist) {
+          // All docs are done — advance to PM PRD review
+          logger.debug(`✨ [API] All docs complete retroactively, advancing to PM PRD review`);
+          const updated = markDocGenComplete(req.params.projectId, 'pm', 'prd-generate');
+          // markDocGenComplete checks all and advances if needed, but let's also complete the other two
+          markDocGenComplete(req.params.projectId, 'ux', 'design-brief-generate');
+          markDocGenComplete(req.params.projectId, 'engineer', 'spec-generate');
+          status = getOrCreateStatus(req.params.projectId);
+        }
+
+        if (status.currentPhase === 'docs-generate') {
+          // Still in docs-generate — return generation progress with per-file detail
+          const pmStatus = status.agents.pm.phases['prd-generate']?.status || 'not-started';
+          const uxStatus = status.agents.ux.phases['design-brief-generate']?.status || 'not-started';
+          const engineerStatus = status.agents.engineer.phases['spec-generate']?.status || 'not-started';
+
+          let anyGenerating = [pmStatus, uxStatus, engineerStatus].some(s => s === 'ai-working');
+
+          const generatingStatus = getSpecGeneratingPhase(req.params.projectId);
+
+          // Stale state recovery: if no in-memory tracker entry exists but file has
+          // ai-working phases, the state is stale (e.g., server restarted mid-generation).
+          // Clear it so the UI doesn't get stuck in a perpetual "working" state.
+          let effectivePmStatus = pmStatus;
+          let effectiveUxStatus = uxStatus;
+          let effectiveEngineerStatus = engineerStatus;
+          if (anyGenerating && !generatingStatus.isGenerating) {
+            logger.debug(`🧹 [Status] Clearing stale ai-working state for ${req.params.projectId}`);
+            clearAIWorkingState(req.params.projectId);
+            anyGenerating = false;
+            // Re-read statuses after clearing — clearAIWorkingState only resets
+            // 'ai-working' phases, preserving 'complete' ones. We must honour
+            // that instead of blindly resetting everything to 'not-started'.
+            const refreshed = getOrCreateStatus(req.params.projectId);
+            effectivePmStatus = refreshed.agents.pm.phases['prd-generate']?.status || 'not-started';
+            effectiveUxStatus = refreshed.agents.ux.phases['design-brief-generate']?.status || 'not-started';
+            effectiveEngineerStatus = refreshed.agents.engineer.phases['spec-generate']?.status || 'not-started';
+          }
+
+          // Per-file completeness checks (check on disk for granular UI)
+          // Use phase startedAt timestamps to avoid false positives from template writes
+          const pid = req.params.projectId;
+          const pmStartedAt = status.agents.pm.phases['prd-generate']?.startedAt || null;
+          const uxStartedAt = status.agents.ux.phases['design-brief-generate']?.startedAt || null;
+          const engineerStartedAt = status.agents.engineer.phases['spec-generate']?.startedAt || null;
+
+          const pmFilesComplete = [
+            isFileCompletedInPhase(getPRDPath(pid), pmStartedAt),
+            isFileCompletedInPhase(getAcceptanceCriteriaPath(pid), pmStartedAt, 100)
+          ];
+          const uxFilesComplete = [
+            isFileCompletedInPhase(getDesignBriefPath(pid), uxStartedAt, 200),
+            isFileCompletedInPhase(getScreensPath(pid), uxStartedAt, 100)
+          ];
+          const engineerFilesComplete = [
+            isFileCompletedInPhase(getTechnicalSpecPath(pid), engineerStartedAt),
+            isFileCompletedInPhase(getTechnologyChoicesPath(pid), engineerStartedAt, 200)
+          ];
+
+          // Per-agent retroactive completion: if all files are genuinely complete on disk
+          // but the agent status is still ai-working, mark it complete immediately.
+          // This closes the timing gap between file writes and file watcher events.
+          if (effectivePmStatus === 'ai-working' && pmFilesComplete.every(Boolean)) {
+            logger.debug(`✨ [Status API] PM files all complete on disk, marking agent complete`);
+            markDocGenComplete(pid, 'pm', 'prd-generate');
+            effectivePmStatus = 'complete';
+          }
+          if (effectiveUxStatus === 'ai-working' && uxFilesComplete.every(Boolean)) {
+            logger.debug(`✨ [Status API] UX files all complete on disk, marking agent complete`);
+            markDocGenComplete(pid, 'ux', 'design-brief-generate');
+            effectiveUxStatus = 'complete';
+          }
+          if (effectiveEngineerStatus === 'ai-working' && engineerFilesComplete.every(Boolean)) {
+            logger.debug(`✨ [Status API] Engineer files all complete on disk, marking agent complete`);
+            markDocGenComplete(pid, 'engineer', 'spec-generate');
+            effectiveEngineerStatus = 'complete';
+          }
+
+          // Re-read status if any agents were retroactively completed
+          // (markDocGenComplete may have advanced the phase to pm-prd-review)
+          let allDocsRetroactivelyComplete = false;
+          if (effectivePmStatus === 'complete' && effectiveUxStatus === 'complete' && effectiveEngineerStatus === 'complete') {
+            status = getOrCreateStatus(req.params.projectId);
+            allDocsRetroactivelyComplete = status.currentPhase !== 'docs-generate';
+            if (allDocsRetroactivelyComplete) {
+              logger.debug(`➡️ [Status API] All docs retroactively complete, phase advanced to ${status.currentPhase}`);
+            }
+          }
+
+          // Recalculate anyGenerating after retroactive checks
+          anyGenerating = [effectivePmStatus, effectiveUxStatus, effectiveEngineerStatus].some(s => s === 'ai-working');
+
+          const docsProgress = {
+            pm: {
+              status: effectivePmStatus,
+              files: [
+                { name: 'prd.md', label: 'Product Requirements', complete: pmFilesComplete[0] },
+                { name: 'acceptance_criteria.json', label: 'Acceptance Criteria', complete: pmFilesComplete[1] }
+              ]
+            },
+            ux: {
+              status: effectiveUxStatus,
+              files: [
+                { name: 'design_brief.md', label: 'Design Brief', complete: uxFilesComplete[0] },
+                { name: 'screens.json', label: 'Screens & Wireframes', complete: uxFilesComplete[1] }
+              ]
+            },
+            engineer: {
+              status: effectiveEngineerStatus,
+              files: [
+                { name: 'technical_specification.md', label: 'Technical Specification', complete: engineerFilesComplete[0] },
+                { name: 'technology_choices.json', label: 'Technology Choices', complete: engineerFilesComplete[1] }
+              ]
+            }
+          };
+
+          nextPhase = anyGenerating ? null : 'docs-generate';
+
+          if (!allDocsRetroactivelyComplete) {
+            res.json({
+              projectId: req.params.projectId,
+              phases: {
+                pm: { complete: false },
+                ux: { complete: false },
+                engineer: { complete: false }
+              },
+              currentPhase: 'docs-generate',
+              nextPhase,
+              needsReview: false,
+              reviewDocument: null,
+              isComplete: false,
+              needsGeneration: !anyGenerating,
+              docsProgress,
+              isGenerating: generatingStatus.isGenerating || anyGenerating,
+              generatingPhase: generatingStatus.phase || (anyGenerating ? 'docs-generate' : null),
+              generatingStartedAt: generatingStatus.startedAt
+            });
+
+            return;
+          }
+        }
+        // If we fell through, status was updated — continue with normal logic
+      }
+
       if (currentAgent !== 'complete') {
         const agentStatus = status.agents[currentAgent];
         const currentPhaseName = agentStatus.currentPhase;
-        
+
         if (currentPhaseName) {
           const phaseData = agentStatus.phases[currentPhaseName];
           
@@ -1647,16 +1892,17 @@ Please analyze this request and update the scoping_plan.json file.`;
             // Phase ready to start (or needs retry)
             nextPhase = `${currentAgent}-${currentPhaseName}`;
           } else if (effectiveStatus === 'complete') {
-            // Phase complete, move to next
-            const phaseList = getPhaseListForAgent(currentAgent);
-            const currentIndex = phaseList.indexOf(currentPhaseName);
-            
-            if (currentIndex < phaseList.length - 1) {
-              nextPhase = `${currentAgent}-${phaseList[currentIndex + 1]}`;
-            } else if (currentAgent === 'pm' && pmComplete) {
-              nextPhase = 'ux-questions-generate';
-            } else if (currentAgent === 'ux' && uxComplete) {
-              nextPhase = 'engineer-questions-generate';
+            // Unified flow: after questions-answer, skip to next agent's questions or docs-generate
+            if (currentPhaseName === 'questions-answer') {
+              if (currentAgent === 'pm') {
+                nextPhase = 'ux-questions-generate';
+              } else if (currentAgent === 'ux') {
+                nextPhase = 'engineer-questions-generate';
+              } else if (currentAgent === 'engineer') {
+                nextPhase = 'docs-generate';
+              }
+            } else if (currentPhaseName === 'questions-generate') {
+              nextPhase = `${currentAgent}-questions-answer`;
             }
           }
           // Note: awaiting-user and user-reviewing don't get nextPhase
@@ -1691,6 +1937,7 @@ Please analyze this request and update the scoping_plan.json file.`;
         needsReview,
         reviewDocument,
         isComplete: finalPmComplete && finalUxComplete && finalEngineerComplete,
+        approvedDocuments: status.approvedDocuments || [],
         // Include generation status for page reload restoration
         isGenerating: generatingStatus.isGenerating,
         generatingPhase: generatingStatus.phase,
@@ -1848,7 +2095,33 @@ Please analyze this request and update the scoping_plan.json file.`;
       res.status(500).json({ error: 'Failed to approve phase' });
     }
   });
-  
+
+  // Per-document approval endpoint
+  app.post('/api/specification/approve-document/:projectId/:docKey', async (req, res) => {
+    try {
+      const { projectId, docKey } = req.params;
+      const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
+
+      if (!fs.existsSync(projectPath)) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const { status: updatedStatus, phaseAdvanced } = approveDocument(projectId, docKey);
+
+      res.json({
+        success: true,
+        message: `Document '${docKey}' approved`,
+        docKey,
+        phaseAdvanced,
+        approvedDocuments: updatedStatus.approvedDocuments || [],
+        currentPhase: updatedStatus.currentPhase,
+      });
+    } catch (error) {
+      logger.error('Error approving document:', error);
+      res.status(500).json({ error: 'Failed to approve document' });
+    }
+  });
+
   // Trigger Cursor for a specific phase
   app.post('/api/specification/continue/:projectId/:phase', async (req, res) => {
     try {
@@ -1908,7 +2181,18 @@ Please analyze this request and update the scoping_plan.json file.`;
       if (mappedPhase) {
         // Update status to reflect that we're starting this phase
         const status = getOrCreateStatus(req.params.projectId);
-        if (status.currentAgent === mappedPhase.agent &&
+        const isDocsGeneratePhase = status.currentPhase === 'docs-generate';
+
+        if (isDocsGeneratePhase && ['prd-generate', 'design-brief-generate', 'spec-generate'].includes(mappedPhase.phase)) {
+          // During parallel docs-generate, mark only this specific agent's phase as ai-working
+          // (preserves already-complete agents when re-triggering after partial completion)
+          markDocPhaseGenerating(req.params.projectId, mappedPhase.agent as AgentType, mappedPhase.phase);
+
+          // Mark spec phase as generating (for page reload state restoration)
+          markSpecPhaseGenerating(req.params.projectId, 'docs-generate');
+
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else if (status.currentAgent === mappedPhase.agent &&
             status.agents[mappedPhase.agent].currentPhase === mappedPhase.phase) {
           // Phase matches, mark as ai-working
           markAIWorkStarted(req.params.projectId);
@@ -2112,17 +2396,19 @@ Please analyze this request and update the scoping_plan.json file.`;
         // Check if we should resume an existing session
         const existingSessionId = getAgentSession(projectId, agent);
 
+        const specProcessKey = `spec:${projectId}:${phase}`;
+
         if (existingSessionId && !isFirstPhaseOfAgent) {
           // Resume existing session for this agent
           logger.debug(`📌 Resuming ${agent} agent session: ${existingSessionId}`);
           sessionId = existingSessionId;
           // TODO: For now, still using keyboard automation with session tracking
           // When refine endpoint is called, it will use --resume
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool, specProcessKey);
         } else {
           // Create new session (first phase of agent)
           logger.debug(`🆕 Starting new ${agent} agent session`);
-          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool);
+          result = await openCursorAndPaste(prompt, WORKSPACE_PATH, phase, undefined, aiTool, specProcessKey);
 
           // Save the session ID if headless mode was used
           if (result.sessionId) {
@@ -2435,7 +2721,8 @@ ${suggestion || 'Implement this change directly in your code editor.'}
         // Trigger Cursor automation with phase for WebSocket streaming
         // Use 15-minute timeout for breakdown (complex task with lots of context to analyze)
         const BREAKDOWN_TIMEOUT = 15 * 60 * 1000; // 15 minutes
-        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT, aiTool);
+        const breakdownProcessKey = `breakdown:${req.params.projectId}`;
+        breakdownResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'issue-breakdown', BREAKDOWN_TIMEOUT, aiTool, breakdownProcessKey);
 
         if (breakdownResult.success) {
           logger.debug('⏳ Waiting for AI to create: issues/issues.json');
@@ -2541,12 +2828,38 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       res.status(500).json({ error: 'Failed to check breakdown status' });
     }
   });
-  
+
+  // Cancel all running headless processes for a project
+  app.post('/api/headless/cancel/:projectId', (req, res) => {
+    try {
+      const { projectId } = req.params;
+
+      // Kill running headless processes
+      const cancelled = cancelAllProjectProcesses(projectId);
+      logger.debug(`🛑 Cancelled ${cancelled} headless process(es) for project ${projectId}`);
+
+      // Clear in-memory generation tracker so UI doesn't restore "working" state on reload
+      markSpecPhaseComplete(projectId);
+      markBreakdownComplete(projectId);
+
+      // Clear file-based ai-working state so status endpoint doesn't report isGenerating
+      clearAIWorkingState(projectId);
+
+      // Notify connected clients
+      broadcastHeadlessCancelled('headless', undefined);
+
+      res.json({ success: true, cancelled });
+    } catch (error) {
+      logger.error('Error cancelling headless processes:', error);
+      res.status(500).json({ error: 'Failed to cancel headless processes' });
+    }
+  });
+
   // Auto-detect next incomplete phase for a project
   app.get('/api/projects/:id/next-phase', (req, res) => {
     try {
       const projectPath = path.join(OUTPUT_DIR, 'projects', req.params.id);
-      
+
       if (!fs.existsSync(projectPath)) {
         return res.status(404).json({ error: 'Project not found' });
       }
@@ -2768,7 +3081,7 @@ ${suggestion || 'Implement this change directly in your code editor.'}
       try {
         console.log('[SHIP DEBUG] Triggering AI tool automation with phase=ship...');
         logger.debug('🚀 [API] Triggering AI tool automation...');
-        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship', undefined, aiTool);
+        shipResult = await openCursorAndPaste(prompt, WORKSPACE_PATH, 'ship', undefined, aiTool, `ship:${projectId}:${issueId}`);
         console.log('[SHIP DEBUG] AI tool automation result:', shipResult);
         logger.debug(`[API] AI tool automation result:`, shipResult);
       } catch (err) {
@@ -3437,23 +3750,29 @@ ${suggestion || 'Implement this change directly in your code editor.'}
     
     // Check if this file indicates AI work completion
     let shouldUpdateStatus = false;
-    
+    // Track which specific doc generation completed (for parallel docs-generate phase)
+    let docGenAgent: AgentType | null = null;
+    let docGenPhase: string | null = null;
+
     // Check file content to validate it's real content
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       logger.debug(`📏 File size: ${content.length} characters`);
-      
+
       // Validate minimum content length (avoid empty files)
       if (content.trim().length < 50) {
         logger.debug(`❌ File too small (< 50 chars), skipping`);
         logger.debug(`${'='.repeat(80)}\n`);
         return;
       }
-      
+
+      // During docs-generate phase, handle doc file changes specially
+      const isDocsGeneratePhase = status.currentPhase === 'docs-generate';
+
       // PM phases
       if (fileName === 'pm_questions.json' && dirName === 'questions') {
         logger.debug(`🎯 Detected PM questions file`);
-        if (currentPhase === 'questions-generate') {
+        if (currentAgent === 'pm' && currentPhase === 'questions-generate') {
           logger.debug(`✅ Current phase matches: questions-generate`);
           const hasReal = hasRealQuestions(content);
           logger.debug(`🎲 Has real questions: ${hasReal}`);
@@ -3461,30 +3780,35 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             shouldUpdateStatus = true;
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: questions-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentAgent}-${currentPhase}, expected: pm-questions-generate`);
         }
       } else if ((fileName === 'prd.md' || fileName === 'acceptance_criteria.json') && dirName === 'documents') {
         logger.debug(`🎯 Detected PM file: ${fileName}`);
-        if (currentPhase === 'prd-generate') {
-          logger.debug(`✅ Current phase matches: prd-generate`);
-          
+        if (isDocsGeneratePhase || currentPhase === 'prd-generate') {
+          logger.debug(`✅ Phase matches for PM doc generation`);
+
           // For PM phase, we need BOTH files to be complete (PRD AND acceptance_criteria.json)
           const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
-          const phaseStartedAt = status.agents[currentAgent]?.phases['prd-generate']?.startedAt || null;
+          const phaseStartedAt = status.agents.pm?.phases['prd-generate']?.startedAt || null;
           const bothFilesComplete = isPMPRDComplete(projectPath, phaseStartedAt);
           logger.debug(`🎲 Both PM files complete (PRD + acceptance_criteria.json): ${bothFilesComplete}`);
-          
+
           if (bothFilesComplete) {
-            shouldUpdateStatus = true;
+            if (isDocsGeneratePhase) {
+              docGenAgent = 'pm';
+              docGenPhase = 'prd-generate';
+            } else {
+              shouldUpdateStatus = true;
+            }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: prd-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: prd-generate or docs-generate`);
         }
       }
       // UX phases
       else if (fileName === 'ux_questions.json' && dirName === 'questions') {
         logger.debug(`🎯 Detected UX questions file`);
-        if (currentPhase === 'questions-generate') {
+        if (currentAgent === 'ux' && currentPhase === 'questions-generate') {
           logger.debug(`✅ Current phase matches: questions-generate`);
           const hasReal = hasRealQuestions(content);
           logger.debug(`🎲 Has real questions: ${hasReal}`);
@@ -3492,30 +3816,35 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             shouldUpdateStatus = true;
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: questions-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentAgent}-${currentPhase}, expected: ux-questions-generate`);
         }
       } else if ((fileName === 'design_brief.md' || fileName === 'screens.json') && dirName === 'documents') {
         logger.debug(`🎯 Detected UX design file: ${fileName}`);
-        if (currentPhase === 'design-brief-generate') {
-          logger.debug(`✅ Current phase matches: design-brief-generate`);
-          
+        if (isDocsGeneratePhase || currentPhase === 'design-brief-generate') {
+          logger.debug(`✅ Phase matches for UX doc generation`);
+
           // For UX phase, we need BOTH files to be complete (design_brief.md AND screens.json)
           const projectPath = path.join(OUTPUT_DIR, 'projects', projectId);
-          const phaseStartedAt = status.agents[currentAgent]?.phases['design-brief-generate']?.startedAt || null;
+          const phaseStartedAt = status.agents.ux?.phases['design-brief-generate']?.startedAt || null;
           const allFilesComplete = isUXWireframesComplete(projectPath, phaseStartedAt);
           logger.debug(`🎲 Both UX files complete (design brief + screens.json): ${allFilesComplete}`);
-          
+
           if (allFilesComplete) {
-            shouldUpdateStatus = true;
+            if (isDocsGeneratePhase) {
+              docGenAgent = 'ux';
+              docGenPhase = 'design-brief-generate';
+            } else {
+              shouldUpdateStatus = true;
+            }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: design-brief-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: design-brief-generate or docs-generate`);
         }
       }
       // Engineer phases
       else if (fileName === 'engineer_questions.json' && dirName === 'questions') {
         logger.debug(`🎯 Detected Engineer questions file`);
-        if (currentPhase === 'questions-generate') {
+        if (currentAgent === 'engineer' && currentPhase === 'questions-generate') {
           logger.debug(`✅ Current phase matches: questions-generate`);
           const hasReal = hasRealQuestions(content);
           logger.debug(`🎲 Has real questions: ${hasReal}`);
@@ -3523,26 +3852,31 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             shouldUpdateStatus = true;
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: questions-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentAgent}-${currentPhase}, expected: engineer-questions-generate`);
         }
       } else if (fileName === 'technical_specification.md' && dirName === 'documents') {
         logger.debug(`🎯 Detected technical specification file`);
-        if (currentPhase === 'spec-generate') {
-          logger.debug(`✅ Current phase matches: spec-generate`);
+        if (isDocsGeneratePhase || currentPhase === 'spec-generate') {
+          logger.debug(`✅ Phase matches for Engineer doc generation`);
           const hasPlaceholders = hasMarkdownPlaceholders(content);
           logger.debug(`🎲 Has placeholders: ${hasPlaceholders}`);
-          
+
           if (!hasPlaceholders) {
             // Check if technology_choices.json is also complete
             const techChoicesPath = getTechnologyChoicesPath(projectId);
-            
+
             if (fs.existsSync(techChoicesPath)) {
               const techChoicesContent = fs.readFileSync(techChoicesPath, 'utf-8');
               const choicesHasPlaceholders = !hasRealJsonContent(techChoicesContent);
               logger.debug(`🎲 Technology choices has placeholders: ${choicesHasPlaceholders}`);
-              
+
               if (!choicesHasPlaceholders) {
-            shouldUpdateStatus = true;
+                if (isDocsGeneratePhase) {
+                  docGenAgent = 'engineer';
+                  docGenPhase = 'spec-generate';
+                } else {
+                  shouldUpdateStatus = true;
+                }
               } else {
                 logger.debug(`⏳ Waiting for technology_choices.json to be complete`);
               }
@@ -3551,50 +3885,66 @@ ${suggestion || 'Implement this change directly in your code editor.'}
             }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate or docs-generate`);
         }
       } else if (fileName === 'technology_choices.json' && dirName === 'documents') {
         // technology_choices.json needs to be checked along with tech spec
         logger.debug(`🎯 Detected technology choices file`);
-        if (currentPhase === 'spec-generate') {
-          logger.debug(`✅ Current phase matches: spec-generate`);
+        if (isDocsGeneratePhase || currentPhase === 'spec-generate') {
+          logger.debug(`✅ Phase matches for Engineer doc generation`);
           const choicesHasPlaceholders = !hasRealJsonContent(content);
           logger.debug(`🎲 Technology choices has placeholders: ${choicesHasPlaceholders}`);
-          
+
           if (!choicesHasPlaceholders) {
-          // Check if technical_specification.md is also complete
-          const techSpecPath = getTechnicalSpecPath(projectId);
-          
-          if (fs.existsSync(techSpecPath)) {
-            const techSpecContent = fs.readFileSync(techSpecPath, 'utf-8');
+            // Check if technical_specification.md is also complete
+            const techSpecPath = getTechnicalSpecPath(projectId);
+
+            if (fs.existsSync(techSpecPath)) {
+              const techSpecContent = fs.readFileSync(techSpecPath, 'utf-8');
               const techSpecHasPlaceholders = hasMarkdownPlaceholders(techSpecContent);
               logger.debug(`🎲 Technical spec has placeholders: ${techSpecHasPlaceholders}`);
-            
+
               if (!techSpecHasPlaceholders) {
-              shouldUpdateStatus = true;
+                if (isDocsGeneratePhase) {
+                  docGenAgent = 'engineer';
+                  docGenPhase = 'spec-generate';
+                } else {
+                  shouldUpdateStatus = true;
+                }
               } else {
                 logger.debug(`⏳ Waiting for technical_specification.md to be complete`);
-            }
-          } else {
-            logger.debug(`⚠️  Technical specification not found yet`);
+              }
+            } else {
+              logger.debug(`⚠️  Technical specification not found yet`);
             }
           }
         } else {
-          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate`);
+          logger.debug(`⚠️  Phase mismatch - current: ${currentPhase}, expected: spec-generate or docs-generate`);
         }
       } else {
         logger.debug(`⚠️  File not recognized for status updates: ${fileName} in ${dirName}`);
       }
-      
-      if (shouldUpdateStatus) {
+
+      // Handle parallel doc generation completion
+      if (docGenAgent && docGenPhase) {
+        logger.debug(`\n🎉 DOC GENERATION COMPLETE: ${docGenAgent}-${docGenPhase}`);
+
+        if (isCostEstimationEnabled()) {
+          invalidateOutputTokenCache(projectId);
+          logger.debug(`💰 [Cost] Output token cache invalidated for ${projectId}`);
+        }
+
+        logger.debug(`✅ Calling markDocGenComplete(${projectId}, ${docGenAgent}, ${docGenPhase})`);
+        markDocGenComplete(projectId, docGenAgent, docGenPhase);
+      } else if (shouldUpdateStatus) {
         logger.debug(`\n🎉 AI WORK COMPLETE DETECTED!`);
-        
+
         // Invalidate output token cache so it gets recalculated on next cost widget load
         if (isCostEstimationEnabled()) {
           invalidateOutputTokenCache(projectId);
           logger.debug(`💰 [Cost] Output token cache invalidated for ${projectId}`);
         }
-        
+
         logger.debug(`✅ Calling markAIWorkComplete(${projectId})`);
         markAIWorkComplete(projectId);
       } else {

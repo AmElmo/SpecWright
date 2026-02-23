@@ -35,13 +35,14 @@ import {
  * Get question count based on project settings
  */
 const getQuestionCount = (depth: 'light' | 'standard' | 'thorough'): { min: number; max: number } => {
+    // Per-agent counts (total across 3 agents: light 5-8, standard 8-12, thorough 12-18)
     switch (depth) {
         case 'light':
-            return { min: 3, max: 5 };
+            return { min: 2, max: 3 };
         case 'standard':
-            return { min: 5, max: 8 };
+            return { min: 3, max: 4 };
         case 'thorough':
-            return { min: 8, max: 12 };
+            return { min: 4, max: 6 };
     }
 };
 
@@ -161,6 +162,17 @@ export const generatePMQuestionsPrompt = (
 
 @specwright/agents/product_manager/questioning_prompt.md
 
+# CODEBASE ANALYSIS (MANDATORY)
+
+Before generating questions, you MUST explore and analyze the existing codebase to understand:
+- Current architecture, tech stack, and project structure
+- Existing features, modules, and components
+- Data models, API patterns, and business logic
+- What already exists vs. what would need to be built
+
+Browse the project files, read key source files, and understand the current state.
+Your questions MUST be grounded in what actually exists in the codebase — do NOT ask generic questions.
+
 # CONTEXT
 
 - Project Request: @${relativeProjectDir}/project_request.md
@@ -213,6 +225,8 @@ export const generatePMPRDPrompt = (
 
 - Project Request: @${relativeProjectDir}/project_request.md
 - PM Questions & Answers: @${relativeQuestionsFile}
+- UX Questions & Answers: @${relativeProjectDir}/questions/ux_questions.json
+- Engineer Questions & Answers: @${relativeProjectDir}/questions/engineer_questions.json
 
 USER REQUEST:
 ${userRequest}
@@ -259,11 +273,11 @@ export const generateUXQuestionsPrompt = (
 ): string => {
     const relativeProjectDir = toRelativePath(projectDir);
     const relativeUxQuestionsFile = toRelativePath(uxQuestionsFile);
-    
+
     // Load project settings
     const settings = loadProjectSettings(projectDir);
     const qCount = getQuestionCount(settings.question_depth);
-    
+
     let prompt = `# YOUR ROLE
 
 @specwright/agents/ux_designer/system_prompt.md
@@ -272,12 +286,24 @@ export const generateUXQuestionsPrompt = (
 
 @specwright/agents/ux_designer/questioning_prompt.md
 
+# CODEBASE ANALYSIS (MANDATORY)
+
+Before generating questions, you MUST explore and analyze the existing codebase to understand:
+- Current UI components, layouts, and design patterns
+- Existing user flows and interaction patterns
+- Component library and styling approach (CSS framework, design tokens, etc.)
+- Accessibility patterns already in place
+
+Browse the project files, read key source files, and understand the current UI state.
+Your questions MUST be grounded in what actually exists in the codebase — do NOT ask generic questions.
+
 # EXISTING SPECIFICATIONS
 
 - Project Request: @${relativeProjectDir}/project_request.md
-- Product Requirements Document: @${relativeProjectDir}/documents/prd.md
+- PM Questions & Answers (decisions already made): @${relativeProjectDir}/questions/pm_questions.json
 
 Generate ${qCount.min}-${qCount.max} user interaction questions based on project configuration (depth: ${settings.question_depth}).
+Do NOT ask questions that overlap with the PM questions above — focus on UX-specific concerns.
 `;
 
     prompt += `
@@ -316,8 +342,9 @@ export const generateUXDesignBriefPrompt = (
 # EXISTING SPECIFICATIONS
 
 - Project Request: @${relativeProjectDir}/project_request.md
-- Product Requirements Document: @${relativeProjectDir}/documents/prd.md
+- PM Questions & Answers: @${relativeProjectDir}/questions/pm_questions.json
 - UX Questions & Answers: @${relativeUxQuestionsFile}
+- Engineer Questions & Answers: @${relativeProjectDir}/questions/engineer_questions.json
 `;
 
     // Add document length constraints from project settings
@@ -357,11 +384,11 @@ export const generateEngineerQuestionsPrompt = (
 ): string => {
     const relativeProjectDir = toRelativePath(projectDir);
     const relativeEngineerQuestionsFile = toRelativePath(engineerQuestionsFile);
-    
+
     // Load project settings
     const settings = loadProjectSettings(projectDir);
     const qCount = getQuestionCount(settings.question_depth);
-    
+
     let prompt = `# YOUR ROLE
 
 @specwright/agents/engineer/system_prompt.md
@@ -373,10 +400,20 @@ export const generateEngineerQuestionsPrompt = (
 # EXISTING SPECIFICATIONS
 
 - Project Request: @${relativeProjectDir}/project_request.md
-- Product Requirements Document: @${relativeProjectDir}/documents/prd.md
-- Design Brief: @${relativeProjectDir}/documents/design_brief.md
+- PM Questions & Answers (decisions already made): @${relativeProjectDir}/questions/pm_questions.json
+- UX Questions & Answers (decisions already made): @${relativeProjectDir}/questions/ux_questions.json
 
-Generate ${qCount.min}-${qCount.max} technical questions based on project configuration (depth: ${settings.question_depth}).
+# CODEBASE CONTEXT (quick scan only)
+
+Get a high-level understanding of the project by checking these files if they exist:
+- README, CLAUDE.md, agents.md — project overview and conventions
+- package.json, pyproject.toml, or equivalent — tech stack and dependencies
+- Top-level folder structure
+
+Do NOT read through individual source files or deeply analyze code. Just understand what the project is and what stack it uses.
+
+Generate ${qCount.min}-${qCount.max} non-technical constraint questions based on project configuration (depth: ${settings.question_depth}).
+Do NOT ask questions that overlap with the PM or UX questions above — focus on constraints like performance, security, cost, scale, and reliability.
 `;
 
     prompt += `
@@ -417,8 +454,8 @@ export const generateEngineerSpecPrompt = (
 # EXISTING SPECIFICATIONS
 
 - Project Request: @${relativeProjectDir}/project_request.md
-- Product Requirements Document: @${relativeProjectDir}/documents/prd.md
-- Design Brief: @${relativeProjectDir}/documents/design_brief.md
+- PM Questions & Answers: @${relativeProjectDir}/questions/pm_questions.json
+- UX Questions & Answers: @${relativeProjectDir}/questions/ux_questions.json
 - Engineer Questions & Answers: @${relativeArchitectQuestionsFile}
 `;
 

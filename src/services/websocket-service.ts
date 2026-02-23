@@ -83,3 +83,10 @@ export function broadcastHeadlessCompleted(tool: string, success: boolean, phase
 export function broadcastSessionCaptured(sessionId: string, phase?: string): void {
     broadcast('session_captured', { sessionId, phase });
 }
+
+/**
+ * Broadcast headless execution cancelled by user
+ */
+export function broadcastHeadlessCancelled(tool: string, phase?: string): void {
+    broadcast('headless_cancelled', { tool, phase });
+}

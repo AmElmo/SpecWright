@@ -13,7 +13,9 @@ import { HowItWorks } from './components/HowItWorks';
 import { Playbook } from './components/Playbook';
 import Canvas from './__Canvas';
 import { ShipModalProvider, useShipModal } from './lib/ship-modal-context';
+import { ActiveGenerationsProvider } from './lib/active-generations-context';
 import { ShipModal } from './components/ShipModal';
+import { ActiveGenerationIndicator } from './components/ActiveGenerationIndicator';
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -35,27 +37,30 @@ function AppShipModal() {
 export default function App() {
   return (
     <ShipModalProvider>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/initialization-success" element={<InitializationSuccess />} />
-        <Route path="/create-project" element={<CreateProject />} />
-        <Route path="/specification/:projectId" element={<Specification />} />
-        <Route path="/breakdown/:projectId" element={<Breakdown />} />
-        {/* Project detail with nested routes for issues and docs */}
-        <Route path="/project/:id" element={<ProjectDetail />} />
-        <Route path="/project/:id/:section" element={<ProjectDetail />} />
-        <Route path="/project/:id/:section/:docType" element={<ProjectDetail />} />
-        <Route path="/issues" element={<IssueBoard />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/settings/customise" element={<Navigate to="/settings" replace />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/playbook" element={<Playbook />} />
-        <Route path="/__preview" element={<Canvas />} />
-      </Routes>
-      {/* ShipModal rendered at App level, isolated from route re-renders */}
-      <AppShipModal />
+      <ActiveGenerationsProvider>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/initialization-success" element={<InitializationSuccess />} />
+          <Route path="/create-project" element={<CreateProject />} />
+          <Route path="/specification/:projectId" element={<Specification />} />
+          <Route path="/breakdown/:projectId" element={<Breakdown />} />
+          {/* Project detail with nested routes for issues and docs */}
+          <Route path="/project/:id" element={<ProjectDetail />} />
+          <Route path="/project/:id/:section" element={<ProjectDetail />} />
+          <Route path="/project/:id/:section/:docType" element={<ProjectDetail />} />
+          <Route path="/issues" element={<IssueBoard />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/customise" element={<Navigate to="/settings" replace />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/playbook" element={<Playbook />} />
+          <Route path="/__preview" element={<Canvas />} />
+        </Routes>
+        {/* ShipModal rendered at App level, isolated from route re-renders */}
+        <AppShipModal />
+        <ActiveGenerationIndicator />
+      </ActiveGenerationsProvider>
     </ShipModalProvider>
   );
 }
