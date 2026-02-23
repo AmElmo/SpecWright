@@ -460,6 +460,7 @@ export function Specification() {
       
       await response.json();
       setIsInReviewMode(false);
+      setSidebarSelectedDoc(null);
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve document');
