@@ -125,6 +125,15 @@ Do NOT manually bump `version` in `package.json`.
 
 Use `AmElmo/<descriptive-name>` prefix for feature branches.
 
+## Git Workflow
+
+- **Commit after every completed unit of work.** Never let changes accumulate.
+- After implementing a feature, fixing a bug, or completing any discrete task, immediately stage and commit with a clear, conventional commit message.
+- Commit granularity: prefer small, atomic commits (one logical change per commit).
+- Format: `type(scope): description` (e.g., `feat(auth): add login endpoint`, `fix(ui): correct button alignment`)
+- Never wait for the user to ask you to commit. Committing is part of completing the task.
+- Do NOT bundle unrelated changes into a single commit.
+
 ## Formatting
 
 - Prettier: single quotes, trailing commas (es5), 100 char width, 2-space indent
