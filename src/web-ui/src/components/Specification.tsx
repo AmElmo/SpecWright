@@ -840,6 +840,36 @@ export function Specification() {
 
   const { sidebarWidth, handleResizeStart } = useSidebarWidth();
 
+  // Determine document review statuses for sidebar
+  const reviewPhases = ['pm-prd-review', 'ux-design-brief-review', 'engineer-spec-review'];
+  const currentPhase = status?.currentPhase || '';
+  const isReviewPhase = reviewPhases.includes(currentPhase) || status?.isComplete;
+
+  const getDocReviewStatus = (doc: 'prd' | 'design' | 'tech-spec'): 'approved' | 'reviewing' | 'pending' => {
+    if (status?.isComplete) return 'approved';
+    if (doc === 'prd') {
+      if (currentPhase === 'pm-prd-review') return 'reviewing';
+      if (['ux-design-brief-review', 'engineer-spec-review'].includes(currentPhase)) return 'approved';
+      return 'pending';
+    }
+    if (doc === 'design') {
+      if (currentPhase === 'ux-design-brief-review') return 'reviewing';
+      if (currentPhase === 'engineer-spec-review') return 'approved';
+      return 'pending';
+    }
+    if (doc === 'tech-spec') {
+      if (currentPhase === 'engineer-spec-review') return 'reviewing';
+      return 'pending';
+    }
+    return 'pending';
+  };
+
+  const reviewDocuments = [
+    { key: 'prd' as const, label: 'PRD', icon: '📋' },
+    { key: 'design' as const, label: 'Design Brief', icon: '🎨' },
+    { key: 'tech-spec' as const, label: 'Tech Spec', icon: '⚙️' },
+  ];
+
   // Sidebar component
   const Sidebar = () => {
     const mainNavItems = navItems.filter(item => item.label !== 'Settings');
@@ -856,7 +886,7 @@ export function Specification() {
             <span className="font-semibold text-[18px]" style={{ color: 'hsl(0 0% 9%)' }}>SpecWright</span>
           </Link>
         </div>
-        <nav className="flex-1 p-2">
+        <nav className="flex-1 p-2 overflow-y-auto">
           <ul className="space-y-0.5">
             {mainNavItems.map((item) => (
               <li key={item.path}>
@@ -879,6 +909,70 @@ export function Specification() {
               </li>
             ))}
           </ul>
+
+          {/* Document review navigation */}
+          {isReviewPhase && (
+            <div className="mt-4 pt-3 border-t" style={{ borderColor: 'hsl(0 0% 92%)' }}>
+              <p
+                className="px-2.5 text-[11px] font-semibold uppercase tracking-wider mb-2"
+                style={{ color: 'hsl(0 0% 46%)' }}
+              >
+                Documents
+              </p>
+              <ul className="space-y-0.5">
+                {reviewDocuments.map((doc) => {
+                  const docStatus = getDocReviewStatus(doc.key);
+                  const isActive = (doc.key === 'prd' && currentPhase === 'pm-prd-review')
+                    || (doc.key === 'design' && currentPhase === 'ux-design-brief-review')
+                    || (doc.key === 'tech-spec' && currentPhase === 'engineer-spec-review');
+
+                  return (
+                    <li key={doc.key}>
+                      <div
+                        className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150"
+                        style={{
+                          backgroundColor: isActive ? 'hsl(235 69% 97%)' : 'transparent',
+                          cursor: 'default',
+                        }}
+                      >
+                        <span className="text-[14px] flex-shrink-0">{doc.icon}</span>
+                        <span
+                          className="text-[13px] font-medium flex-1 min-w-0 truncate"
+                          style={{
+                            color: isActive ? 'hsl(235 69% 50%)' : docStatus === 'approved' ? 'hsl(0 0% 32%)' : 'hsl(0 0% 56%)',
+                          }}
+                        >
+                          {doc.label}
+                        </span>
+                        {docStatus === 'approved' && (
+                          <span
+                            className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: 'hsl(142 76% 94%)', color: 'hsl(142 76% 36%)' }}
+                          >
+                            <CheckIcon />
+                          </span>
+                        )}
+                        {docStatus === 'reviewing' && (
+                          <span
+                            className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'hsl(235 69% 95%)', color: 'hsl(235 69% 50%)' }}
+                          >
+                            Review
+                          </span>
+                        )}
+                        {docStatus === 'pending' && (
+                          <span
+                            className="flex-shrink-0 w-5 h-5 rounded-full"
+                            style={{ border: '1.5px solid hsl(0 0% 82%)' }}
+                          />
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </nav>
         {/* Cost widget and Settings at bottom */}
         <div className="mt-auto">

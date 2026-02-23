@@ -46,6 +46,7 @@ export function DocumentReview({
 
   // Edit with AI state
   const [showEditWithAI, setShowEditWithAI] = useState(false);
+  const refinePanelRef = useRef<HTMLDivElement>(null);
 
   // Edit dropdown state
   const [showEditDropdown, setShowEditDropdown] = useState(false);
@@ -526,7 +527,11 @@ export function DocumentReview({
 
       {/* Edit with AI panel — rendered inline below the document */}
       {showEditWithAI && sessionId && phase && (
-        <div className="rounded-lg overflow-hidden" style={{ border: '1px solid hsl(0 0% 92%)' }}>
+        <div
+          ref={refinePanelRef}
+          className="rounded-lg overflow-hidden"
+          style={{ border: '1px solid hsl(235 69% 85%)' }}
+        >
           <RefinePanel
             phase={phase}
             projectId={projectId}
@@ -536,6 +541,7 @@ export function DocumentReview({
               onRefineComplete?.();
             }}
             disabled={false}
+            inlineMode
           />
         </div>
       )}
@@ -614,9 +620,16 @@ export function DocumentReview({
                           {sessionId && phase && (
                             <button
                               onClick={() => {
-                                setShowEditWithAI(!showEditWithAI);
+                                const newValue = !showEditWithAI;
+                                setShowEditWithAI(newValue);
                                 setShowEditDropdown(false);
                                 setIsEditing(false);
+                                if (newValue) {
+                                  // Scroll to the refine panel after it renders
+                                  setTimeout(() => {
+                                    refinePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }, 100);
+                                }
                               }}
                               className="w-full text-left px-4 py-2 text-[13px] transition-colors flex items-center gap-2"
                               style={{ color: 'hsl(0 0% 20%)' }}
