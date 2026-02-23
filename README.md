@@ -12,7 +12,7 @@ Generate structured, implementation-ready specifications from a project idea —
 [![CI](https://github.com/amelmo/specwright/workflows/CI/badge.svg)](https://github.com/amelmo/specwright/actions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
-[Quick Start](#quick-start) · [How It Works](#how-it-works) · [Screenshots](#screenshots) · [Documentation](#documentation) · [Contributing](#contributing)
+[Quick Start](#quick-start) · [How It Works](#how-it-works) · [Documentation](#documentation) · [Contributing](#contributing)
 
 </div>
 
@@ -46,6 +46,51 @@ specwright view
 ## How It Works
 
 SpecWright implements Specification-Driven Development: AI specialists collaborate in sequence, each phase producing structured outputs that feed into the next.
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+
+**Project Dashboard**
+
+![Project Dashboard](./docs/screenshots/project_page.png)
+
+Browse all projects, view progress, and track implementation status.
+
+</td>
+<td width="50%">
+
+**Specification Viewer**
+
+![Specification Viewer](./docs/screenshots/screens_page.png)
+
+Rich viewing for PRDs, screen designs, and technical specs.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Issue Breakdown**
+
+![Issue Breakdown](./docs/screenshots/issue_list_page.png)
+
+Implementation tasks organized by vertical slice with acceptance criteria.
+
+</td>
+<td width="50%">
+
+**Technology Choices**
+
+![Technology Choices](./docs/screenshots/technology_choices.png)
+
+Selected technologies with rationale, trade-offs, and alternatives.
+
+</td>
+</tr>
+</table>
 
 ```mermaid
 graph TD
@@ -92,51 +137,6 @@ outputs/
                 ├── ENG-002.md               # JWT Auth
                 └── ENG-003.md               # Password Reset
 ```
-
-## Screenshots
-
-<table>
-<tr>
-<td width="50%">
-
-**Project Dashboard**
-
-![Project Dashboard](./docs/screenshots/project_page.png)
-
-Browse all projects, view progress, and track implementation status.
-
-</td>
-<td width="50%">
-
-**Specification Viewer**
-
-![Specification Viewer](./docs/screenshots/screens_page.png)
-
-Rich viewing for PRDs, screen designs, and technical specs.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-**Issue Breakdown**
-
-![Issue Breakdown](./docs/screenshots/issue_list_page.png)
-
-Implementation tasks organized by vertical slice with acceptance criteria.
-
-</td>
-<td width="50%">
-
-**Technology Choices**
-
-![Technology Choices](./docs/screenshots/technology_choices.png)
-
-Selected technologies with rationale, trade-offs, and alternatives.
-
-</td>
-</tr>
-</table>
 
 ## Documentation
 
