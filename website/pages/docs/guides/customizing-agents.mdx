@@ -1,0 +1,59 @@
+# Customizing AI Agents
+
+SpecWright's AI agents (Product Manager, Designer, Engineer) are driven by prompt templates stored in your project's `specwright/agents/` directory. You can customize these prompts to change how the agents ask questions and generate specifications.
+
+## Agent prompt structure
+
+Each agent has several prompt files:
+
+```
+specwright/agents/
+├── product_manager/
+│   ├── system_prompt.md         # Agent identity and role
+│   ├── questioning_prompt.md    # How to generate questions
+│   └── analysis_prompt.md       # How to generate the PRD
+├── ux_designer/
+│   ├── system_prompt.md
+│   ├── questioning_prompt.md
+│   └── analysis_prompt.md
+├── engineer/
+│   ├── system_prompt.md
+│   ├── questioning_prompt.md
+│   ├── choice_selection_prompt.md  # Technology selection logic
+│   └── analysis_prompt.md
+└── breakdown/
+    ├── system_prompt.md
+    └── issue_breakdown_prompt.md
+```
+
+## What you can customize
+
+- **System prompts** — Change the agent's persona, expertise areas, or focus
+- **Questioning prompts** — Adjust what kinds of questions the agent asks
+- **Analysis prompts** — Modify how the agent generates specification documents
+- **Templates** — Edit output templates in `specwright/templates/` to change document structure
+
+import { Callout } from 'nextra/components'
+
+<Callout type="warning">
+Editing agent prompts is advanced customization. The default prompts work well for most projects. Only modify them if you have specific requirements the defaults don't cover.
+</Callout>
+
+## Example: adding industry context
+
+If you're building for a specific industry (healthcare, fintech, etc.), you can add domain context to the system prompts. For example, adding compliance requirements to the PM agent's system prompt ensures the PRD includes regulatory considerations.
+
+## Resetting to defaults
+
+If your customizations cause issues, you can regenerate the default prompts by running:
+
+```bash
+specwright init
+```
+
+This restores the original agent prompts without affecting your existing outputs.
+
+## What's next?
+
+- [Playbooks](/docs/guides/playbooks) — Let SpecWright learn your project conventions automatically
+- [The Specification Workflow](/docs/workflow) — Understand how agents work at each phase

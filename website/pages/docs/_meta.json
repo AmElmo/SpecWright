@@ -1,6 +1,8 @@
 {
   "index": "Introduction",
   "getting-started": "Getting Started",
-  "concepts": "Core Concepts",
-  "cli-reference": "CLI Reference"
+  "workflow": "The Specification Workflow",
+  "guides": "Guides",
+  "reference": "Reference",
+  "faq": "FAQ"
 }

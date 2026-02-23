@@ -1,0 +1,61 @@
+# The Specification Workflow
+
+SpecWright implements Specification-Driven Development through five sequential phases. Each phase is powered by a specialized AI agent that asks you focused questions, then generates structured output that feeds into the next phase.
+
+import { Callout } from 'nextra/components'
+
+## The five phases
+
+| Phase | AI Agent | What it produces |
+|-------|----------|-----------------|
+| **1. Scoping** | AI Classifier | Determines if you need a full spec or can code directly |
+| **2. Product Manager** | PM Agent | PRD with job stories and acceptance criteria |
+| **3. Designer** | UX Agent | Screen inventory, wireframes, and user flows |
+| **4. Engineer** | Engineering Agent | Technical architecture and technology choices |
+| **5. Issue Breakdown** | Breakdown Agent | Implementation tasks organized by vertical slice |
+
+Each phase builds on the previous one. The Product Manager's PRD informs the Designer's screens. The Designer's wireframes inform the Engineer's architecture. The Engineer's tech choices inform the Issue Breakdown.
+
+## How each phase works
+
+Every phase (except Scoping) follows the same pattern:
+
+1. **Questions** — The AI agent generates a set of focused questions about your project. These aren't generic questions — they're tailored based on your project description and outputs from previous phases.
+2. **Your answers** — You answer each question. The AI provides suggested answer options, but you can write your own response.
+3. **Generation** — The agent takes your answers and generates structured specification documents.
+4. **Review** — You review the output in the Web UI or in the generated files. You can refine or regenerate if needed.
+
+<Callout type="info">
+The question-and-answer approach ensures that specifications are grounded in your actual requirements — not generic templates. The AI asks what it needs to know, and you provide the context only you have.
+</Callout>
+
+## What you get at the end
+
+After completing all five phases, you have a complete specification package:
+
+```
+specwright/outputs/projects/001-your-project/
+├── project_request.md              # Your original description
+├── documents/
+│   ├── prd.md                      # Product Requirements Document
+│   ├── acceptance_criteria.json    # Testable acceptance criteria
+│   ├── design_brief.md             # UX specification
+│   ├── screens.json                # Screen inventory
+│   ├── technical_specification.md  # Architecture document
+│   └── technology_choices.json     # Tech stack with rationale
+└── issues/
+    ├── issues.json                 # All implementation tasks
+    ├── ENG-001.md                  # Individual issue files
+    ├── ENG-002.md
+    └── ...
+```
+
+These files are plain Markdown and JSON — version-controllable, human-readable, and designed to feed directly into AI coding tools.
+
+## Dive into each phase
+
+- [Smart Scoping](/docs/workflow/scoping) — How SpecWright classifies your work
+- [Product Manager](/docs/workflow/product-manager) — Requirements and acceptance criteria
+- [Designer](/docs/workflow/designer) — Screens, wireframes, and user flows
+- [Engineer](/docs/workflow/engineer) — Architecture and technology choices
+- [Issue Breakdown](/docs/workflow/issue-breakdown) — Implementation-ready tasks

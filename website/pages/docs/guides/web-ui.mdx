@@ -1,0 +1,79 @@
+# Using the Web UI
+
+SpecWright includes a built-in web dashboard for managing projects, reviewing specifications, and shipping issues to AI coding tools. This guide walks you through the main screens.
+
+## Launching the Web UI
+
+```bash
+specwright --ui
+```
+
+This starts the SpecWright server and opens the dashboard in your browser at `http://localhost:1337`.
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+You can also access the Web UI by running `specwright view` or selecting **View** from the CLI menu.
+</Callout>
+
+## The dashboard
+
+The dashboard is your home screen. It shows all your projects with their current status — which phases are complete, how many issues have been generated, and what's ready to ship.
+
+![Project dashboard showing all projects and their status](/screenshots/project_page.png)
+
+Each project card shows:
+- **Project name** and a short description
+- **Phase progress** — Which specification phases have been completed
+- **Issue count** — How many implementation tasks have been generated
+
+Click a project to open its detail view.
+
+## Project detail view
+
+Inside a project, you can navigate between the different specification outputs:
+
+- **Overview** — Project description and scoping result
+- **PRD** — The Product Requirements Document with job stories
+- **Screens** — Screen inventory and wireframe definitions
+- **Tech Spec** — Architecture document and technology choices
+- **Issues** — All implementation tasks with their status
+
+Each section shows the generated Markdown or structured data rendered in a readable format. You can review, refine, and regenerate any section.
+
+## Answering questions
+
+During the specification workflow, each phase presents you with a set of AI-generated questions. The question form shows:
+
+- The question text
+- Suggested answer options (click to select)
+- A text field for custom answers
+
+{/* SCREENSHOT: question form with answer options */}
+
+You work through each question, providing the context the AI needs to generate your specification documents.
+
+## The issues board
+
+Once all phases are complete and issues are generated, the issues board shows every implementation task:
+
+![Issues board with implementation tasks](/screenshots/issues_page.png)
+
+From here you can:
+- Review individual issues and their acceptance criteria
+- Ship issues directly to your AI coding tool (see [Ship to AI Tools](/docs/guides/ship-to-ai-tools))
+- Track which issues have been implemented
+
+## Settings
+
+Access Settings from the sidebar to configure:
+
+- **AI Tool** — Choose your preferred AI coding tool (Cursor, Claude Code, GitHub Copilot, etc.)
+- **Linear Integration** — Connect to your Linear workspace
+- **Git Strategy** — Configure branch creation for issues
+- **Agent Customization** — Adjust AI agent behavior
+
+## What's next?
+
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues to your AI coding tool
+- [The Specification Workflow](/docs/workflow) — Understand each phase in detail

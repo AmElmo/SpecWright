@@ -1,0 +1,95 @@
+# CLI Commands
+
+SpecWright provides a command-line interface for running the specification workflow, managing projects, and launching the Web UI.
+
+## Installation
+
+```bash
+npm install -g specwright
+```
+
+## Commands
+
+### `specwright`
+
+Launches the interactive CLI menu. From here you can select any available action: scope new work, generate specifications, view projects, or launch the Web UI.
+
+```bash
+specwright
+```
+
+### `specwright init`
+
+Initializes SpecWright in your project directory. Creates the `specwright/` folder with agent prompts, templates, and the outputs directory.
+
+```bash
+cd /path/to/your/project
+specwright init
+```
+
+Run this once per project. Safe to re-run — it restores any missing default files without overwriting existing outputs.
+
+### `specwright new`
+
+Scope a new project or feature. Opens the Web UI where you describe what you want to build and the AI classifies it (see [Smart Scoping](/docs/workflow/scoping)).
+
+```bash
+specwright new
+```
+
+### `specwright spec`
+
+Run the full specification workflow in the CLI. Guides you through all four phases interactively: PM → Designer → Engineer → Issue Breakdown.
+
+```bash
+specwright spec
+```
+
+### `specwright view`
+
+Launch the Web UI dashboard to browse projects, review specifications, and manage issues.
+
+```bash
+specwright view
+```
+
+### `specwright ship`
+
+Ship an issue to your AI coding tool from the command line.
+
+```bash
+specwright ship
+```
+
+### `specwright playbook`
+
+Generate a Playbook from your codebase (see [Playbooks](/docs/guides/playbooks)).
+
+```bash
+specwright playbook
+```
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `--ui` | Launch the Web UI directly (shortcut for `specwright view`) |
+| `--version` | Display the installed version |
+| `--help` | Show help information |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `SPECWRIGHT_DEBUG` | Set to `true` to enable debug logging |
+| `SPECWRIGHT_TRACE` | Set to `true` to enable verbose trace-level logging |
+
+## Development mode
+
+When working on SpecWright itself, use the dev command:
+
+```bash
+specwright-dev [options]
+```
+
+This runs with debug logging enabled and points to the local development build.

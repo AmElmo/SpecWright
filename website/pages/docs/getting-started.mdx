@@ -1,55 +1,90 @@
 # Getting Started
 
-Get up and running with SpecWright in under a minute.
+Install SpecWright and create your first specification in under 5 minutes.
 
-## Quick Start
+import { Callout, Steps, Tabs, Tab } from 'nextra/components'
 
-The fastest way to try SpecWright:
-
-```bash
-npx specwright
-```
-
-This launches the interactive CLI, which will guide you through creating your first specification.
+<Callout type="info">
+**Prerequisites:** Node.js 18+ and npm 9+ installed on your machine.
+</Callout>
 
 ## Installation
 
-For regular use, install globally:
-
+<Tabs items={["Quick try (npx)", "Global install"]}>
+<Tab>
+```bash
+npx specwright
+```
+Runs SpecWright directly without installing. Great for trying it out.
+</Tab>
+<Tab>
 ```bash
 npm install -g specwright
 ```
-
-Then run from any directory:
-
+Then run from any project directory:
 ```bash
 specwright
 ```
+</Tab>
+</Tabs>
 
-## Using the Web UI
+## Your first specification
 
-SpecWright includes a built-in web interface for a more visual workflow:
+<Steps>
+
+### Initialize SpecWright in your project
+
+Navigate to your project directory and run:
+
+```bash
+cd /path/to/your/project
+specwright init
+```
+
+This creates the `specwright/` folder with templates, agent prompts, and an outputs directory. All your specifications will live here.
+
+### Launch the Web UI
 
 ```bash
 specwright --ui
 ```
 
-This opens the web UI in your browser, where you can manage specs, review phases, and track progress.
+This opens the SpecWright dashboard in your browser. You'll see the onboarding screen on your first run, which walks you through selecting your preferred AI coding tool.
 
-## Project Structure
+{/* SCREENSHOT: onboarding screen showing AI tool selection */}
 
-After running SpecWright, your outputs are saved in the `outputs/` directory:
+### Create a new project
 
-```
-outputs/
-├── pm-spec.md          # Product requirements
-├── design-spec.md      # Design specifications
-├── engineering-spec.md # Technical specifications
-├── breakdown.md        # Task breakdown
-└── status.json         # Project state
-```
+Click **New Project** and describe what you want to build in plain language. For example:
 
-## Next Steps
+> "Build a task management app with user authentication, project boards, and real-time collaboration"
 
-- Read about [Core Concepts](/docs/concepts) to understand the SDD workflow
-- Check the [CLI Reference](/docs/cli-reference) for all available commands and options
+SpecWright's AI will analyze your request and determine if it needs a full specification or is small enough to implement directly. This is called [Smart Scoping](/docs/workflow/scoping).
+
+### Walk through the specification phases
+
+If your request needs a full spec, SpecWright guides you through four phases — each powered by a specialized AI agent:
+
+1. **Product Manager** — Asks questions about requirements, then generates a PRD with job stories and acceptance criteria
+2. **Designer** — Asks about UX needs, then produces screen definitions and user flows
+3. **Engineer** — Asks about technical constraints, then creates architecture docs and technology choices
+4. **Issue Breakdown** — Analyzes all specs and breaks the work into implementation tasks
+
+At each phase, you answer a set of focused questions. The AI uses your answers to generate structured specification documents.
+
+### Review your outputs
+
+Once all phases are complete, you'll have a full set of specifications in your `specwright/outputs/` directory:
+
+- A PRD with job stories and acceptance criteria
+- Screen designs and user flows
+- Technical architecture and technology choices
+- Implementation tasks ready for your AI coding tool
+
+</Steps>
+
+## What's next?
+
+- [The Specification Workflow](/docs/workflow) — Understand each phase in detail
+- [Using the Web UI](/docs/guides/web-ui) — Navigate the dashboard
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send tasks directly to Cursor, Claude Code, or other tools

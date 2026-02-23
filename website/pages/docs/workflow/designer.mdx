@@ -1,0 +1,44 @@
+# Designer Phase
+
+The Designer phase defines **how it looks and feels**. The AI Designer agent uses the PRD from the previous phase to ask UX-focused questions, then generates screen definitions, wireframes, and user flows.
+
+## What the Designer agent asks
+
+The Designer agent generates questions about the user experience, informed by the PRD. These typically cover:
+
+- **Layout and navigation** — How should users move through the feature?
+- **Key interactions** — What happens when users click, submit, or navigate?
+- **Visual hierarchy** — What information is most important on each screen?
+- **Edge cases** — What does the empty state look like? What about errors?
+- **Responsiveness** — Does this need to work on mobile, tablet, or just desktop?
+
+## What you get
+
+### Design brief
+
+A Markdown document describing the overall UX approach — navigation patterns, interaction models, and design constraints.
+
+### Screen inventory
+
+A structured JSON file listing every screen your feature needs. Each screen includes:
+
+- **Screen name** and purpose
+- **Components** — What UI elements appear on the screen
+- **Behavior** — What happens on user interaction
+- **Data displayed** — What information the user sees
+
+![Screen definitions in SpecWright](/screenshots/screens_page.png)
+
+### User flows
+
+Descriptions of how users navigate through the feature. For example, a sign-up flow might be: Landing Page → Sign-up Form → Email Verification → Dashboard.
+
+## Why it matters
+
+Screen definitions give the Engineer concrete UI requirements to build against. They also give the Issue Breakdown phase enough detail to scope individual implementation tasks ("Build the login screen" vs. "Build the settings modal").
+
+Without design specs, AI coding tools tend to make arbitrary UI decisions that don't match your product vision.
+
+## What's next?
+
+- [Engineer Phase](/docs/workflow/engineer) — Technical architecture and technology choices

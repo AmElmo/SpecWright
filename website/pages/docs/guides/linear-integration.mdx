@@ -1,0 +1,45 @@
+# Linear Integration
+
+SpecWright integrates with [Linear](https://linear.app) to sync your projects and issues. Push specification-backed tasks directly to your Linear workspace so your team can track implementation alongside your existing workflow.
+
+## What the integration does
+
+- **Push projects** — Create a Linear project from your SpecWright project
+- **Push issues** — Send implementation tasks to Linear with full context
+- **Attach specifications** — Link SpecWright documents (PRD, tech spec, etc.) to Linear issues
+
+## Setting up the connection
+
+import { Steps } from 'nextra/components'
+
+<Steps>
+
+### Open Settings
+
+Launch the Web UI (`specwright --ui`) and navigate to **Settings** from the sidebar.
+
+### Connect Linear
+
+In the **Integrations** section, click **Connect Linear**. You'll be asked to provide your Linear API key.
+
+### Select your workspace and team
+
+Choose which Linear workspace and team should receive your SpecWright projects and issues.
+
+</Steps>
+
+{/* SCREENSHOT: Linear integration settings panel */}
+
+## Pushing projects and issues
+
+Once connected, you'll see Linear sync options on each project:
+
+- **Push Project** — Creates a project in Linear matching your SpecWright project
+- **Push Issues** — Sends individual implementation tasks to Linear with their descriptions, acceptance criteria, and spec context
+
+Issues pushed to Linear include all the context from your specification workflow, so your team has full visibility into requirements and technical decisions.
+
+## What's next?
+
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues to your AI coding tool
+- [Output Files](/docs/reference/output-files) — Understand what files SpecWright produces

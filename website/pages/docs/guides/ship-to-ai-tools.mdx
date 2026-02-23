@@ -1,0 +1,69 @@
+# Ship to AI Tools
+
+Once SpecWright generates your implementation tasks, you can send them directly to your AI coding tool with a single click. No manual copy-pasting, no context switching.
+
+## Supported AI tools
+
+SpecWright works with these AI coding tools:
+
+| Tool | How shipping works |
+|------|-------------------|
+| **Cursor** | Opens Cursor, creates a new chat, and pastes the issue prompt |
+| **Claude Code** | Opens a terminal session with the full issue context |
+| **GitHub Copilot** | Opens Copilot chat with the issue prompt |
+| **Codex** | Runs headless in the CLI with the issue context |
+| **Gemini CLI** | Runs headless in the CLI with the issue context |
+| **Windsurf** | Opens Windsurf with the issue prompt |
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+**No API keys required.** SpecWright doesn't call AI APIs directly. It works with whatever AI tool you already have installed and licensed.
+</Callout>
+
+## How it works
+
+1. Open a project in the Web UI and navigate to the **Issues** view
+2. Click the **Ship** button on any issue
+3. SpecWright automatically:
+   - Opens your selected AI coding tool
+   - Creates a new chat or session
+   - Pastes a prompt with the full issue context — including relevant excerpts from the PRD, design brief, and tech spec
+
+{/* SCREENSHOT: ship modal showing the issue being sent to an AI tool */}
+
+The prompt includes everything the AI coding tool needs to implement the task: what to build, how it should behave, what technology to use, and what "done" looks like.
+
+## Selecting your AI tool
+
+Set your preferred tool during onboarding, or change it anytime:
+
+1. Open the Web UI (`specwright --ui`)
+2. Go to **Settings**
+3. Under **AI Tool**, select your preferred tool
+
+## What makes the prompts effective
+
+Each shipped prompt includes:
+
+- **Issue description** — What to build
+- **Acceptance criteria** — What "done" looks like
+- **Relevant spec excerpts** — Architecture decisions, screen definitions, and requirements from earlier phases
+- **Project context** — Playbook standards and conventions if configured
+
+This means your AI coding tool doesn't start from scratch. It has the full context of your project's requirements, design decisions, and technical architecture.
+
+## CLI shipping
+
+You can also ship issues from the command line:
+
+```bash
+specwright ship
+```
+
+This is especially useful for headless tools like Codex and Gemini CLI.
+
+## What's next?
+
+- [Using the Web UI](/docs/guides/web-ui) — Navigate the full dashboard
+- [Playbooks](/docs/guides/playbooks) — Add project standards to your prompts
