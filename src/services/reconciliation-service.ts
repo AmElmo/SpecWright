@@ -157,7 +157,8 @@ const RECONCILIATION_RULES: ReconciliationRule[] = [
     phase: 'prd-generate',
     filesExist: (projectId) => {
       const acPath = getAcceptanceCriteriaPath(projectId);
-      return jsonFileHasContent(acPath, 'acceptance_criteria');
+      return jsonFileHasContent(acPath, 'acceptance_criteria') ||
+             jsonFileHasContent(acPath, 'job_stories');
     }
   },
   
