@@ -381,7 +381,8 @@ export function ProjectDetail() {
           const settingsData = await settingsRes.json();
           if (settingsData.settings) {
             setProjectSettings(settingsData.settings);
-            setHasExistingSettings(true);
+            // Only skip the config modal if the user explicitly confirmed settings
+            setHasExistingSettings(!!settingsData.settings.settingsConfirmed);
           }
         }
       } catch (err) {
@@ -2182,9 +2183,9 @@ export function ProjectDetail() {
               </label>
               <div className="space-y-2">
                 {[
-                  { value: 'light', label: 'Light', desc: '3-5 questions', emoji: '⚡' },
-                  { value: 'standard', label: 'Standard', desc: '5-8 questions (recommended)', emoji: '⚖️' },
-                  { value: 'thorough', label: 'Thorough', desc: '8-12 questions', emoji: '🔬' }
+                  { value: 'light', label: 'Light', desc: '5-8 questions total', emoji: '⚡' },
+                  { value: 'standard', label: 'Standard', desc: '8-12 questions total (recommended)', emoji: '⚖️' },
+                  { value: 'thorough', label: 'Thorough', desc: '12-18 questions total', emoji: '🔬' }
                 ].map((option) => (
                   <button
                     key={option.value}
