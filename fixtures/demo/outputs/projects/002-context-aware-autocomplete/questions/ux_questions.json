@@ -1,0 +1,25 @@
+{
+  "project_request": "AI autocomplete engine that indexes the codebase and provides context-aware completions.",
+  "questions": [
+    {
+      "question": "How should suggestions be displayed to the developer?",
+      "options": ["Ghost text inline (like Copilot)", "Dropdown list with previews", "Both: ghost text for top suggestion, list for alternatives"],
+      "answer": "Both: ghost text for top suggestion, list for alternatives"
+    },
+    {
+      "question": "Should there be a confidence indicator on suggestions?",
+      "options": ["No, just show the suggestion", "Yes, color-coded (green/yellow/gray)", "Yes, with a percentage score"],
+      "answer": "Yes, color-coded (green/yellow/gray)"
+    },
+    {
+      "question": "How should the user dismiss or cycle through suggestions?",
+      "options": ["Escape to dismiss, Tab to accept", "Arrow keys to cycle, Enter to accept", "Configurable keybindings"],
+      "answer": "Configurable keybindings with sensible defaults (Tab accept, Escape dismiss, Alt+] cycle)"
+    },
+    {
+      "question": "Should there be a visual indicator showing indexing status?",
+      "options": ["No, keep it invisible", "Status bar indicator", "Status bar + progress during initial indexing"],
+      "answer": "Status bar + progress during initial indexing"
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "project_name": "Model Performance Dashboard",
+  "technology_decisions": [
+    {
+      "category": "Time-Series Database",
+      "description": "Database for storing and querying model performance metrics over time",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "TimescaleDB",
+          "description": "PostgreSQL extension for time-series data with continuous aggregates",
+          "version": "2.14",
+          "documentation_url": "https://docs.timescale.com/",
+          "github_url": "https://github.com/timescale/timescaledb",
+          "pros": ["Built on PostgreSQL (familiar)", "Continuous aggregates for fast queries", "SQL-native", "Compression for storage efficiency"],
+          "cons": ["Heavier than lightweight alternatives", "Requires PostgreSQL hosting"],
+          "trade_offs": ["More powerful but heavier infrastructure"],
+          "maturity": "Production-ready",
+          "community_size": "Large",
+          "last_updated": "2024-12",
+          "implementation_complexity": "Low",
+          "estimated_time": "4 hours",
+          "recommended": true,
+          "recommendation_reason": "We already use PostgreSQL — TimescaleDB adds time-series capabilities with minimal overhead"
+        },
+        {
+          "name": "InfluxDB",
+          "description": "Purpose-built time-series database with Flux query language",
+          "version": "3.0",
+          "documentation_url": "https://docs.influxdata.com/",
+          "github_url": "https://github.com/influxdata/influxdb",
+          "pros": ["Purpose-built for metrics", "Built-in downsampling", "Good visualization tools"],
+          "cons": ["New query language (Flux)", "Separate database to manage", "Different backup/monitoring"],
+          "trade_offs": ["Better for pure metrics but adds operational complexity"],
+          "maturity": "Production-ready",
+          "community_size": "Large",
+          "last_updated": "2024-11",
+          "implementation_complexity": "Medium",
+          "estimated_time": "8 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "TimescaleDB",
+      "user_choice_description": "PostgreSQL extension for time-series data",
+      "user_choice_version": "2.14",
+      "user_reason": "Minimal new infrastructure — extends our existing PostgreSQL",
+      "final_decision": "timescaledb"
+    },
+    {
+      "category": "Charting Library",
+      "description": "Frontend library for rendering real-time metric charts",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "Recharts",
+          "description": "React-native charting library built on D3",
+          "version": "2.12",
+          "documentation_url": "https://recharts.org/",
+          "github_url": "https://github.com/recharts/recharts",
+          "pros": ["React-native components", "Good default styling", "Responsive out of the box", "Active community"],
+          "cons": ["Performance degrades with >10K data points", "Limited customization for complex charts"],
+          "trade_offs": ["Easy to use but limited for advanced visualizations"],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-10",
+          "implementation_complexity": "Low",
+          "estimated_time": "3 hours",
+          "recommended": true,
+          "recommendation_reason": "Best balance of ease-of-use and capability for dashboard charts"
+        },
+        {
+          "name": "Apache ECharts",
+          "description": "Powerful visualization library with extensive chart types",
+          "version": "5.5",
+          "documentation_url": "https://echarts.apache.org/",
+          "github_url": "https://github.com/apache/echarts",
+          "pros": ["Handles large datasets efficiently", "Extensive chart types", "Built-in animations"],
+          "cons": ["Not React-native (wrapper needed)", "Steeper learning curve", "Large bundle"],
+          "trade_offs": ["More powerful but less React-friendly"],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-11",
+          "implementation_complexity": "Medium",
+          "estimated_time": "6 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "Recharts",
+      "user_choice_description": "React-native charting library built on D3",
+      "user_choice_version": "2.12",
+      "user_reason": "React-native, good defaults, our data points per view stay under 2K",
+      "final_decision": "recharts"
+    },
+    {
+      "category": "Alert Delivery",
+      "description": "Service for sending alert notifications via Slack and email",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "Direct API Integration",
+          "description": "Direct calls to Slack API and SendGrid for email delivery",
+          "version": "N/A",
+          "documentation_url": "",
+          "github_url": "",
+          "pros": ["No extra dependency", "Full control over message formatting", "Simple for 2 channels"],
+          "cons": ["Need to handle retries ourselves", "More code for each new channel"],
+          "trade_offs": ["Simple now but harder to scale to many channels"],
+          "maturity": "N/A",
+          "community_size": "N/A",
+          "last_updated": "N/A",
+          "implementation_complexity": "Low",
+          "estimated_time": "4 hours",
+          "recommended": true,
+          "recommendation_reason": "We only need Slack and email — a full notification service is overkill"
+        },
+        {
+          "name": "Novu",
+          "description": "Open-source notification infrastructure with multi-channel support",
+          "version": "0.24",
+          "documentation_url": "https://docs.novu.co/",
+          "github_url": "https://github.com/novuhq/novu",
+          "pros": ["Multi-channel out of the box", "Template management", "Delivery tracking"],
+          "cons": ["Extra service to deploy", "Overkill for 2 channels", "Learning curve"],
+          "trade_offs": ["More capable but unnecessary complexity for our needs"],
+          "maturity": "Stable",
+          "community_size": "Medium",
+          "last_updated": "2024-11",
+          "implementation_complexity": "Medium",
+          "estimated_time": "6 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "Direct API Integration",
+      "user_choice_description": "Direct calls to Slack API and SendGrid",
+      "user_choice_version": "N/A",
+      "user_reason": "Keep it simple — Slack webhook + SendGrid is all we need",
+      "final_decision": "direct-api-integration"
+    }
+  ],
+  "summary": {
+    "total_decisions": 3,
+    "decisions_made": 3,
+    "estimated_setup_time": "11 hours",
+    "estimated_learning_curve": "Low — all chosen technologies are familiar or well-documented",
+    "overall_complexity": "Medium"
+  }
+}

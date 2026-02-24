@@ -1,0 +1,105 @@
+{
+  "project_id": "001-ai-prompt-playground",
+  "project_name": "AI Prompt Playground",
+  "job_stories": [
+    {
+      "job_story_id": "js_001",
+      "title": "Write and Test a Prompt",
+      "situation": "I have a prompt idea and want to see how different LLMs respond",
+      "motivation": "quickly test and compare outputs without switching between provider playgrounds",
+      "outcome": "I can evaluate which provider gives the best result for my use case",
+      "acceptance_criteria": [
+        {
+          "id": "ac_001_01",
+          "given": "I am on the Prompt Playground page",
+          "when": "I type a prompt with {{variable}} placeholders in the editor",
+          "then": "Variable inputs appear below the editor for each detected placeholder"
+        },
+        {
+          "id": "ac_001_02",
+          "given": "I have written a prompt and selected Claude and GPT-4",
+          "when": "I click 'Run'",
+          "then": "Both providers stream responses simultaneously in side-by-side panels"
+        },
+        {
+          "id": "ac_001_03",
+          "given": "Responses are streaming",
+          "when": "I view the response panels",
+          "then": "Each panel shows a live token counter and elapsed time"
+        },
+        {
+          "id": "ac_001_04",
+          "given": "A provider returns an error",
+          "when": "The error is received",
+          "then": "The panel shows the error message with a 'Retry' button while other panels continue"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_002",
+      "title": "Compare Responses Across Providers",
+      "situation": "multiple providers have returned responses to the same prompt",
+      "motivation": "evaluate which response is best for quality, accuracy, and cost",
+      "outcome": "I can make an informed decision about which provider to use",
+      "acceptance_criteria": [
+        {
+          "id": "ac_002_01",
+          "given": "Responses from 2+ providers are displayed",
+          "when": "I view the comparison layout",
+          "then": "Each response shows token count, latency, and estimated cost"
+        },
+        {
+          "id": "ac_002_02",
+          "given": "I am viewing a response",
+          "when": "I click the thumbs up or thumbs down button",
+          "then": "The rating is saved and visible in the version history for this run"
+        },
+        {
+          "id": "ac_002_03",
+          "given": "I want to read one response in detail",
+          "when": "I click 'Expand' on a response panel",
+          "then": "The panel takes full width with the others collapsed to tabs"
+        },
+        {
+          "id": "ac_002_04",
+          "given": "Responses contain markdown",
+          "when": "I view the response",
+          "then": "Markdown is rendered with proper headings, code blocks, and lists"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_003",
+      "title": "Version and Iterate on Prompts",
+      "situation": "I have been iterating on a prompt across multiple test runs",
+      "motivation": "see what changes I made and how they affected response quality",
+      "outcome": "I can learn what prompt patterns work best and avoid regressions",
+      "acceptance_criteria": [
+        {
+          "id": "ac_003_01",
+          "given": "I have run a prompt test",
+          "when": "The responses complete",
+          "then": "A new version is auto-saved with timestamp, prompt text, and quality scores"
+        },
+        {
+          "id": "ac_003_02",
+          "given": "I am in the version history panel",
+          "when": "I select two versions",
+          "then": "A diff view shows additions in green and deletions in red between the two prompts"
+        },
+        {
+          "id": "ac_003_03",
+          "given": "I am viewing a previous version",
+          "when": "I click 'Restore'",
+          "then": "The prompt editor loads that version's text as the active prompt"
+        },
+        {
+          "id": "ac_003_04",
+          "given": "I have multiple versions with quality scores",
+          "when": "I view the version list",
+          "then": "A sparkline chart shows quality score trend across versions"
+        }
+      ]
+    }
+  ]
+}

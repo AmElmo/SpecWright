@@ -1,0 +1,25 @@
+{
+  "project_request": "AI autocomplete engine that indexes the codebase and provides context-aware completions.",
+  "questions": [
+    {
+      "question": "What indexing strategy should we use for the codebase?",
+      "options": ["AST parsing + symbol table", "Embedding-based semantic search", "Hybrid: AST for structure, embeddings for semantics"],
+      "answer": "Hybrid: AST for structure, embeddings for semantics"
+    },
+    {
+      "question": "How should we handle incremental updates when files change?",
+      "options": ["Re-index changed files only", "Re-index changed files + dependents", "Background re-index with eventual consistency"],
+      "answer": "Re-index changed files + dependents"
+    },
+    {
+      "question": "Should we integrate via Language Server Protocol (LSP) or a custom protocol?",
+      "options": ["Standard LSP for broad editor support", "Custom protocol for richer features", "LSP base with custom extensions"],
+      "answer": "LSP base with custom extensions"
+    },
+    {
+      "question": "How should we handle token counting and model context limits?",
+      "options": ["Fixed context window with truncation", "Smart context selection based on relevance", "Tiered: small model for fast completions, large model for complex ones"],
+      "answer": "Smart context selection based on relevance"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "project_name": "Model Performance Dashboard",
+  "project_id": "005-model-performance-dashboard",
+  "total_estimated_hours": 22,
+  "issues_list": [
+    {
+      "issue_id": "ENG-001",
+      "title": "Build real-time metrics ingestion pipeline",
+      "description": "HTTP ingestion endpoint with Redis buffering and TimescaleDB storage with continuous aggregates",
+      "status": "pending",
+      "estimated_hours": 6,
+      "dependencies": [],
+      "test_strategy": {
+        "automated_tests": "Integration test: ingest metrics, verify stored in TimescaleDB. Load test: 1K requests/sec",
+        "manual_verification": "Send metrics via curl, query TimescaleDB to verify storage and aggregation"
+      },
+      "file_path": "issues/ENG-001.md"
+    },
+    {
+      "issue_id": "ENG-002",
+      "title": "Create dashboard overview with metric cards and charts",
+      "description": "Overview page with summary cards, model health cards with sparklines, and time range selector",
+      "status": "pending",
+      "estimated_hours": 5,
+      "dependencies": ["ENG-001"],
+      "test_strategy": {
+        "automated_tests": "Component test: metric cards render, time range updates charts, auto-refresh triggers",
+        "manual_verification": "Open dashboard, verify live data displays, change time range, check auto-refresh"
+      },
+      "file_path": "issues/ENG-002.md"
+    },
+    {
+      "issue_id": "ENG-003",
+      "title": "Implement alert configuration and threshold management",
+      "description": "CRUD for alert rules with metric/threshold/channel selection and live chart preview of threshold line",
+      "status": "pending",
+      "estimated_hours": 4,
+      "dependencies": ["ENG-001"],
+      "test_strategy": {
+        "automated_tests": "Integration test: create, read, update, delete alert rules. Component test: threshold preview renders",
+        "manual_verification": "Create alert rule, verify threshold line appears on chart, edit and delete rule"
+      },
+      "file_path": "issues/ENG-003.md"
+    },
+    {
+      "issue_id": "ENG-004",
+      "title": "Add cost analysis and budget tracking views",
+      "description": "Cost tab with spend breakdown by model, daily/monthly charts, budget alerts, and cost-per-request comparison",
+      "status": "pending",
+      "estimated_hours": 4,
+      "dependencies": ["ENG-001", "ENG-002"],
+      "test_strategy": {
+        "automated_tests": "Integration test: cost aggregation queries return correct totals. Component test: charts render",
+        "manual_verification": "View cost breakdown, verify totals match, set budget alert, check projected spend"
+      },
+      "file_path": "issues/ENG-004.md"
+    },
+    {
+      "issue_id": "ENG-005",
+      "title": "Set up Slack and email alert delivery",
+      "description": "Alert evaluation worker with hybrid streaming/polling, Slack webhook delivery, and SendGrid email",
+      "status": "pending",
+      "estimated_hours": 3,
+      "dependencies": ["ENG-003"],
+      "test_strategy": {
+        "automated_tests": "Unit test: alert evaluation logic. Integration test: mock Slack/SendGrid delivery",
+        "manual_verification": "Trigger alert threshold breach, verify Slack message and email received within 60s"
+      },
+      "file_path": "issues/ENG-005.md"
+    }
+  ],
+  "definition_of_done": "Each feature independently testable by a human, all acceptance criteria met"
+}

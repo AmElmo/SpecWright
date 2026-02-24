@@ -1,0 +1,99 @@
+{
+  "project_id": "002-context-aware-autocomplete",
+  "project_name": "Context-Aware Autocomplete",
+  "job_stories": [
+    {
+      "job_story_id": "js_001",
+      "title": "Get Context-Aware Code Completion",
+      "situation": "I am writing code in a project with established patterns",
+      "motivation": "get completions that match my codebase style without manual editing",
+      "outcome": "I can accept suggestions that fit naturally into my code",
+      "acceptance_criteria": [
+        {
+          "id": "ac_001_01",
+          "given": "I am typing in a TypeScript file",
+          "when": "I pause after typing a partial function name",
+          "then": "Ghost text appears within 100ms showing the top completion matching project naming conventions"
+        },
+        {
+          "id": "ac_001_02",
+          "given": "Ghost text is displayed",
+          "when": "I press Tab",
+          "then": "The suggestion is accepted and inserted at the cursor position"
+        },
+        {
+          "id": "ac_001_03",
+          "given": "I want to see alternative completions",
+          "when": "I press Alt+]",
+          "then": "A ranked list of up to 5 alternatives appears with confidence indicators"
+        },
+        {
+          "id": "ac_001_04",
+          "given": "The project uses camelCase for functions and PascalCase for classes",
+          "when": "I start typing a new function or class",
+          "then": "Suggestions follow the correct casing convention for the symbol type"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_002",
+      "title": "Auto-Import from Correct Modules",
+      "situation": "I am using a symbol that needs to be imported",
+      "motivation": "have the correct import added automatically without hunting for the right path",
+      "outcome": "the import statement is added following my project's import conventions",
+      "acceptance_criteria": [
+        {
+          "id": "ac_002_01",
+          "given": "I accept a completion for a symbol not yet imported",
+          "when": "The completion is inserted",
+          "then": "The corresponding import statement is auto-added at the top of the file"
+        },
+        {
+          "id": "ac_002_02",
+          "given": "A symbol is exported from both a local module and node_modules",
+          "when": "Auto-import is triggered",
+          "then": "The local module import is preferred over the external package"
+        },
+        {
+          "id": "ac_002_03",
+          "given": "The project uses barrel file re-exports (index.ts)",
+          "when": "Auto-import is triggered",
+          "then": "The import uses the barrel file path, not the deep file path"
+        },
+        {
+          "id": "ac_002_04",
+          "given": "The project uses path aliases (@/components)",
+          "when": "Auto-import is triggered",
+          "then": "The import uses the configured path alias, not relative paths"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_003",
+      "title": "Learn and Apply Project Conventions",
+      "situation": "the codebase has been indexed and I have been coding for a while",
+      "motivation": "have suggestions that improve over time as the tool learns my patterns",
+      "outcome": "completions feel like they were written by someone who knows the codebase",
+      "acceptance_criteria": [
+        {
+          "id": "ac_003_01",
+          "given": "I have accepted and rejected multiple suggestions",
+          "when": "New suggestions are generated",
+          "then": "Accepted patterns are ranked higher and rejected patterns are deprioritized"
+        },
+        {
+          "id": "ac_003_02",
+          "given": "The project follows a service/repository architecture",
+          "when": "I create a new file in the services directory",
+          "then": "Suggestions include the standard service class structure used in other service files"
+        },
+        {
+          "id": "ac_003_03",
+          "given": "A file is modified and saved",
+          "when": "The file watcher detects the change",
+          "then": "The index is incrementally updated within 2 seconds reflecting the new code"
+        }
+      ]
+    }
+  ]
+}

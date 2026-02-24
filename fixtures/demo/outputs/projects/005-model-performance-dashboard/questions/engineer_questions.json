@@ -1,0 +1,25 @@
+{
+  "project_request": "Real-time monitoring dashboard for AI model performance with latency, cost, and alerting.",
+  "questions": [
+    {
+      "question": "What time-series database should we use for metrics storage?",
+      "options": ["TimescaleDB (PostgreSQL extension)", "InfluxDB", "ClickHouse"],
+      "answer": "TimescaleDB — we already use PostgreSQL and it supports time-series natively"
+    },
+    {
+      "question": "How should metrics be ingested in real-time?",
+      "options": ["HTTP POST from application", "Message queue (Redis/Kafka)", "Both: HTTP for low volume, queue for high volume"],
+      "answer": "HTTP POST with batching client-side, backed by a Redis queue for burst handling"
+    },
+    {
+      "question": "How should aggregation work for longer time ranges?",
+      "options": ["Compute on read from raw data", "Pre-computed rollups via cron", "Continuous aggregates (TimescaleDB feature)"],
+      "answer": "Continuous aggregates — TimescaleDB handles this natively with minimal config"
+    },
+    {
+      "question": "How should alerts be evaluated?",
+      "options": ["Polling on interval", "Streaming evaluation on each data point", "Hybrid: streaming for critical, polling for others"],
+      "answer": "Hybrid: streaming evaluation for critical alerts, 1-minute polling for non-critical"
+    }
+  ]
+}

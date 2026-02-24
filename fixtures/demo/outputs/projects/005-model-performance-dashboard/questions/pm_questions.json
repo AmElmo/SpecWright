@@ -1,0 +1,25 @@
+{
+  "project_request": "Real-time monitoring dashboard for AI model performance with latency, cost, and alerting.",
+  "questions": [
+    {
+      "question": "What metrics are most critical to track?",
+      "options": ["Latency only", "Latency + cost", "Latency + cost + error rate + quality scores"],
+      "answer": "Latency (p50/p95/p99) + cost per request + error rate + user quality feedback"
+    },
+    {
+      "question": "What alert channels should be supported?",
+      "options": ["Email only", "Slack only", "Slack + email + webhook"],
+      "answer": "Slack + email with webhook for custom integrations"
+    },
+    {
+      "question": "How long should metric data be retained?",
+      "options": ["7 days", "30 days", "90 days with downsampling"],
+      "answer": "90 days with minute-level granularity for 7 days, hourly after that"
+    },
+    {
+      "question": "Should the dashboard support comparing metrics across models?",
+      "options": ["Single model view only", "Side-by-side comparison of 2 models", "Flexible multi-model comparison"],
+      "answer": "Flexible multi-model comparison with overlay charts"
+    }
+  ]
+}

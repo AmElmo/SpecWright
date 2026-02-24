@@ -4,6 +4,8 @@ node_modules/
 # Output directories - all generated outputs should not be committed
 outputs/
 specwright/outputs/
+# But keep demo fixtures tracked in git
+!fixtures/demo/outputs/
 
 # System files
 .DS_Store

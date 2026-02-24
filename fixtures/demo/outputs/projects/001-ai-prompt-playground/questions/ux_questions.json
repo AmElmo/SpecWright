@@ -1,0 +1,25 @@
+{
+  "project_request": "Interactive prompt engineering workspace with multi-provider testing and version history.",
+  "questions": [
+    {
+      "question": "How should the main workspace be laid out?",
+      "options": ["Prompt on top, responses below", "Prompt left, responses right (split view)", "Tabbed interface with prompt and responses on separate tabs"],
+      "answer": "Prompt left, responses right (split view) — developers are used to editor+output layouts"
+    },
+    {
+      "question": "How should multi-provider responses be displayed?",
+      "options": ["Tabbed (one at a time)", "Side-by-side columns", "Configurable: tabs or side-by-side"],
+      "answer": "Side-by-side columns for comparison, with option to expand one to full width"
+    },
+    {
+      "question": "How should version comparison look?",
+      "options": ["Simple list with timestamps", "Diff view like GitHub PRs", "Timeline with visual diff highlighting"],
+      "answer": "Diff view like GitHub PRs with red/green highlighting"
+    },
+    {
+      "question": "How should the template library be organized?",
+      "options": ["Flat list with search", "Categories with tags", "Categories with tags and a 'Featured' section"],
+      "answer": "Categories with tags and a 'Featured' section for most-used templates"
+    }
+  ]
+}
