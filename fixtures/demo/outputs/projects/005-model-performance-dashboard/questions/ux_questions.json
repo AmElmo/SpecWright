@@ -1,0 +1,25 @@
+{
+  "project_request": "Real-time monitoring dashboard for AI model performance with latency, cost, and alerting.",
+  "questions": [
+    {
+      "question": "What should the default dashboard layout look like?",
+      "options": ["Single page with all metrics", "Tab-based: Overview, Latency, Cost, Alerts", "Customizable widget grid"],
+      "answer": "Tab-based with Overview showing key metrics and tabs for deep-dives"
+    },
+    {
+      "question": "What chart types should be used for time-series data?",
+      "options": ["Line charts only", "Line + area charts", "Line + area + heatmaps for error distribution"],
+      "answer": "Line + area charts with heatmaps for error distribution"
+    },
+    {
+      "question": "How should alert configuration be presented?",
+      "options": ["Simple form: metric + threshold + channel", "Visual rule builder", "Form with preview of alert condition"],
+      "answer": "Simple form with a live preview showing where the threshold sits on the current chart"
+    },
+    {
+      "question": "Should the dashboard be responsive for mobile?",
+      "options": ["Desktop only", "Responsive but simplified on mobile", "Full mobile support with dedicated mobile layout"],
+      "answer": "Responsive but simplified on mobile — charts stack vertically, alerts still actionable"
+    }
+  ]
+}

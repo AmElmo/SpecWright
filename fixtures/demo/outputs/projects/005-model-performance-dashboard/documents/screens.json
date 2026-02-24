@@ -1,0 +1,269 @@
+{
+  "project_id": "005-model-performance-dashboard",
+  "project_name": "Model Performance Dashboard",
+  "screens": [
+    {
+      "id": "metrics-overview",
+      "name": "Dashboard Overview",
+      "route": "/dashboard",
+      "description": "Overview page showing health status cards for each model with key metrics and sparklines",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "NovaMind Model Dashboard",
+            "children": [
+              { "type": "tabs", "tabs": ["Overview", "Latency", "Cost", "Alerts"], "activeTab": "Overview" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "select", "placeholder": "Last 24h", "options": ["Last 1h", "Last 6h", "Last 24h", "Last 7d", "Last 30d"] },
+              { "type": "avatar", "size": "sm", "text": "JB" }
+            ]
+          },
+          {
+            "type": "stack",
+            "padding": "lg",
+            "gap": "lg",
+            "children": [
+              {
+                "type": "row",
+                "gap": "md",
+                "children": [
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "text", "text": "Total Requests", "size": "xs", "color": "muted" },
+                          { "type": "heading", "text": "142,847", "size": "lg" },
+                          { "type": "text", "text": "+12.4% from yesterday", "size": "xs", "color": "accent" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "text", "text": "Avg Latency (p95)", "size": "xs", "color": "muted" },
+                          { "type": "heading", "text": "1,240ms", "size": "lg" },
+                          { "type": "text", "text": "-8.2% from yesterday", "size": "xs", "color": "accent" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "text", "text": "Error Rate", "size": "xs", "color": "muted" },
+                          { "type": "heading", "text": "0.34%", "size": "lg" },
+                          { "type": "text", "text": "Within threshold", "size": "xs", "color": "accent" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "text", "text": "Today's Cost", "size": "xs", "color": "muted" },
+                          { "type": "heading", "text": "$127.40", "size": "lg" },
+                          { "type": "text", "text": "$3,822 projected monthly", "size": "xs", "color": "muted" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "row",
+                "gap": "md",
+                "children": [
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "children": [
+                              { "type": "heading", "text": "claude-3-opus", "size": "sm" },
+                              { "type": "badge", "text": "Healthy", "variant": "default" }
+                            ]
+                          },
+                          { "type": "text", "text": "p95: 980ms | Errors: 0.1% | $84/day", "size": "xs", "color": "muted" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "children": [
+                              { "type": "heading", "text": "gpt-4-turbo", "size": "sm" },
+                              { "type": "badge", "text": "Warning", "variant": "warning" }
+                            ]
+                          },
+                          { "type": "text", "text": "p95: 1,840ms | Errors: 0.8% | $43/day", "size": "xs", "color": "muted" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Status cards use green/yellow/red borders. Sparklines embedded in model cards. Click a model card to see full detail view.",
+      "components_to_reuse": [
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "MetricCard", "path": "components/dashboard/MetricCard.tsx", "description": "Summary card with metric value, label, and trend indicator" },
+        { "name": "ModelHealthCard", "path": "components/dashboard/ModelHealthCard.tsx", "description": "Model status card with sparkline and key metrics" },
+        { "name": "Sparkline", "path": "components/dashboard/Sparkline.tsx", "description": "Tiny inline SVG chart for trend visualization" }
+      ]
+    },
+    {
+      "id": "alert-configuration",
+      "name": "Alert Configuration",
+      "route": "/dashboard/alerts",
+      "description": "Alert management page with create form, active alerts list, and trigger history",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "NovaMind Model Dashboard",
+            "children": [
+              { "type": "tabs", "tabs": ["Overview", "Latency", "Cost", "Alerts"], "activeTab": "Alerts" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "avatar", "size": "sm", "text": "JB" }
+            ]
+          },
+          {
+            "type": "stack",
+            "padding": "lg",
+            "gap": "lg",
+            "children": [
+              {
+                "type": "row",
+                "justify": "between",
+                "children": [
+                  { "type": "heading", "text": "Alert Rules", "size": "lg" },
+                  { "type": "button", "text": "+ New Alert", "variant": "primary" }
+                ]
+              },
+              {
+                "type": "card",
+                "padding": "none",
+                "children": [
+                  {
+                    "type": "table",
+                    "headers": ["Model", "Metric", "Condition", "Channel", "Status", "Actions"],
+                    "rows": [
+                      {
+                        "cells": [
+                          { "type": "text", "text": "claude-3-opus", "size": "sm" },
+                          { "type": "text", "text": "p95 latency", "size": "sm" },
+                          { "type": "badge", "text": "> 2,000ms" },
+                          { "type": "badge", "text": "#ml-alerts" },
+                          { "type": "badge", "text": "Active", "variant": "default" },
+                          { "type": "button", "text": "Edit", "variant": "ghost" }
+                        ]
+                      },
+                      {
+                        "cells": [
+                          { "type": "text", "text": "gpt-4-turbo", "size": "sm" },
+                          { "type": "text", "text": "Error rate", "size": "sm" },
+                          { "type": "badge", "text": "> 1%" },
+                          { "type": "badge", "text": "email" },
+                          { "type": "badge", "text": "Triggered", "variant": "destructive" },
+                          { "type": "button", "text": "Edit", "variant": "ghost" }
+                        ]
+                      },
+                      {
+                        "cells": [
+                          { "type": "text", "text": "All models", "size": "sm" },
+                          { "type": "text", "text": "Monthly cost", "size": "sm" },
+                          { "type": "badge", "text": "> $5,000" },
+                          { "type": "badge", "text": "#ml-alerts" },
+                          { "type": "badge", "text": "Active", "variant": "default" },
+                          { "type": "button", "text": "Edit", "variant": "ghost" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Triggered alerts shown in red. Muted alerts grayed out. Click 'New Alert' opens modal with live chart preview.",
+      "components_to_reuse": [
+        { "name": "Table", "path": "components/ui/Table.tsx" },
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "AlertRuleForm", "path": "components/dashboard/AlertRuleForm.tsx", "description": "Form with metric selector, threshold, comparison, and channel picker" },
+        { "name": "ThresholdPreview", "path": "components/dashboard/ThresholdPreview.tsx", "description": "Chart overlay showing threshold line on live metric data" }
+      ]
+    }
+  ],
+  "user_flows": [
+    {
+      "id": "flow_morning_check",
+      "name": "Morning Health Check",
+      "steps": [
+        { "step": 1, "screen": "metrics-overview", "action": "Engineer opens dashboard, scans status cards" },
+        { "step": 2, "screen": "metrics-overview", "action": "Sees gpt-4-turbo has 'Warning' status" },
+        { "step": 3, "screen": "metrics-overview", "action": "Clicks model card to view detailed latency chart" },
+        { "step": 4, "screen": "metrics-overview", "action": "Identifies latency spike at 3 AM, correlates with deployment" }
+      ]
+    },
+    {
+      "id": "flow_create_alert",
+      "name": "Create a Latency Alert",
+      "steps": [
+        { "step": 1, "screen": "alert-configuration", "action": "Clicks '+ New Alert' button" },
+        { "step": 2, "screen": "alert-configuration", "action": "Selects claude-3-opus, p95 latency > 2000ms" },
+        { "step": 3, "screen": "alert-configuration", "action": "Preview shows threshold line on current chart" },
+        { "step": 4, "screen": "alert-configuration", "action": "Selects #ml-alerts Slack channel, saves alert" }
+      ]
+    }
+  ]
+}

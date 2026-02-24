@@ -1,0 +1,25 @@
+{
+  "project_request": "Interactive prompt engineering workspace with multi-provider testing and version history.",
+  "questions": [
+    {
+      "question": "How should we abstract the multi-provider LLM API calls?",
+      "options": ["Direct SDK calls with if/else per provider", "Adapter pattern with provider interface", "Use Vercel AI SDK which already abstracts providers"],
+      "answer": "Adapter pattern with provider interface — gives us full control and easy testing"
+    },
+    {
+      "question": "Should responses be streamed or returned in bulk?",
+      "options": ["Bulk response only", "Streaming via SSE", "Streaming with option to wait for complete response"],
+      "answer": "Streaming via SSE for real-time display, with final complete response stored"
+    },
+    {
+      "question": "How should version history and diffs be stored?",
+      "options": ["Full prompt text per version in database", "Git-like delta storage", "Full text with computed diffs on read"],
+      "answer": "Full text with computed diffs on read — simplest to implement, storage is cheap"
+    },
+    {
+      "question": "How should we handle token counting across different providers?",
+      "options": ["Estimate with tiktoken for all", "Provider-specific tokenizers", "Provider-specific tokenizers with a fallback estimator"],
+      "answer": "Provider-specific tokenizers with a fallback estimator"
+    }
+  ]
+}

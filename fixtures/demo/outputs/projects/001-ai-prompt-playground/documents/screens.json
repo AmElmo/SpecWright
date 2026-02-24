@@ -1,0 +1,483 @@
+{
+  "project_id": "001-ai-prompt-playground",
+  "project_name": "AI Prompt Playground",
+  "screens": [
+    {
+      "id": "prompt-editor-main",
+      "name": "Prompt Editor with Responses",
+      "route": "/playground",
+      "description": "Main workspace with prompt editor on the left and multi-provider response panels on the right",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "NovaMind Prompt Playground",
+            "children": [
+              { "type": "tabs", "tabs": ["Editor", "Templates", "History"], "activeTab": "Editor" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "button", "text": "Export", "variant": "ghost" },
+              { "type": "avatar", "size": "sm", "text": "JB" }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": "none",
+            "children": [
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "md",
+                "gap": "sm",
+                "children": [
+                  { "type": "heading", "text": "Prompt", "size": "sm" },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      { "type": "text", "text": "You are a senior code reviewer. Analyze the following {{language}} code and identify:\n1. Security vulnerabilities\n2. Performance issues\n3. Best practice violations\n\nCode:\n```\n{{code}}\n```\n\nProvide your analysis as a JSON array.", "size": "xs" }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "sm",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "label", "text": "Variables" },
+                          {
+                            "type": "row",
+                            "gap": "sm",
+                            "children": [
+                              { "type": "input", "placeholder": "language", "value": "TypeScript" },
+                              { "type": "input", "placeholder": "code", "value": "const data = eval(input)" }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "gap": "sm",
+                    "children": [
+                      { "type": "button", "text": "Run (Cmd+Enter)", "variant": "primary" },
+                      { "type": "badge", "text": "Claude", "variant": "default" },
+                      { "type": "badge", "text": "GPT-4", "variant": "default" }
+                    ]
+                  }
+                ]
+              },
+              { "type": "divider", "direction": "vertical" },
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "md",
+                "gap": "md",
+                "children": [
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "heading", "text": "Responses", "size": "sm" },
+                      { "type": "text", "text": "Run #4 — 2.3s ago", "size": "xs", "color": "muted" }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "gap": "md",
+                    "children": [
+                      {
+                        "type": "card",
+                        "padding": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "sm",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "children": [
+                                  { "type": "badge", "text": "Claude", "variant": "default" },
+                                  { "type": "text", "text": "1.8s | 342 tokens", "size": "xs", "color": "muted" }
+                                ]
+                              },
+                              { "type": "text", "text": "[{\"type\": \"security\", \"severity\": \"critical\", \"line\": 1, \"message\": \"eval() is dangerous...\"}]", "size": "xs" },
+                              {
+                                "type": "row",
+                                "gap": "sm",
+                                "children": [
+                                  { "type": "button", "text": "Expand", "variant": "ghost" },
+                                  { "type": "button", "text": "Copy", "variant": "ghost" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "padding": "md",
+                        "children": [
+                          {
+                            "type": "stack",
+                            "gap": "sm",
+                            "children": [
+                              {
+                                "type": "row",
+                                "justify": "between",
+                                "children": [
+                                  { "type": "badge", "text": "GPT-4", "variant": "default" },
+                                  { "type": "text", "text": "2.1s | 410 tokens", "size": "xs", "color": "muted" }
+                                ]
+                              },
+                              { "type": "text", "text": "[{\"vulnerability\": \"Code Injection\", \"risk_level\": \"HIGH\", \"description\": \"The use of eval()...\"}]", "size": "xs" },
+                              {
+                                "type": "row",
+                                "gap": "sm",
+                                "children": [
+                                  { "type": "button", "text": "Expand", "variant": "ghost" },
+                                  { "type": "button", "text": "Copy", "variant": "ghost" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Editor should support prompt syntax highlighting for {{variables}}. Responses stream in real-time. Provider badges use brand colors.",
+      "components_to_reuse": [
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" },
+        { "name": "Input", "path": "components/ui/Input.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "PromptEditor", "path": "components/playground/PromptEditor.tsx", "description": "Rich text editor with variable placeholder detection and syntax highlighting" },
+        { "name": "ResponsePanel", "path": "components/playground/ResponsePanel.tsx", "description": "Streaming response display with metadata (tokens, latency, cost)" },
+        { "name": "VariableInputs", "path": "components/playground/VariableInputs.tsx", "description": "Auto-generated input fields for detected {{variable}} placeholders" },
+        { "name": "ProviderSelector", "path": "components/playground/ProviderSelector.tsx", "description": "Checkboxes for selecting which LLM providers to test against" }
+      ]
+    },
+    {
+      "id": "version-history",
+      "name": "Version History with Diff",
+      "route": "/playground/history",
+      "description": "Version list showing prompt iterations with diff comparison between selected versions",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "NovaMind Prompt Playground",
+            "children": [
+              { "type": "tabs", "tabs": ["Editor", "Templates", "History"], "activeTab": "History" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "avatar", "size": "sm", "text": "JB" }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": "md",
+            "padding": "md",
+            "children": [
+              {
+                "type": "stack",
+                "gap": "sm",
+                "children": [
+                  { "type": "heading", "text": "Versions", "size": "sm" },
+                  {
+                    "type": "stack",
+                    "gap": "xs",
+                    "children": [
+                      {
+                        "type": "card",
+                        "padding": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "children": [
+                              { "type": "text", "text": "v4 (current)", "size": "sm" },
+                              { "type": "badge", "text": "8.5/10", "variant": "default" }
+                            ]
+                          },
+                          { "type": "text", "text": "Today, 3:42 PM", "size": "xs", "color": "muted" }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "padding": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "children": [
+                              { "type": "text", "text": "v3", "size": "sm" },
+                              { "type": "badge", "text": "7.2/10", "variant": "warning" }
+                            ]
+                          },
+                          { "type": "text", "text": "Today, 3:15 PM", "size": "xs", "color": "muted" }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "padding": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "children": [
+                              { "type": "text", "text": "v2", "size": "sm" },
+                              { "type": "badge", "text": "6.0/10", "variant": "warning" }
+                            ]
+                          },
+                          { "type": "text", "text": "Today, 2:50 PM", "size": "xs", "color": "muted" }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "padding": "sm",
+                        "children": [
+                          {
+                            "type": "row",
+                            "justify": "between",
+                            "children": [
+                              { "type": "text", "text": "v1", "size": "sm" },
+                              { "type": "badge", "text": "4.1/10", "variant": "destructive" }
+                            ]
+                          },
+                          { "type": "text", "text": "Today, 2:30 PM", "size": "xs", "color": "muted" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "stack",
+                "gap": "sm",
+                "children": [
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "heading", "text": "Diff: v3 → v4", "size": "sm" },
+                      { "type": "button", "text": "Restore v3", "variant": "outline" }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          { "type": "text", "text": " You are a senior code reviewer.", "size": "xs" },
+                          { "type": "text", "text": "- Analyze the following code and identify issues.", "size": "xs", "color": "error" },
+                          { "type": "text", "text": "+ Analyze the following {{language}} code and identify:", "size": "xs", "color": "accent" },
+                          { "type": "text", "text": "+ 1. Security vulnerabilities", "size": "xs", "color": "accent" },
+                          { "type": "text", "text": "+ 2. Performance issues", "size": "xs", "color": "accent" },
+                          { "type": "text", "text": "+ 3. Best practice violations", "size": "xs", "color": "accent" },
+                          { "type": "text", "text": " ", "size": "xs" },
+                          { "type": "text", "text": "- Provide your analysis.", "size": "xs", "color": "error" },
+                          { "type": "text", "text": "+ Provide your analysis as a JSON array.", "size": "xs", "color": "accent" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Click two versions to compare. Quality score badge uses green/yellow/red based on score. Sparkline trend chart above version list.",
+      "components_to_reuse": [
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" },
+        { "name": "Button", "path": "components/ui/Button.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "VersionList", "path": "components/playground/VersionList.tsx", "description": "Scrollable list of prompt versions with scores and timestamps" },
+        { "name": "PromptDiff", "path": "components/playground/PromptDiff.tsx", "description": "Side-by-side or inline diff view for prompt text comparison" },
+        { "name": "QualitySparkline", "path": "components/playground/QualitySparkline.tsx", "description": "Small trend chart showing quality score across versions" }
+      ]
+    },
+    {
+      "id": "template-library",
+      "name": "Template Library",
+      "route": "/playground/templates",
+      "description": "Browsable gallery of prompt templates organized by category",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "NovaMind Prompt Playground",
+            "children": [
+              { "type": "tabs", "tabs": ["Editor", "Templates", "History"], "activeTab": "Templates" },
+              { "type": "spacer", "flex": 1 },
+              { "type": "avatar", "size": "sm", "text": "JB" }
+            ]
+          },
+          {
+            "type": "stack",
+            "padding": "lg",
+            "gap": "lg",
+            "children": [
+              {
+                "type": "row",
+                "justify": "between",
+                "children": [
+                  { "type": "heading", "text": "Prompt Templates", "size": "lg" },
+                  { "type": "input", "placeholder": "Search templates...", "icon": "search" }
+                ]
+              },
+              {
+                "type": "row",
+                "gap": "sm",
+                "children": [
+                  { "type": "button", "text": "All", "variant": "secondary" },
+                  { "type": "button", "text": "Extraction", "variant": "ghost" },
+                  { "type": "button", "text": "Classification", "variant": "ghost" },
+                  { "type": "button", "text": "Generation", "variant": "ghost" },
+                  { "type": "button", "text": "Analysis", "variant": "ghost" },
+                  { "type": "button", "text": "Transformation", "variant": "ghost" }
+                ]
+              },
+              {
+                "type": "row",
+                "gap": "md",
+                "children": [
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "badge", "text": "Featured", "variant": "default" },
+                          { "type": "heading", "text": "JSON Data Extractor", "size": "sm" },
+                          { "type": "text", "text": "Extract structured JSON data from unstructured text. Handles nested objects and arrays.", "size": "xs", "color": "muted" },
+                          {
+                            "type": "row",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "badge", "text": "Extraction" },
+                              { "type": "badge", "text": "2 variables" }
+                            ]
+                          },
+                          { "type": "button", "text": "Use Template", "variant": "primary", "fullWidth": true }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "badge", "text": "Popular", "variant": "default" },
+                          { "type": "heading", "text": "Code Review Prompt", "size": "sm" },
+                          { "type": "text", "text": "Analyze code for security issues, bugs, performance problems, and style violations.", "size": "xs", "color": "muted" },
+                          {
+                            "type": "row",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "badge", "text": "Analysis" },
+                              { "type": "badge", "text": "3 variables" }
+                            ]
+                          },
+                          { "type": "button", "text": "Use Template", "variant": "primary", "fullWidth": true }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "md",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "sm",
+                        "children": [
+                          { "type": "spacer", "size": "sm" },
+                          { "type": "heading", "text": "Text Classifier", "size": "sm" },
+                          { "type": "text", "text": "Classify text into predefined categories with confidence scores.", "size": "xs", "color": "muted" },
+                          {
+                            "type": "row",
+                            "gap": "xs",
+                            "children": [
+                              { "type": "badge", "text": "Classification" },
+                              { "type": "badge", "text": "3 variables" }
+                            ]
+                          },
+                          { "type": "button", "text": "Use Template", "variant": "primary", "fullWidth": true }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Templates should show a preview modal before loading. Featured templates appear first. User-created templates show in a 'My Templates' section.",
+      "components_to_reuse": [
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" },
+        { "name": "Button", "path": "components/ui/Button.tsx" },
+        { "name": "Input", "path": "components/ui/Input.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "TemplateCard", "path": "components/playground/TemplateCard.tsx", "description": "Card displaying template name, description, category, and variable count" },
+        { "name": "TemplatePreview", "path": "components/playground/TemplatePreview.tsx", "description": "Modal showing full template text with sample variables filled in" },
+        { "name": "CategoryFilter", "path": "components/playground/CategoryFilter.tsx", "description": "Horizontal filter bar for template categories" }
+      ]
+    }
+  ],
+  "user_flows": [
+    {
+      "id": "flow_write_and_test",
+      "name": "Write and Test a Prompt",
+      "steps": [
+        { "step": 1, "screen": "prompt-editor-main", "action": "Developer types a prompt with {{language}} and {{code}} variables" },
+        { "step": 2, "screen": "prompt-editor-main", "action": "Variable inputs appear; developer fills in 'TypeScript' and sample code" },
+        { "step": 3, "screen": "prompt-editor-main", "action": "Developer checks Claude and GPT-4, clicks 'Run'" },
+        { "step": 4, "screen": "prompt-editor-main", "action": "Responses stream side-by-side with token counts and latency" },
+        { "step": 5, "screen": "prompt-editor-main", "action": "Developer rates Claude's response thumbs-up, GPT-4 thumbs-down" }
+      ]
+    },
+    {
+      "id": "flow_iterate_with_versions",
+      "name": "Iterate and Compare Versions",
+      "steps": [
+        { "step": 1, "screen": "prompt-editor-main", "action": "Developer edits the prompt to add structured output instructions" },
+        { "step": 2, "screen": "prompt-editor-main", "action": "Runs again — new version auto-saved" },
+        { "step": 3, "screen": "version-history", "action": "Opens History tab, sees v1 through v4 with quality scores" },
+        { "step": 4, "screen": "version-history", "action": "Selects v3 and v4 to see the diff" },
+        { "step": 5, "screen": "version-history", "action": "Notices v3 had better structure, clicks 'Restore v3'" }
+      ]
+    }
+  ]
+}

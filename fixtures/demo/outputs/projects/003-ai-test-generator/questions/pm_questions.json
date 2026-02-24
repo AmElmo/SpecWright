@@ -1,0 +1,25 @@
+{
+  "project_request": "AI test generator that analyzes code and generates comprehensive test suites.",
+  "questions": [
+    {
+      "question": "Which test frameworks should the generator support initially?",
+      "options": ["Jest only", "Jest + Vitest", "Jest + Vitest + Pytest"],
+      "answer": "Jest + Vitest + Pytest"
+    },
+    {
+      "question": "What types of tests should the AI generate?",
+      "options": ["Unit tests only", "Unit + integration tests", "Unit + integration + edge case tests"],
+      "answer": "Unit + integration + edge case tests"
+    },
+    {
+      "question": "How should the tool handle existing tests in a file?",
+      "options": ["Ignore existing tests, generate fresh", "Analyze gaps and generate missing tests only", "Both modes available"],
+      "answer": "Analyze gaps and generate missing tests only"
+    },
+    {
+      "question": "Should the generated tests include mocking setup for external dependencies?",
+      "options": ["No, just test the function directly", "Yes, auto-mock common patterns (fetch, DB, fs)", "Yes, with configurable mock strategy per dependency"],
+      "answer": "Yes, auto-mock common patterns (fetch, DB, fs)"
+    }
+  ]
+}

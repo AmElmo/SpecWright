@@ -1,0 +1,25 @@
+{
+  "project_request": "AI autocomplete engine that indexes the codebase and provides context-aware completions.",
+  "questions": [
+    {
+      "question": "How deep should the context analysis go — current file, current directory, or entire codebase?",
+      "options": ["Current file + imports only", "Current directory tree", "Entire codebase with smart relevance ranking"],
+      "answer": "Entire codebase with smart relevance ranking"
+    },
+    {
+      "question": "What is the acceptable latency for suggestion display?",
+      "options": ["Under 50ms (instant feel)", "Under 200ms (slight pause acceptable)", "Under 500ms (background analysis OK)"],
+      "answer": "Under 100ms for inline ghost text, up to 300ms for ranked suggestion list"
+    },
+    {
+      "question": "Should the autocomplete learn from the developer's accept/reject patterns?",
+      "options": ["No, use codebase conventions only", "Yes, personalize per developer", "Yes, with team-level and individual preferences"],
+      "answer": "Yes, with team-level and individual preferences"
+    },
+    {
+      "question": "How should we handle private/sensitive code in the indexing?",
+      "options": ["Index everything locally, never send to cloud", "Cloud-based with encryption", "Configurable: local-only or cloud-assisted"],
+      "answer": "Index everything locally, never send to cloud"
+    }
+  ]
+}

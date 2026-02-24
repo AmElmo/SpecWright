@@ -1,0 +1,25 @@
+{
+  "project_request": "Interactive prompt engineering workspace with multi-provider testing and version history.",
+  "questions": [
+    {
+      "question": "What LLM providers should the playground support initially?",
+      "options": ["Claude only", "Claude + GPT-4", "Claude + GPT-4 + Gemini with easy extensibility"],
+      "answer": "Claude + GPT-4 + Gemini with easy extensibility for new providers"
+    },
+    {
+      "question": "How should prompt versioning work?",
+      "options": ["Simple save/overwrite", "Linear version list", "Git-like version history with diffs between versions"],
+      "answer": "Git-like version history with diffs between versions"
+    },
+    {
+      "question": "Should there be team collaboration features?",
+      "options": ["Single-user only", "Shared workspace with real-time editing", "Not in v1, but prompts exportable/importable as JSON"],
+      "answer": "Not in v1, but prompts should be exportable/importable as JSON"
+    },
+    {
+      "question": "How should response quality be measured?",
+      "options": ["Manual rating only", "Automated scoring based on criteria", "Both: automated scoring plus optional human thumbs up/down"],
+      "answer": "Both: automated scoring based on format compliance, length, and optional human thumbs up/down"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "project_id": "003-ai-test-generator",
+  "project_name": "AI Test Generator",
+  "job_stories": [
+    {
+      "job_story_id": "js_001",
+      "title": "Generate Tests from Source File",
+      "situation": "I have a source file with functions that need test coverage",
+      "motivation": "quickly add meaningful tests without writing them manually",
+      "outcome": "I have a runnable test suite covering happy paths, edge cases, and error handling",
+      "acceptance_criteria": [
+        {
+          "id": "ac_001_01",
+          "given": "I am on the Test Generator page",
+          "when": "I select a TypeScript or Python source file",
+          "then": "The tool displays the file contents with detected functions highlighted"
+        },
+        {
+          "id": "ac_001_02",
+          "given": "A source file is loaded",
+          "when": "I click 'Generate Tests'",
+          "then": "A progress indicator shows analysis steps: parsing, analyzing branches, generating tests"
+        },
+        {
+          "id": "ac_001_03",
+          "given": "Test generation completes",
+          "when": "I view the results",
+          "then": "Each generated test has a descriptive name, clear arrange/act/assert structure, and a comment explaining what it validates"
+        },
+        {
+          "id": "ac_001_04",
+          "given": "Tests are generated",
+          "when": "I click 'Copy to Clipboard' or 'Save as File'",
+          "then": "The test file is saved with the correct naming convention (e.g., *.test.ts, *_test.py)"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_002",
+      "title": "Discover and Test Edge Cases",
+      "situation": "the AI has analyzed my source code",
+      "motivation": "find boundary conditions and error paths I might have missed",
+      "outcome": "I have tests for scenarios I would not have thought of manually",
+      "acceptance_criteria": [
+        {
+          "id": "ac_002_01",
+          "given": "A function accepts numeric input",
+          "when": "The AI generates edge case tests",
+          "then": "Tests include zero, negative numbers, MAX_SAFE_INTEGER, NaN, and Infinity"
+        },
+        {
+          "id": "ac_002_02",
+          "given": "A function accepts string input",
+          "when": "The AI generates edge case tests",
+          "then": "Tests include empty string, very long string, unicode characters, and special characters"
+        },
+        {
+          "id": "ac_002_03",
+          "given": "A function has error handling (try/catch, if/throw)",
+          "when": "The AI generates tests",
+          "then": "At least one test verifies each error path is triggered with appropriate assertions"
+        },
+        {
+          "id": "ac_002_04",
+          "given": "A function calls external dependencies",
+          "when": "The AI generates tests",
+          "then": "Mock setup is included with both success and failure scenarios for each dependency"
+        }
+      ]
+    },
+    {
+      "job_story_id": "js_003",
+      "title": "Configure Framework and Preferences",
+      "situation": "I want to generate tests for a specific project setup",
+      "motivation": "ensure generated tests match my team's conventions and tooling",
+      "outcome": "I get tests that fit seamlessly into my existing test suite",
+      "acceptance_criteria": [
+        {
+          "id": "ac_003_01",
+          "given": "I am on the settings page",
+          "when": "I select a test framework from the dropdown",
+          "then": "The options include Jest, Vitest, and Pytest with framework-specific import styles"
+        },
+        {
+          "id": "ac_003_02",
+          "given": "I have configured Vitest as my framework",
+          "when": "Tests are generated",
+          "then": "The output uses Vitest imports (vi.fn, vi.mock) and describe/it/expect syntax"
+        },
+        {
+          "id": "ac_003_03",
+          "given": "I toggle off 'Integration tests' in settings",
+          "when": "Tests are generated",
+          "then": "Only unit tests are produced with all external calls mocked"
+        }
+      ]
+    }
+  ]
+}

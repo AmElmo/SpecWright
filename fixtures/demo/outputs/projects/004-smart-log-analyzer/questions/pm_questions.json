@@ -1,0 +1,21 @@
+{
+  "project_request": "AI log analysis tool that detects anomalies, clusters errors, and suggests fixes.",
+  "questions": [
+    {
+      "question": "What log formats should the analyzer support out of the box?",
+      "options": ["JSON structured logs only", "JSON + plain text", "JSON + plain text + common formats (Apache, Nginx, Syslog)"]
+    },
+    {
+      "question": "How should the AI handle log volume — should it analyze all logs or sample?",
+      "options": ["Analyze all logs (up to 100MB)", "Smart sampling with full analysis on anomalies", "User-configurable: full or sampled"]
+    },
+    {
+      "question": "Should the tool support real-time streaming analysis or batch-only?",
+      "options": ["Batch upload only (simpler)", "Real-time streaming via WebSocket", "Both batch and streaming"]
+    },
+    {
+      "question": "What level of root cause analysis is expected?",
+      "options": ["Pattern detection only — group similar errors", "Pattern detection + probable root cause suggestion", "Full root cause analysis with suggested code fixes"]
+    }
+  ]
+}

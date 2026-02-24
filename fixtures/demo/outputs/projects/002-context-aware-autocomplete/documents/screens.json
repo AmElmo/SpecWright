@@ -1,0 +1,326 @@
+{
+  "project_id": "002-context-aware-autocomplete",
+  "project_name": "Context-Aware Autocomplete",
+  "screens": [
+    {
+      "id": "editor-with-suggestions",
+      "name": "Editor with Inline Suggestions",
+      "route": null,
+      "description": "Code editor showing ghost text completion and optional ranked suggestion dropdown",
+      "wireframe": {
+        "type": "stack",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "nav",
+            "text": "VS Code — my-project",
+            "children": [
+              { "type": "tabs", "tabs": ["userService.ts", "authMiddleware.ts", "index.ts"], "activeTab": "userService.ts" }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": "none",
+            "children": [
+              {
+                "type": "stack",
+                "direction": "vertical",
+                "padding": "none",
+                "gap": "none",
+                "children": [
+                  {
+                    "type": "card",
+                    "padding": "none",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "none",
+                        "children": [
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "14", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "export class UserService {", "size": "xs" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "15", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "  async get", "size": "xs" },
+                              { "type": "text", "text": "UserByEmail(email: string): Promise<User | null> {", "size": "xs", "color": "muted" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "padding": "sm",
+                            "children": [
+                              { "type": "text", "text": "16", "size": "xs", "color": "muted" },
+                              { "type": "text", "text": "", "size": "xs" }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "padding": "sm",
+                    "children": [
+                      {
+                        "type": "stack",
+                        "gap": "xs",
+                        "children": [
+                          {
+                            "type": "row",
+                            "gap": "sm",
+                            "children": [
+                              { "type": "badge", "text": "1", "variant": "default" },
+                              { "type": "text", "text": "getUserByEmail(email: string)", "size": "xs" },
+                              { "type": "badge", "text": "high", "variant": "default" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "gap": "sm",
+                            "children": [
+                              { "type": "badge", "text": "2", "variant": "default" },
+                              { "type": "text", "text": "getUserById(id: string)", "size": "xs" },
+                              { "type": "badge", "text": "med", "variant": "warning" }
+                            ]
+                          },
+                          {
+                            "type": "row",
+                            "gap": "sm",
+                            "children": [
+                              { "type": "badge", "text": "3", "variant": "default" },
+                              { "type": "text", "text": "getUserProfile(userId: string)", "size": "xs" },
+                              { "type": "badge", "text": "low", "variant": "default" }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "padding": "sm",
+            "justify": "between",
+            "children": [
+              { "type": "text", "text": "TypeScript | UTF-8 | LF", "size": "xs", "color": "muted" },
+              {
+                "type": "row",
+                "gap": "sm",
+                "children": [
+                  { "type": "badge", "text": "Index: ready", "variant": "default" },
+                  { "type": "text", "text": "1,247 files indexed", "size": "xs", "color": "muted" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Ghost text should be clearly distinguishable from typed code. Suggestion dropdown appears below cursor. Confidence badges use green/yellow/gray.",
+      "components_to_reuse": [],
+      "components_to_create": [
+        { "name": "GhostText", "path": "components/autocomplete/GhostText.tsx", "description": "Inline completion overlay rendered in the editor" },
+        { "name": "SuggestionDropdown", "path": "components/autocomplete/SuggestionDropdown.tsx", "description": "Ranked list of alternative completions with confidence indicators" }
+      ]
+    },
+    {
+      "id": "indexing-status",
+      "name": "Indexing Status Panel",
+      "route": null,
+      "description": "Expandable status panel showing codebase indexing progress and details",
+      "wireframe": {
+        "type": "card",
+        "padding": "md",
+        "children": [
+          {
+            "type": "stack",
+            "gap": "md",
+            "children": [
+              {
+                "type": "row",
+                "justify": "between",
+                "align": "center",
+                "children": [
+                  { "type": "heading", "text": "Codebase Index", "size": "sm" },
+                  { "type": "badge", "text": "Indexing...", "variant": "warning" }
+                ]
+              },
+              { "type": "progress", "label": "847 / 1,247 files (68%)" },
+              {
+                "type": "stack",
+                "gap": "xs",
+                "children": [
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "TypeScript files", "size": "xs" },
+                      { "type": "text", "text": "612 / 823", "size": "xs", "color": "muted" }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Python files", "size": "xs" },
+                      { "type": "text", "text": "189 / 312", "size": "xs", "color": "muted" }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Go files", "size": "xs" },
+                      { "type": "text", "text": "46 / 112", "size": "xs", "color": "muted" }
+                    ]
+                  }
+                ]
+              },
+              { "type": "text", "text": "Estimated time remaining: ~45 seconds", "size": "xs", "color": "muted" }
+            ]
+          }
+        ]
+      },
+      "notes": "Panel expands from status bar click. Shows per-language breakdown. Closes automatically when indexing completes.",
+      "components_to_reuse": [
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Progress", "path": "components/ui/Progress.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "IndexingPanel", "path": "components/autocomplete/IndexingPanel.tsx", "description": "Expandable panel with per-language indexing progress" }
+      ]
+    },
+    {
+      "id": "settings-panel",
+      "name": "Autocomplete Settings",
+      "route": null,
+      "description": "Settings panel for configuring autocomplete behavior, keybindings, and language preferences",
+      "wireframe": {
+        "type": "card",
+        "padding": "lg",
+        "children": [
+          {
+            "type": "stack",
+            "gap": "lg",
+            "children": [
+              { "type": "heading", "text": "Autocomplete Settings", "size": "md" },
+              {
+                "type": "stack",
+                "gap": "md",
+                "children": [
+                  { "type": "label", "text": "Features" },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Inline ghost text", "size": "sm" },
+                      { "type": "toggle", "label": "", "checked": true }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Suggestion dropdown", "size": "sm" },
+                      { "type": "toggle", "label": "", "checked": true }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Auto-import on accept", "size": "sm" },
+                      { "type": "toggle", "label": "", "checked": true }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Convention learning", "size": "sm" },
+                      { "type": "toggle", "label": "", "checked": true }
+                    ]
+                  }
+                ]
+              },
+              { "type": "divider" },
+              {
+                "type": "stack",
+                "gap": "md",
+                "children": [
+                  { "type": "label", "text": "Keybindings" },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Accept suggestion", "size": "sm" },
+                      { "type": "badge", "text": "Tab" }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Dismiss suggestion", "size": "sm" },
+                      { "type": "badge", "text": "Escape" }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "justify": "between",
+                    "children": [
+                      { "type": "text", "text": "Cycle alternatives", "size": "sm" },
+                      { "type": "badge", "text": "Alt+]" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Settings persist per workspace. Keybindings should be clickable to rebind.",
+      "components_to_reuse": [
+        { "name": "Card", "path": "components/ui/Card.tsx" },
+        { "name": "Toggle", "path": "components/ui/Toggle.tsx" },
+        { "name": "Badge", "path": "components/ui/Badge.tsx" }
+      ],
+      "components_to_create": [
+        { "name": "KeybindingInput", "path": "components/settings/KeybindingInput.tsx", "description": "Click-to-record keybinding input" }
+      ]
+    }
+  ],
+  "user_flows": [
+    {
+      "id": "flow_accept_completion",
+      "name": "Accept an Inline Completion",
+      "steps": [
+        { "step": 1, "screen": "editor-with-suggestions", "action": "Developer types 'async get' inside a class" },
+        { "step": 2, "screen": "editor-with-suggestions", "action": "Ghost text appears: 'getUserByEmail(email: string)'" },
+        { "step": 3, "screen": "editor-with-suggestions", "action": "Developer presses Tab to accept the suggestion" },
+        { "step": 4, "screen": "editor-with-suggestions", "action": "Code is inserted and import for User type is auto-added" }
+      ]
+    },
+    {
+      "id": "flow_initial_indexing",
+      "name": "First-Time Project Indexing",
+      "steps": [
+        { "step": 1, "screen": "editor-with-suggestions", "action": "Developer opens a project for the first time" },
+        { "step": 2, "screen": "indexing-status", "action": "Status bar shows 'Indexing...' with file count progress" },
+        { "step": 3, "screen": "indexing-status", "action": "Panel shows per-language breakdown of indexed files" },
+        { "step": 4, "screen": "editor-with-suggestions", "action": "Status bar shows green 'Index: ready' and suggestions begin" }
+      ]
+    }
+  ]
+}

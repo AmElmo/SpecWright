@@ -1,0 +1,44 @@
+{
+  "project_id": "005-model-performance-dashboard",
+  "project_name": "Model Performance Dashboard",
+  "job_stories": [
+    {
+      "job_story_id": "js_001",
+      "title": "View Real-Time Model Metrics",
+      "situation": "I have AI models running in production",
+      "motivation": "monitor their health and catch issues before users do",
+      "outcome": "I can see live performance data and respond proactively",
+      "acceptance_criteria": [
+        { "id": "ac_001_01", "given": "I open the dashboard", "when": "The overview page loads", "then": "I see latency (p50/p95/p99), error rate, and request count for each model" },
+        { "id": "ac_001_02", "given": "I am viewing a latency chart", "when": "I change the time range to '24h'", "then": "The chart updates to show the last 24 hours of data" },
+        { "id": "ac_001_03", "given": "I want to compare two models", "when": "I select both models in the comparison view", "then": "Their latency and error charts overlay on the same axes" },
+        { "id": "ac_001_04", "given": "New metric data arrives", "when": "The auto-refresh triggers (every 30s)", "then": "Charts update smoothly without full page reload" }
+      ]
+    },
+    {
+      "job_story_id": "js_002",
+      "title": "Configure Performance Alerts",
+      "situation": "I want to be notified when a model's latency exceeds acceptable levels",
+      "motivation": "respond to issues before they affect end users",
+      "outcome": "I get timely Slack/email notifications when thresholds are breached",
+      "acceptance_criteria": [
+        { "id": "ac_002_01", "given": "I am on the Alerts page", "when": "I click 'New Alert'", "then": "A form appears with metric selector, threshold input, comparison operator, and channel picker" },
+        { "id": "ac_002_02", "given": "I have set a p95 latency threshold of 2000ms", "when": "I preview the alert", "then": "A horizontal line at 2000ms appears on the current latency chart" },
+        { "id": "ac_002_03", "given": "An alert is configured", "when": "The metric breaches the threshold", "then": "A notification is sent to the configured Slack channel within 60 seconds" },
+        { "id": "ac_002_04", "given": "An alert has been triggered", "when": "I view alert history", "then": "I see the trigger timestamp, metric value, and threshold that was breached" }
+      ]
+    },
+    {
+      "job_story_id": "js_003",
+      "title": "Analyze Cost and Budget",
+      "situation": "I manage the AI infrastructure budget",
+      "motivation": "understand spending patterns and prevent cost overruns",
+      "outcome": "I can track costs by model and get alerted before exceeding budget",
+      "acceptance_criteria": [
+        { "id": "ac_003_01", "given": "I open the Cost tab", "when": "The page loads", "then": "I see a breakdown of spending by model with daily and monthly totals" },
+        { "id": "ac_003_02", "given": "I am viewing cost data", "when": "I select a specific model", "then": "I see cost-per-request, total tokens, and spend trend for that model" },
+        { "id": "ac_003_03", "given": "I have set a monthly budget of $5,000", "when": "Projected spend exceeds the budget", "then": "A budget alert is sent and the dashboard shows a warning banner" }
+      ]
+    }
+  ]
+}

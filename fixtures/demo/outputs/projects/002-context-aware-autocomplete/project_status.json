@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "projectId": "002-context-aware-autocomplete",
+  "currentAgent": "pm",
+  "currentPhase": "pm-prd-review",
+
+  "agents": {
+    "pm": {
+      "status": "user-reviewing",
+      "currentPhase": "prd-review",
+      "phases": {
+        "questions-generate": { "status": "complete", "startedAt": "2026-02-21T14:00:00.000Z", "completedAt": "2026-02-21T14:04:00.000Z" },
+        "questions-answer": { "status": "complete", "startedAt": "2026-02-21T14:04:00.000Z", "completedAt": "2026-02-21T14:40:00.000Z" },
+        "prd-generate": { "status": "complete", "startedAt": "2026-02-21T14:40:00.000Z", "completedAt": "2026-02-21T15:20:00.000Z" },
+        "prd-review": { "status": "user-reviewing", "startedAt": "2026-02-21T15:20:00.000Z" }
+      }
+    },
+    "ux": {
+      "status": "user-reviewing",
+      "currentPhase": "design-brief-review",
+      "phases": {
+        "questions-generate": { "status": "complete", "startedAt": "2026-02-21T15:20:00.000Z", "completedAt": "2026-02-21T15:24:00.000Z" },
+        "questions-answer": { "status": "complete", "startedAt": "2026-02-21T15:24:00.000Z", "completedAt": "2026-02-21T16:00:00.000Z" },
+        "design-brief-generate": { "status": "complete", "startedAt": "2026-02-21T16:00:00.000Z", "completedAt": "2026-02-21T16:45:00.000Z" },
+        "design-brief-review": { "status": "user-reviewing", "startedAt": "2026-02-21T16:45:00.000Z" }
+      }
+    },
+    "engineer": {
+      "status": "user-reviewing",
+      "currentPhase": "spec-review",
+      "phases": {
+        "questions-generate": { "status": "complete", "startedAt": "2026-02-21T16:45:00.000Z", "completedAt": "2026-02-21T16:49:00.000Z" },
+        "questions-answer": { "status": "complete", "startedAt": "2026-02-21T16:49:00.000Z", "completedAt": "2026-02-21T17:20:00.000Z" },
+        "spec-generate": { "status": "complete", "startedAt": "2026-02-21T17:20:00.000Z", "completedAt": "2026-02-21T18:10:00.000Z" },
+        "spec-review": { "status": "user-reviewing", "startedAt": "2026-02-21T18:10:00.000Z" }
+      }
+    }
+  },
+
+  "history": [
+    { "phase": "pm-questions-generate", "startedAt": "2026-02-21T14:00:00.000Z", "completedAt": "2026-02-21T14:04:00.000Z", "status": "complete" },
+    { "phase": "pm-questions-answer", "startedAt": "2026-02-21T14:04:00.000Z", "completedAt": "2026-02-21T14:40:00.000Z", "status": "complete" },
+    { "phase": "pm-prd-generate", "startedAt": "2026-02-21T14:40:00.000Z", "completedAt": "2026-02-21T15:20:00.000Z", "status": "complete" },
+    { "phase": "pm-prd-review", "startedAt": "2026-02-21T15:20:00.000Z", "status": "user-reviewing" },
+    { "phase": "ux-questions-generate", "startedAt": "2026-02-21T15:20:00.000Z", "completedAt": "2026-02-21T15:24:00.000Z", "status": "complete" },
+    { "phase": "ux-questions-answer", "startedAt": "2026-02-21T15:24:00.000Z", "completedAt": "2026-02-21T16:00:00.000Z", "status": "complete" },
+    { "phase": "ux-design-brief-generate", "startedAt": "2026-02-21T16:00:00.000Z", "completedAt": "2026-02-21T16:45:00.000Z", "status": "complete" },
+    { "phase": "ux-design-brief-review", "startedAt": "2026-02-21T16:45:00.000Z", "status": "user-reviewing" },
+    { "phase": "engineer-questions-generate", "startedAt": "2026-02-21T16:45:00.000Z", "completedAt": "2026-02-21T16:49:00.000Z", "status": "complete" },
+    { "phase": "engineer-questions-answer", "startedAt": "2026-02-21T16:49:00.000Z", "completedAt": "2026-02-21T17:20:00.000Z", "status": "complete" },
+    { "phase": "engineer-spec-generate", "startedAt": "2026-02-21T17:20:00.000Z", "completedAt": "2026-02-21T18:10:00.000Z", "status": "complete" },
+    { "phase": "engineer-spec-review", "startedAt": "2026-02-21T18:10:00.000Z", "status": "user-reviewing" }
+  ],
+
+  "settings": {
+    "question_depth": "standard",
+    "document_length": "comprehensive"
+  },
+
+  "icon": {
+    "type": "icon",
+    "value": "sparkles",
+    "color": "hsl(200 80% 50%)"
+  },
+
+  "costTracking": {
+    "tier": "standard",
+    "phases": [
+      { "phase": "pm-questions-generate", "phaseName": "PM Questions", "inputTokens": 1620, "outputTokens": 950, "timestamp": "2026-02-21T14:04:00.000Z" },
+      { "phase": "pm-prd-generate", "phaseName": "PRD Generation", "inputTokens": 4100, "outputTokens": 6200, "timestamp": "2026-02-21T15:20:00.000Z" },
+      { "phase": "ux-questions-generate", "phaseName": "UX Questions", "inputTokens": 2400, "outputTokens": 780, "timestamp": "2026-02-21T15:24:00.000Z" },
+      { "phase": "ux-design-brief-generate", "phaseName": "Design Brief", "inputTokens": 4800, "outputTokens": 7100, "timestamp": "2026-02-21T16:45:00.000Z" },
+      { "phase": "engineer-questions-generate", "phaseName": "Engineer Questions", "inputTokens": 3400, "outputTokens": 1020, "timestamp": "2026-02-21T16:49:00.000Z" },
+      { "phase": "engineer-spec-generate", "phaseName": "Technical Spec", "inputTokens": 6200, "outputTokens": 9300, "timestamp": "2026-02-21T18:10:00.000Z" }
+    ],
+    "lastUpdated": "2026-02-21T18:10:00.000Z"
+  },
+
+  "approvedDocuments": [],
+
+  "createdAt": "2026-02-21T14:00:00.000Z",
+  "lastUpdatedAt": "2026-02-21T18:10:00.000Z"
+}

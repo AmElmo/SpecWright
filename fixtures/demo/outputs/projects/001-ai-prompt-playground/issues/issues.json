@@ -1,0 +1,86 @@
+{
+  "project_name": "AI Prompt Playground",
+  "project_id": "001-ai-prompt-playground",
+  "total_estimated_hours": 26,
+  "issues_list": [
+    {
+      "issue_id": "ENG-001",
+      "title": "Set up prompt editor with variable detection",
+      "description": "CodeMirror editor with custom syntax highlighting for {{variable}} placeholders and auto-generated input fields",
+      "status": "approved",
+      "estimated_hours": 5,
+      "dependencies": [],
+      "test_strategy": {
+        "automated_tests": "Unit test: variable detection regex, input field generation",
+        "manual_verification": "Type prompt with {{variables}}, verify inputs appear and update preview"
+      },
+      "file_path": "issues/ENG-001.md"
+    },
+    {
+      "issue_id": "ENG-002",
+      "title": "Implement multi-provider LLM adapter layer",
+      "description": "Provider interface with Claude, GPT-4, and Gemini adapters. Parallel execution with SSE streaming",
+      "status": "approved",
+      "estimated_hours": 6,
+      "dependencies": [],
+      "test_strategy": {
+        "automated_tests": "Integration test: each adapter returns valid stream. Mock provider for unit tests",
+        "manual_verification": "Run prompt against all 3 providers, verify streaming responses appear"
+      },
+      "file_path": "issues/ENG-002.md"
+    },
+    {
+      "issue_id": "ENG-003",
+      "title": "Build side-by-side response comparison",
+      "description": "Response panels displaying streaming output with token count, latency, cost, and rating controls",
+      "status": "in-review",
+      "estimated_hours": 4,
+      "dependencies": ["ENG-001", "ENG-002"],
+      "test_strategy": {
+        "automated_tests": "Component test: panels render, expand/collapse works, ratings saved",
+        "manual_verification": "Run multi-provider test, rate responses, expand one panel to full width"
+      },
+      "file_path": "issues/ENG-003.md"
+    },
+    {
+      "issue_id": "ENG-004",
+      "title": "Add prompt version history with diffs",
+      "description": "Auto-save versions on each run. Version list with timestamps and quality scores. Diff view between any two versions",
+      "status": "pending",
+      "estimated_hours": 5,
+      "dependencies": ["ENG-001"],
+      "test_strategy": {
+        "automated_tests": "Unit test: diff computation, version ordering. Integration test: save and retrieve versions",
+        "manual_verification": "Run prompt 3 times, open history, compare v1 vs v3 diff"
+      },
+      "file_path": "issues/ENG-004.md"
+    },
+    {
+      "issue_id": "ENG-005",
+      "title": "Implement response quality scoring",
+      "description": "Automated scoring (format compliance, length, coverage) plus manual thumbs up/down. Quality trend sparkline",
+      "status": "pending",
+      "estimated_hours": 3,
+      "dependencies": ["ENG-003"],
+      "test_strategy": {
+        "automated_tests": "Unit test: scoring algorithm with known inputs. Component test: sparkline renders",
+        "manual_verification": "Run prompt, check auto-score appears, rate manually, verify trend chart"
+      },
+      "file_path": "issues/ENG-005.md"
+    },
+    {
+      "issue_id": "ENG-006",
+      "title": "Create prompt template library",
+      "description": "Template gallery with categories, search, preview, and one-click load. Save-as-template from editor",
+      "status": "pending",
+      "estimated_hours": 3,
+      "dependencies": ["ENG-001"],
+      "test_strategy": {
+        "automated_tests": "Component test: category filter, search, template load into editor",
+        "manual_verification": "Browse templates, preview one, load it, customize and save as new template"
+      },
+      "file_path": "issues/ENG-006.md"
+    }
+  ],
+  "definition_of_done": "Each feature independently testable by a human, all acceptance criteria met"
+}

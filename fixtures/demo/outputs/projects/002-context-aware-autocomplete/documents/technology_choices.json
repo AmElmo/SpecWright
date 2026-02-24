@@ -1,0 +1,150 @@
+{
+  "project_name": "Context-Aware Autocomplete",
+  "technology_decisions": [
+    {
+      "category": "Embedding Model",
+      "description": "Local model for generating code embeddings for semantic search",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "all-MiniLM-L6-v2 (ONNX)",
+          "description": "Small, fast sentence transformer running locally via ONNX Runtime",
+          "version": "1.0",
+          "documentation_url": "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
+          "github_url": "https://github.com/microsoft/onnxruntime",
+          "pros": ["22MB model size", "Fast inference (<10ms per chunk)", "Good semantic quality for code", "Runs on CPU efficiently"],
+          "cons": ["384-dimensional embeddings may miss nuance", "Not code-specific"],
+          "trade_offs": ["Speed vs embedding quality", "Generic vs code-specialized"],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-12",
+          "implementation_complexity": "Low",
+          "estimated_time": "3 hours",
+          "recommended": true,
+          "recommendation_reason": "Best balance of size, speed, and quality for local inference"
+        },
+        {
+          "name": "CodeBERT (ONNX)",
+          "description": "Microsoft's code-specialized BERT model",
+          "version": "1.0",
+          "documentation_url": "https://huggingface.co/microsoft/codebert-base",
+          "github_url": "https://github.com/microsoft/CodeBERT",
+          "pros": ["Code-specific training", "Better at understanding code semantics"],
+          "cons": ["440MB model size", "Slower inference (~50ms per chunk)", "Higher memory usage"],
+          "trade_offs": ["Better quality but significantly larger and slower"],
+          "maturity": "Stable",
+          "community_size": "Medium",
+          "last_updated": "2024-06",
+          "implementation_complexity": "Medium",
+          "estimated_time": "5 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "all-MiniLM-L6-v2 (ONNX)",
+      "user_choice_description": "Small, fast sentence transformer running locally via ONNX Runtime",
+      "user_choice_version": "1.0",
+      "user_reason": "Speed is critical for autocomplete — 10ms inference means we can re-embed on every keystroke",
+      "final_decision": "all-minilm-l6-v2"
+    },
+    {
+      "category": "Local Storage",
+      "description": "Database for storing AST symbols, embeddings, and learning data locally",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "SQLite with sqlite-vss",
+          "description": "SQLite with vector similarity search extension for unified storage",
+          "version": "3.45",
+          "documentation_url": "https://github.com/asg017/sqlite-vss",
+          "github_url": "https://github.com/asg017/sqlite-vss",
+          "pros": ["Single file database", "Vector search built-in", "Zero configuration", "Cross-platform"],
+          "cons": ["Write contention under heavy indexing", "Vector search not as fast as dedicated stores"],
+          "trade_offs": ["Simplicity vs performance at scale"],
+          "maturity": "Stable",
+          "community_size": "Large",
+          "last_updated": "2024-11",
+          "implementation_complexity": "Low",
+          "estimated_time": "4 hours",
+          "recommended": true,
+          "recommendation_reason": "Single-file simplicity with built-in vector search is perfect for local tool"
+        },
+        {
+          "name": "LanceDB",
+          "description": "Embedded vector database designed for AI applications",
+          "version": "0.4",
+          "documentation_url": "https://lancedb.github.io/lancedb/",
+          "github_url": "https://github.com/lancedb/lancedb",
+          "pros": ["Purpose-built for vector search", "Faster similarity queries", "Good Node.js bindings"],
+          "cons": ["Additional dependency", "Less mature", "Separate from symbol table storage"],
+          "trade_offs": ["Better vector performance but adds complexity"],
+          "maturity": "Beta",
+          "community_size": "Medium",
+          "last_updated": "2024-10",
+          "implementation_complexity": "Medium",
+          "estimated_time": "6 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "SQLite with sqlite-vss",
+      "user_choice_description": "SQLite with vector similarity search extension for unified storage",
+      "user_choice_version": "3.45",
+      "user_reason": "Keep it simple — one database for everything, zero setup for users",
+      "final_decision": "sqlite-vss"
+    },
+    {
+      "category": "Parser / AST",
+      "description": "Code parsing library for extracting symbols and structure across languages",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "tree-sitter",
+          "description": "Incremental parsing library used by major editors for syntax analysis",
+          "version": "0.22",
+          "documentation_url": "https://tree-sitter.github.io/tree-sitter/",
+          "github_url": "https://github.com/tree-sitter/tree-sitter",
+          "pros": ["Supports 100+ languages", "Incremental parsing (fast re-parse on edit)", "Battle-tested in VS Code, Neovim", "Excellent error recovery"],
+          "cons": ["Native dependency (WASM or node-gyp)", "Grammar files can be large"],
+          "trade_offs": ["More languages and features but heavier dependency"],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-12",
+          "implementation_complexity": "Medium",
+          "estimated_time": "6 hours",
+          "recommended": true,
+          "recommendation_reason": "Industry standard for multi-language parsing with incremental update support"
+        },
+        {
+          "name": "TypeScript Compiler API",
+          "description": "TypeScript's built-in compiler API for parsing TS/JS files",
+          "version": "5.4",
+          "documentation_url": "https://www.typescriptlang.org/docs/handbook/compiler-api.html",
+          "github_url": "https://github.com/microsoft/TypeScript",
+          "pros": ["Perfect TypeScript understanding", "Type-aware analysis", "No extra dependency for TS projects"],
+          "cons": ["TypeScript/JavaScript only", "Slower for large files", "No incremental parsing"],
+          "trade_offs": ["Better TS analysis but limited to one language family"],
+          "maturity": "Production-ready",
+          "community_size": "Very large",
+          "last_updated": "2024-12",
+          "implementation_complexity": "Low",
+          "estimated_time": "4 hours",
+          "recommended": false,
+          "recommendation_reason": ""
+        }
+      ],
+      "user_choice": "tree-sitter",
+      "user_choice_description": "Incremental parsing library used by major editors for syntax analysis",
+      "user_choice_version": "0.22",
+      "user_reason": "Need multi-language support from day one, and incremental parsing is essential for speed",
+      "final_decision": "tree-sitter"
+    }
+  ],
+  "summary": {
+    "total_decisions": 3,
+    "decisions_made": 3,
+    "estimated_setup_time": "13 hours",
+    "estimated_learning_curve": "Medium - tree-sitter and sqlite-vss require some ramp-up",
+    "overall_complexity": "Medium-High"
+  }
+}
