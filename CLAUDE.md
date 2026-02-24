@@ -24,6 +24,20 @@ It has a CLI (Node.js/Express) and a Web UI (React/Vite) that share a file-based
 - `npm run format` / `npm run format:check` — Prettier
 - No test framework is configured. Do not create test files.
 
+## Demo Fixtures
+
+Pre-populated projects for demos live in `fixtures/demo/`. Load them with:
+
+```bash
+./scripts/load-demo.sh          # Copy fixtures into outputs/ (backs up existing)
+./scripts/load-demo.sh --clean  # Wipe outputs/ and load fresh
+./scripts/load-demo.sh --reset  # Restore original outputs/ from backup
+```
+
+5 NovaMind AI projects at different workflow stages: complete with issues, docs reviewing, mid-workflow, early (PM questions), and complete with all issues pending.
+
+When editing fixtures, keep files in `fixtures/demo/outputs/` (tracked in git via `.gitignore` negation). The `outputs/` directory itself remains gitignored.
+
 ## Local CLI Testing (Unpublished Changes)
 
 **MANDATORY: After ANY code edit session, ALWAYS run `npm run build && npm link` before finishing.** This ensures `specwright-dev` reflects the latest changes. Verify with `specwright-dev --version`. Never skip this step.
