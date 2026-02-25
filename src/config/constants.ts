@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
+import fs from 'fs';
 
 // Get current directory (equivalent to SQUAD_DIR in bash)
 export const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +15,7 @@ export const getSpecWrightDir = (targetDir: string = process.cwd()): string => {
     // Check if we're in the specwright package itself or a target project
     const packagePath = path.join(targetDir, 'package.json');
     try {
-        const pkg = require(packagePath);
+        const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
         if (pkg.name === 'specwright') {
             // We're in the specwright package itself (development mode)
             return targetDir;
@@ -22,7 +23,7 @@ export const getSpecWrightDir = (targetDir: string = process.cwd()): string => {
     } catch {
         // No package.json or not specwright
     }
-    
+
     // Target project - use specwright/ subfolder
     return path.join(targetDir, 'specwright');
 };
