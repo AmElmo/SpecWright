@@ -3994,3 +3994,11 @@ ${suggestion || 'Implement this change directly in your code editor.'}
   
   return { server, wss, watcher };
 }
+
+// Auto-start when run directly (e.g. `tsx src/web-server.ts`)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startWebServer().catch((err) => {
+    console.error('Failed to start web server:', err);
+    process.exit(1);
+  });
+}
