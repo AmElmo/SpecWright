@@ -1,3 +1,9 @@
+## [3.6.3](https://github.com/amelmo/specwright/compare/v3.6.2...v3.6.3) (2026-02-25)
+
+### Bug Fixes
+
+* enable demo fixture loading in dev mode ([#33](https://github.com/amelmo/specwright/issues/33)) ([eb72ff3](https://github.com/amelmo/specwright/commit/eb72ff3be0138bbe0785900daf28fda8d93e95e1))
+
 ## [3.6.2](https://github.com/amelmo/specwright/compare/v3.6.1...v3.6.2) (2026-02-23)
 
 ### Bug Fixes
