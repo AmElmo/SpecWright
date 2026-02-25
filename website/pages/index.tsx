@@ -136,16 +136,77 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Second Screenshot */}
-        <section className={styles.screenshotSection}>
-          <div className={styles.screenshotWrap}>
-            <Image
-              src="/screenshots/screens_page.png"
-              alt="SpecWright — Specification viewer with screen definitions"
-              width={1200}
-              height={750}
-              className={styles.screenshot}
-            />
+        {/* Product Showcase */}
+        <section className={styles.showcase}>
+          <div className={styles.showcaseRow}>
+            <div className={styles.showcaseImage}>
+              <Image
+                src="/screenshots/project_page.png"
+                alt="SpecWright — Project dashboard"
+                width={1200}
+                height={750}
+              />
+            </div>
+            <div className={styles.showcaseText}>
+              <h3>All your projects at a glance</h3>
+              <p>
+                Track every project from a single dashboard. See progress, status, and jump into any
+                spec instantly.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.showcaseRowReverse}>
+            <div className={styles.showcaseImage}>
+              <Image
+                src="/screenshots/screens_page.png"
+                alt="SpecWright — Screen specifications"
+                width={1200}
+                height={750}
+              />
+            </div>
+            <div className={styles.showcaseText}>
+              <h3>Detailed screen specifications</h3>
+              <p>
+                Every screen defined with wireframes, interactions, and edge cases — before a single
+                line of code is written.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.showcaseRow}>
+            <div className={styles.showcaseImage}>
+              <Image
+                src="/screenshots/technology_choices.png"
+                alt="SpecWright — Technology choices with rationale"
+                width={1200}
+                height={750}
+              />
+            </div>
+            <div className={styles.showcaseText}>
+              <h3>Informed technology decisions</h3>
+              <p>
+                Compare libraries and frameworks with pros, cons, and rationale. Every choice
+                documented and justified.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.showcaseRowReverse}>
+            <div className={styles.showcaseImage}>
+              <Image
+                src="/screenshots/acceptance_criteria.png"
+                alt="SpecWright — Acceptance criteria with job stories"
+                width={1200}
+                height={750}
+              />
+            </div>
+            <div className={styles.showcaseText}>
+              <h3>Clear acceptance criteria</h3>
+              <p>
+                Job stories with testable conditions so every feature has a clear definition of done.
+              </p>
+            </div>
           </div>
         </section>
 
