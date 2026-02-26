@@ -1,0 +1,60 @@
+# Vertical Slices
+
+SpecWright breaks implementation work into vertical slices — self-contained tasks that deliver user-visible value through every layer of the stack. This page explains what that means and why it produces better results than the alternatives.
+
+## What a vertical slice is
+
+A vertical slice is a piece of work that cuts through all the layers needed to deliver a working feature — UI, API, database, business logic. When a developer finishes a vertical slice, something new works end-to-end. A user can see it, interact with it, or benefit from it.
+
+**Example — "Add a task to a project board":**
+
+A vertical slice for this feature includes:
+- The UI button and form for adding a task
+- The API endpoint that creates the task
+- The database schema for storing tasks
+- Validation logic for task fields
+- The board updating to show the new task
+
+After this slice is done, users can add tasks. It's incomplete — they can't edit or delete tasks yet — but it works.
+
+## Vertical vs. horizontal slicing
+
+The alternative is horizontal slicing — dividing work by technical layer:
+
+| Horizontal (layer-by-layer) | Vertical (feature-by-feature) |
+|---------------------------|-------------------------------|
+| "Set up the database schema for tasks" | "Users can create a task on the board" |
+| "Build the task API endpoints" | "Users can edit a task's title and status" |
+| "Create the task UI components" | "Users can delete a task with confirmation" |
+| "Wire up the frontend to the API" | "Users can drag tasks between columns" |
+
+With horizontal slicing, nothing works until every layer is connected. The database exists but nothing uses it. The API works but there's no UI. Bugs hide at the layer boundaries and surface late.
+
+With vertical slicing, each completed task is a working feature. Integration bugs surface immediately because every slice goes through all layers. Progress is visible — stakeholders can see and test what's done.
+
+## Why SpecWright uses vertical slices
+
+SpecWright generates issues as vertical slices because they're the best format for AI coding tools:
+
+**Clear scope.** Each issue describes a complete user-facing behavior. The AI tool knows exactly what "done" looks like — not just "build an API endpoint" but "users can create tasks, which appear on the board."
+
+**Testable in isolation.** Because each slice produces working functionality, you can verify it works before moving to the next slice. This catches problems early.
+
+**Ordered by dependency.** SpecWright sequences slices so each one builds on what came before. Slice 1 might be "users can view the board." Slice 2 is "users can add a task." The dependency chain is explicit.
+
+**Better AI output.** When you [ship an issue](/docs/guides/ship-to-ai-tools) to Cursor or Claude Code, the AI receives the full context for that slice: what to build, how it should behave, what screens it touches, and what technology to use. A well-scoped vertical slice produces focused, correct implementation.
+
+## How SpecWright structures slices
+
+During the [Issue Breakdown](/docs/workflow/issue-breakdown) phase, the Breakdown agent analyzes all previous specification documents — PRD, design brief, technical spec — and produces issues that are:
+
+- **Self-contained** — Each issue includes its own description, acceptance criteria, dependencies, and relevant specification context
+- **Sequenced** — Issues are ordered by dependency so you work through them in the right order
+- **Complexity-scored** — Each issue gets a 1-10 score mapped to estimated hours. Issues scoring 7+ are split into subtasks organized by technical layer within the vertical slice (backend, frontend, database, testing).
+- **Tested by humans** — Every issue includes manual verification steps and human-in-the-loop checks, even when automated tests are skipped. The agent follows a critical-only testing philosophy: automated tests for payments, auth, and security; manual verification for everything else.
+
+## Learn more
+
+- [Issue Breakdown](/docs/workflow/issue-breakdown) — How SpecWright generates vertical slices
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — How slices become AI coding prompts
+- [Specification-Driven Development](/docs/concepts/specification-driven-development) — The methodology behind the approach

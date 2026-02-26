@@ -2,41 +2,93 @@
 
 SpecWright integrates with [Linear](https://linear.app) to sync your projects and issues. Push specification-backed tasks directly to your Linear workspace so your team can track implementation alongside your existing workflow.
 
-## What the integration does
+import { Callout, Steps } from 'nextra/components'
 
-- **Push projects** — Create a Linear project from your SpecWright project
-- **Push issues** — Send implementation tasks to Linear with full context
-- **Attach specifications** — Link SpecWright documents (PRD, tech spec, etc.) to Linear issues
+## What gets synced
 
-## Setting up the connection
+When you push a SpecWright project to Linear, the full specification package is synced:
 
-import { Steps } from 'nextra/components'
+- **Project** — Created in your Linear team with name and description
+- **Specification documents** — PRD, Design Brief, and Technical Specification attached as Linear documents
+- **Issues** — All implementation tasks created as Linear issues with full context
+- **Dependencies** — Blocking relationships between issues are set up in Linear
+- **External links** — A "SpecWright Resources" document with links to Screen Designs, Technology Choices, Acceptance Criteria, and the full project overview
+
+## Setting up
 
 <Steps>
 
 ### Open Settings
 
-Launch the Web UI (`specwright --ui`) and navigate to **Settings** from the sidebar.
+Launch the Web UI (`specwright view`) and navigate to **Settings** from the sidebar.
 
-### Connect Linear
+### Enter your Linear API key
 
-In the **Integrations** section, click **Connect Linear**. You'll be asked to provide your Linear API key.
+In the Linear section, enter your personal API key. You can generate one from [Linear Settings → API](https://linear.app/settings/api).
 
-### Select your workspace and team
+<Callout type="info">
+SpecWright validates your API key before saving. The key needs read/write access to issues, projects, and documents.
+</Callout>
 
-Choose which Linear workspace and team should receive your SpecWright projects and issues.
+### Select your team
+
+After validation, SpecWright fetches your available Linear teams. Select the team that should receive your projects and issues.
 
 </Steps>
-## Pushing projects and issues
 
-Once connected, you'll see Linear sync options on each project:
+## The sync process
 
-- **Push Project** — Creates a project in Linear matching your SpecWright project
-- **Push Issues** — Sends individual implementation tasks to Linear with their descriptions, acceptance criteria, and spec context
+When you click "Sync to Linear" on a project, SpecWright executes a 6-step sync:
 
-Issues pushed to Linear include all the context from your specification workflow, so your team has full visibility into requirements and technical decisions.
+1. **Create Linear project** — A project in your selected team with the SpecWright project name and description
+2. **Sync PRD** — Attaches the Product Requirements Document as a Linear document
+3. **Sync Design Brief** — Attaches the design specification as a Linear document
+4. **Sync Technical Specification** — Attaches the architecture document as a Linear document
+5. **Create issues** — Creates a Linear issue for each SpecWright issue with full context
+6. **Set up dependencies** — Creates blocking relationships between issues that match SpecWright's dependency chain
+
+### What issues look like in Linear
+
+Each synced issue includes:
+
+- **Title** — The issue title from SpecWright
+- **Description** — Rich Markdown with all fields: key decisions, acceptance criteria, technical details, testing strategy, dependencies
+- **Priority** — Mapped from estimated hours (default: Normal)
+- **Estimate** — Fibonacci story points derived from estimated hours:
+
+| Estimated hours | Story points |
+|----------------|-------------|
+| 1-2h | 1 |
+| 2-4h | 2 |
+| 4-6h | 3 |
+| 6-10h | 5 |
+| 10-16h | 8 |
+| 16-24h | 13 |
+| 24h+ | 21 |
+
+### External links
+
+SpecWright creates a "SpecWright Resources" attachment on the Linear project with links to:
+
+- Screen Designs (visual wireframes in the Web UI)
+- Technology Choices (decision matrix in the Web UI)
+- Acceptance Criteria (testable criteria viewer)
+- Full Project Overview (complete project in the Web UI)
+
+These are localhost links (`http://localhost:5174/...`) — they work when SpecWright is running locally.
+
+## Sync state tracking
+
+After syncing, SpecWright saves a `linear_sync.json` file in the project directory. This tracks:
+
+- When the sync happened
+- The Linear project ID and URL
+- Mappings between SpecWright issue IDs and Linear issue IDs
+- Mappings between SpecWright documents and Linear document IDs
+
+This prevents duplicate syncs and enables future re-sync capabilities.
 
 ## What's next?
 
 - [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues to your AI coding tool
-- [Output Files](/docs/reference/output-files) — Understand what files SpecWright produces
+- [Output Files](/docs/reference/output-files) — Understand the `linear_sync.json` format

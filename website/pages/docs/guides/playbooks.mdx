@@ -2,23 +2,25 @@
 
 A Playbook is a set of project standards and conventions that SpecWright generates by analyzing your existing codebase. Once created, the AI agents reference it during specification generation — so your specs follow your team's actual patterns, not generic defaults.
 
+import { Callout, Steps } from 'nextra/components'
+
 ## What a Playbook contains
 
-The generated `PLAYBOOK.md` typically includes:
+The generated `PLAYBOOK.md` captures:
 
-- **Project structure** — How your codebase is organized (folder structure, naming conventions)
-- **Code patterns** — Common patterns used in your project (state management, error handling, etc.)
-- **Technology stack** — What frameworks and libraries are already in use
-- **Development standards** — Formatting, linting, testing conventions
-- **Architecture decisions** — Key patterns like API structure, data flow, etc.
+- **Project structure** — Folder organization, naming conventions, file patterns
+- **Code patterns** — State management approach, error handling patterns, component structure
+- **Technology stack** — Frameworks, libraries, and versions already in use
+- **Development standards** — Formatting rules, linting configuration, testing conventions
+- **Architecture decisions** — API structure, data flow, authentication patterns, deployment setup
+
+The Playbook includes version information and a last-amended date so you can track when it was generated or updated.
 
 ## Generating a Playbook
 
-import { Steps } from 'nextra/components'
-
 <Steps>
 
-### Open the Playbook section
+### Open the Playbook page
 
 In the Web UI, navigate to **Playbook** from the sidebar. Or from the CLI:
 
@@ -28,27 +30,56 @@ specwright playbook
 
 ### Generate from your codebase
 
-Click **Generate Playbook**. SpecWright analyzes your project's file structure, dependencies, and code patterns to produce a `PLAYBOOK.md` tailored to your project.
+Click **Generate Playbook**. SpecWright sends a codebase analysis prompt to your AI tool, which scans your project's file structure, dependencies, configuration files, and code patterns. A streaming progress log shows the analysis in real time.
 
-### Review and refine
+### Review and edit
 
-The generated Playbook is a Markdown file you can review and edit. Remove anything that doesn't apply, and add any standards the AI may have missed.
+The generated Playbook is rendered as Markdown in the Web UI. Review the output and edit inline if anything is inaccurate or missing.
 
 </Steps>
 
 ## How Playbooks improve specifications
 
-When a Playbook exists, the AI agents use it as additional context during specification generation. For example:
+When a Playbook exists, the AI agents use it as additional context during specification generation:
 
-- The **Engineer** agent will recommend technologies consistent with your existing stack
-- The **Issue Breakdown** will reference your folder structure and naming conventions in task descriptions
-- Shipped prompts will include Playbook standards, so your AI coding tool follows your conventions
+- **PM agent** — Understands existing capabilities and patterns to ask better questions
+- **Engineer agent** — Recommends technologies consistent with your existing stack, avoids suggesting tools that conflict with what you already use
+- **Issue Breakdown** — References your folder structure and naming conventions in task descriptions, accounts for existing components and patterns
+- **Shipped prompts** — Playbook standards are included when you [ship to AI tools](/docs/guides/ship-to-ai-tools), so the implementing AI follows your conventions
+
+## Updating a Playbook
+
+Your codebase evolves. To keep the Playbook in sync:
+
+1. Navigate to the Playbook page
+2. Click **Update Playbook**
+3. SpecWright re-analyzes your codebase and regenerates the Playbook
+
+Or from the CLI:
+
+```bash
+specwright playbook --update
+```
+
+The update captures new patterns, dependencies, and structural changes since the last generation.
 
 ## Auditing against your Playbook
 
-SpecWright can also audit generated specifications against your Playbook to check for inconsistencies — for example, if the tech spec recommends a state management library that conflicts with your existing setup.
+SpecWright can audit generated specifications against your Playbook to check for inconsistencies. For example:
+
+- The tech spec recommends a state management library that conflicts with your existing setup
+- The design brief uses component patterns that don't match your component library
+- Issues reference folder structures that don't exist in your project
+
+To run an audit, click **Audit** on the Playbook page, or:
+
+```bash
+specwright playbook --audit
+```
+
+The audit output highlights any conflicts between your specifications and your established standards.
 
 ## What's next?
 
-- [Customizing AI Agents](/docs/guides/customizing-agents) — Fine-tune how the AI agents behave
-- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send tasks to your AI coding tool with Playbook context included
+- [Customizing AI Agents](/docs/guides/customizing-agents) — Fine-tune agent behavior beyond Playbooks
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — See how Playbook context is included in prompts

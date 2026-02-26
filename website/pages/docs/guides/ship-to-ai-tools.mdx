@@ -1,19 +1,6 @@
 # Ship to AI Tools
 
-Once SpecWright generates your implementation tasks, you can send them directly to your AI coding tool with a single click. No manual copy-pasting, no context switching.
-
-## Supported AI tools
-
-SpecWright works with these AI coding tools:
-
-| Tool | How shipping works |
-|------|-------------------|
-| **Cursor** | Opens Cursor, creates a new chat, and pastes the issue prompt |
-| **Claude Code** | Opens a terminal session with the full issue context |
-| **GitHub Copilot** | Opens Copilot chat with the issue prompt |
-| **Codex** | Runs headless in the CLI with the issue context |
-| **Gemini CLI** | Runs headless in the CLI with the issue context |
-| **Windsurf** | Opens Windsurf with the issue prompt |
+Once SpecWright generates your implementation tasks, you can send them directly to your AI coding tool. Each shipped prompt includes the full specification context — requirements, design decisions, architecture, acceptance criteria — so the AI tool knows exactly what to build.
 
 import { Callout } from 'nextra/components'
 
@@ -21,46 +8,90 @@ import { Callout } from 'nextra/components'
 **No API keys required.** SpecWright doesn't call AI APIs directly. It works with whatever AI tool you already have installed and licensed.
 </Callout>
 
-## How it works
+## Supported tools
 
-1. Open a project in the Web UI and navigate to the **Issues** view
-2. Click the **Ship** button on any issue
-3. SpecWright automatically:
-   - Opens your selected AI coding tool
-   - Creates a new chat or session
-   - Pastes a prompt with the full issue context — including relevant excerpts from the PRD, design brief, and tech spec
-The prompt includes everything the AI coding tool needs to implement the task: what to build, how it should behave, what technology to use, and what "done" looks like.
+| Tool | Execution mode | How it works |
+|------|---------------|-------------|
+| **Cursor** | Headless | Runs via CLI — streams progress in real time |
+| **Claude Code** | Headless | Runs via CLI with session resumption — can continue where it left off |
+| **Codex CLI** | Headless | CLI-only execution, no IDE needed |
+| **Gemini CLI** | Headless | CLI-only execution, no IDE needed |
+| **GitHub Copilot** | Keyboard automation | Opens VS Code chat, pastes the prompt |
+| **Windsurf** | Keyboard automation | Opens Windsurf chat, pastes the prompt |
 
-## Selecting your AI tool
+**Headless mode** is the preferred execution method. SpecWright runs the AI tool's CLI directly, streams progress logs to the Web UI in real time, and captures results automatically. The process has a 5-minute timeout for safety.
 
-Set your preferred tool during onboarding, or change it anytime:
+**Keyboard automation** is the fallback for tools without CLI/headless support. SpecWright copies the prompt to your clipboard, activates the tool's window, opens a new chat, and pastes. The tool needs to be running already.
 
-1. Open the Web UI (`specwright --ui`)
-2. Go to **Settings**
-3. Under **AI Tool**, select your preferred tool
+## How to ship an issue
 
-## What makes the prompts effective
+1. Open a project and navigate to the **Issues** view (or the global Issues board)
+2. Click an issue to open its detail modal
+3. Click **Ship**
+4. The Ship Modal opens and:
+   - Generates the full implementation prompt
+   - Sends it to your selected AI tool
+   - Shows streaming progress logs (for headless tools)
+   - Reports success or failure
+
+You can override the AI tool for a single ship action using the dropdown in the Ship Modal — useful if you want to try a different tool for one specific issue.
+
+## What the prompt contains
 
 Each shipped prompt includes:
 
-- **Issue description** — What to build
-- **Acceptance criteria** — What "done" looks like
-- **Relevant spec excerpts** — Architecture decisions, screen definitions, and requirements from earlier phases
-- **Project context** — Playbook standards and conventions if configured
+**Issue context:**
+- Title and description
+- Screens affected (from `screens.json`)
+- Key architecture decisions (from technology choices)
+- Acceptance criteria with IDs and descriptions
+- Technical implementation details
+- Testing strategy (automated tests + manual verification steps)
+- Human-in-the-loop verification steps
+- Dependencies on other issues
 
-This means your AI coding tool doesn't start from scratch. It has the full context of your project's requirements, design decisions, and technical architecture.
+**Specification references:**
+- Links to the PRD (`@path/to/prd.md`)
+- Links to the technical specification
+- Links to technology choices
+- Links to the design brief and wireframes
+
+**Git workflow (if enabled):**
+- Branch creation instructions based on your [git strategy](/docs/reference/settings)
+- Commit message format
+- Merge instructions
+
+**Status update instructions:**
+- Tells the AI tool to update the issue status from "pending" to "in-review" in `issues.json` when work begins
+
+## Refinement
+
+After shipping, if the result isn't right, you can refine the AI's output using the Refinement Panel:
+
+1. Open the document or issue in the Web UI
+2. Click the refinement panel
+3. Type feedback explaining what to change
+4. Optionally upload up to 5 reference images (mockups, screenshots, design examples)
+5. Submit — the AI revises based on your feedback with streaming progress
+
+For Claude Code, SpecWright supports **session resumption** — it can continue the same session rather than starting fresh, which preserves context from the previous generation.
 
 ## CLI shipping
 
-You can also ship issues from the command line:
+You can also ship from the command line:
 
 ```bash
 specwright ship
 ```
 
-This is especially useful for headless tools like Codex and Gemini CLI.
+This opens the issues board in the Web UI where you can ship any issue. For headless tools (Codex, Gemini CLI), this is the primary workflow.
+
+## Playbook context
+
+If you've generated a [Playbook](/docs/guides/playbooks), its standards are automatically included in shipped prompts. This means the AI tool follows your project's naming conventions, folder structure, code patterns, and architectural decisions.
 
 ## What's next?
 
 - [Using the Web UI](/docs/guides/web-ui) — Navigate the full dashboard
+- [Settings Reference](/docs/reference/settings) — Configure your preferred AI tool
 - [Playbooks](/docs/guides/playbooks) — Add project standards to your prompts

@@ -2,71 +2,415 @@
 
 All specifications SpecWright generates are saved as plain Markdown and JSON files in your project's `specwright/outputs/` directory. No database, no proprietary format — just files you can read, edit, version-control, and feed into AI coding tools.
 
+import { Callout } from 'nextra/components'
+
 ## Directory structure
 
-After running a full specification workflow, your outputs look like this:
+After running a full specification workflow:
 
 ```
-specwright/outputs/
-├── project_plan.json                          # Scoping result
-└── projects/
-    └── 001-user-authentication/
-        ├── project_request.md                 # Your original description
-        ├── project_status.json                # Phase progress tracking
-        ├── questions/
-        │   ├── pm_questions.json              # PM phase questions & answers
-        │   ├── ux_questions.json              # Designer phase questions & answers
-        │   └── engineer_questions.json        # Engineer phase questions & answers
-        ├── documents/
-        │   ├── prd.md                         # Product Requirements Document
-        │   ├── acceptance_criteria.json        # Testable acceptance criteria
-        │   ├── design_brief.md                # UX specification
-        │   ├── screens.json                   # Screen inventory
-        │   ├── technical_specification.md      # Architecture document
-        │   └── technology_choices.json         # Tech stack decisions
-        └── issues/
-            ├── issues.json                    # All tasks in structured format
-            ├── ENG-001.md                     # Individual issue: Login UI
-            ├── ENG-002.md                     # Individual issue: JWT Auth
-            ├── ENG-003.md                     # Individual issue: Password Reset
-            └── ...
+specwright/
+├── agents/                                    # AI agent prompts (customizable)
+│   ├── product_manager/
+│   │   ├── system_prompt.md
+│   │   ├── questioning_prompt.md
+│   │   └── analysis_prompt.md
+│   ├── ux_designer/
+│   │   ├── system_prompt.md
+│   │   ├── questioning_prompt.md
+│   │   └── analysis_prompt.md
+│   ├── engineer/
+│   │   ├── system_prompt.md
+│   │   ├── questioning_prompt.md
+│   │   ├── choice_selection_prompt.md
+│   │   └── analysis_prompt.md
+│   └── breakdown/
+│       ├── system_prompt.md
+│       └── issue_breakdown_prompt.md
+├── templates/                                 # Output format templates
+└── outputs/
+    ├── scoping_plan.json                      # Current scoping result
+    ├── settings.json                          # User preferences
+    └── projects/
+        └── 001-user-authentication/
+            ├── project_request.md             # Your original description
+            ├── project_status.json            # Phase tracking (atomic writes)
+            ├── linear_sync.json               # Linear sync state (if synced)
+            ├── questions/
+            │   ├── pm_questions.json
+            │   ├── ux_questions.json
+            │   └── engineer_questions.json
+            ├── documents/
+            │   ├── prd.md
+            │   ├── acceptance_criteria.json
+            │   ├── design_brief.md
+            │   ├── screens.json
+            │   ├── technical_specification.md
+            │   └── technology_choices.json
+            └── issues/
+                └── issues.json
 ```
 
-## File descriptions
+## Global files
 
-### Project-level files
+### `settings.json`
 
-| File | Format | Description |
-|------|--------|-------------|
-| `project_plan.json` | JSON | Scoping result — lists all projects and their classification |
-| `project_request.md` | Markdown | The original description you provided |
-| `project_status.json` | JSON | Tracks which phases are complete |
+User preferences stored at `specwright/outputs/settings.json`:
 
-### Questions
+```json
+{
+  "aiTool": "cursor",
+  "git": {
+    "enabled": true,
+    "strategy": "branch-per-issue"
+  },
+  "costEstimation": {
+    "enabled": true,
+    "tier": "standard"
+  },
+  "linear": {
+    "apiKey": "lin_api_...",
+    "defaultTeamId": "team-uuid",
+    "defaultTeamName": "Engineering"
+  }
+}
+```
 
-| File | Format | Description |
-|------|--------|-------------|
-| `pm_questions.json` | JSON | PM agent's questions and your answers |
-| `ux_questions.json` | JSON | Designer agent's questions and your answers |
-| `engineer_questions.json` | JSON | Engineer agent's questions and your answers |
+| Field | Values | Description |
+|-------|--------|-------------|
+| `aiTool` | `cursor`, `claude-code`, `codex`, `gemini`, `github-copilot`, `windsurf` | Preferred AI coding tool |
+| `git.strategy` | `none`, `branch-per-issue`, `branch-per-project` | Git workflow for shipped issues |
+| `costEstimation.tier` | `budget`, `standard`, `premium` | Cost estimation model tier |
+| `linear` | object | Linear API key and default team (optional) |
 
-### Specification documents
+### `scoping_plan.json`
 
-| File | Format | Description |
-|------|--------|-------------|
-| `prd.md` | Markdown | Product Requirements Document with job stories, scope, and NoGos |
-| `acceptance_criteria.json` | JSON | Testable criteria in Given/When/Then format |
-| `design_brief.md` | Markdown | UX specification with navigation and interaction patterns |
-| `screens.json` | JSON | Screen inventory — every UI screen with components and behavior |
-| `technical_specification.md` | Markdown | Architecture document with API design, data model, security |
-| `technology_choices.json` | JSON | Selected technologies with rationale and trade-offs |
+Created during project scoping. Determines the project type:
 
-### Issues
+```json
+{
+  "type": "project",
+  "projects": [
+    {
+      "name": "User Authentication",
+      "description": "Google OAuth sign-in with session management"
+    }
+  ]
+}
+```
 
-| File | Format | Description |
-|------|--------|-------------|
-| `issues.json` | JSON | All implementation tasks in structured format |
-| `ENG-XXX.md` | Markdown | Individual issue files with full context for AI coding tools |
+The `type` field is `"direct"` (skip spec, just implement), `"project"` (needs full spec), or `"multi-project"` (split into multiple projects).
+
+## Project files
+
+### `project_request.md`
+
+Your original description of what to build, saved as plain Markdown.
+
+### `project_status.json`
+
+Tracks the full state of the specification workflow. Written atomically (temp file + rename) to prevent corruption:
+
+```json
+{
+  "version": "1.0.0",
+  "projectId": "001-user-authentication",
+  "currentAgent": "ux",
+  "currentPhase": "ux-design-brief-review",
+  "agents": {
+    "pm": {
+      "status": "complete",
+      "currentPhase": "prd-review",
+      "phases": {
+        "questions-generate": "complete",
+        "questions-answer": "complete",
+        "prd-generate": "complete",
+        "prd-review": "complete"
+      },
+      "startedAt": "2026-02-20T10:00:00Z",
+      "completedAt": "2026-02-20T10:25:00Z"
+    },
+    "ux": {
+      "status": "in-progress",
+      "currentPhase": "design-brief-review",
+      "phases": { }
+    },
+    "engineer": {
+      "status": "not-started",
+      "currentPhase": null,
+      "phases": { }
+    }
+  },
+  "settings": {
+    "question_depth": "standard",
+    "document_length": "standard"
+  },
+  "icon": {
+    "type": "emoji",
+    "value": "🔐"
+  },
+  "approvedDocuments": ["prd"],
+  "costTracking": {
+    "tier": "standard",
+    "totalInputTokens": 45000,
+    "cachedOutputTokens": 32000,
+    "outputCalculatedAt": "2026-02-20T10:25:00Z"
+  },
+  "history": [
+    {
+      "phase": "pm-questions-generate",
+      "startedAt": "2026-02-20T10:00:00Z",
+      "completedAt": "2026-02-20T10:02:00Z",
+      "status": "complete"
+    }
+  ],
+  "createdAt": "2026-02-20T10:00:00Z",
+  "lastUpdatedAt": "2026-02-20T10:30:00Z"
+}
+```
+
+**Phase status values:** `not-started` → `ai-working` → `awaiting-user` → `user-reviewing` → `complete`
+
+**Agent status values:** `not-started` → `in-progress` → `complete`
+
+## Question files
+
+All three question files (`pm_questions.json`, `ux_questions.json`, `engineer_questions.json`) follow the same format:
+
+```json
+{
+  "questions": [
+    {
+      "question": "What authentication methods should be supported?",
+      "options": [
+        "Google OAuth only",
+        "Google + email/password",
+        "Full SSO (Google, GitHub, Microsoft)"
+      ],
+      "answer": "Google OAuth only"
+    }
+  ],
+  "status": "answered",
+  "generated_at": "2026-02-20T10:02:00Z"
+}
+```
+
+After you answer, your selection is tracked as a `decision` with `rejected_alternatives` for context in downstream phases:
+
+```json
+{
+  "question": "What authentication methods should be supported?",
+  "decision": "Google OAuth only",
+  "rejected_alternatives": [
+    "Google + email/password",
+    "Full SSO (Google, GitHub, Microsoft)"
+  ]
+}
+```
+
+This gives later agents clear context on what you chose *and* what you explicitly decided against.
+
+## Specification documents
+
+### `prd.md`
+
+Markdown document generated by the PM agent. Sections:
+
+1. **Executive Summary** — Project name, problem statement, solution overview
+2. **Job Stories** — Requirements in "When [situation], I want [action], so [outcome]" format
+3. **Project Requirements** — Business and functional requirements
+4. **Functional Requirements** — Detailed system capabilities
+5. **NoGos** — What is *not* being built, with rationale. Includes strategic rejections from your question answers (the `rejected_alternatives`)
+
+### `acceptance_criteria.json`
+
+Testable acceptance criteria linked to job stories:
+
+```json
+{
+  "job_stories": [
+    {
+      "job_story_id": "JS-001",
+      "title": "Quick authentication",
+      "situation": "When I need to access the app quickly",
+      "motivation": "I want to sign in with Google",
+      "outcome": "So that I can start using the app immediately",
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "given": "Given I am on the login page",
+          "when": "When I click 'Sign in with Google'",
+          "then": "Then I am redirected to the Google consent screen"
+        },
+        {
+          "id": "AC-002",
+          "given": "Given I have granted Google permissions",
+          "when": "When Google redirects back",
+          "then": "Then I am signed in and see the dashboard"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### `design_brief.md`
+
+Markdown document from the UX agent. Covers design approach, user flows, screen descriptions, component reuse guidance, and responsive behavior.
+
+### `screens.json`
+
+Screen inventory with components and interactions:
+
+```json
+{
+  "screens": [
+    {
+      "id": "screen-001",
+      "name": "Login Screen",
+      "description": "User authentication entry point",
+      "components": [
+        {
+          "id": "component-001",
+          "name": "Google OAuth Button",
+          "type": "create",
+          "description": "Sign in with Google button with OAuth flow"
+        },
+        {
+          "id": "component-002",
+          "name": "AppHeader",
+          "type": "reuse",
+          "description": "Existing app header component"
+        }
+      ],
+      "interactions": [
+        "Click 'Sign in with Google' → redirect to consent",
+        "Successful auth → redirect to dashboard",
+        "Failed auth → show error message"
+      ]
+    }
+  ]
+}
+```
+
+Components are marked `"type": "reuse"` (use existing codebase component) or `"type": "create"` (build new). This tells the breakdown agent which components require implementation work.
+
+### `technical_specification.md`
+
+Markdown document from the Engineer agent. Covers architecture overview, system components, data models, API design, security considerations, deployment strategy, and monitoring.
+
+### `technology_choices.json`
+
+Technology decisions with options, trade-offs, and recommendations:
+
+```json
+{
+  "technology_decisions": [
+    {
+      "category": "Authentication Provider",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "NextAuth.js",
+          "description": "Full-featured authentication for Next.js",
+          "version": "5.0+",
+          "recommended": true,
+          "recommendation_reason": "Best integration with Next.js App Router",
+          "pros": ["Built-in Google provider", "Session management included"],
+          "cons": ["Tightly coupled to Next.js"],
+          "trade_offs": ["Less flexibility for non-Next.js backends"],
+          "maturity": "stable",
+          "implementation_complexity": "low",
+          "documentation_url": "https://authjs.dev",
+          "github_url": "https://github.com/nextauthjs/next-auth"
+        }
+      ]
+    }
+  ]
+}
+```
+
+In the Web UI, you review each decision category and select your preferred option. Maturity levels (`stable`, `emerging`, `beta`) and complexity (`low`, `medium`, `high`) are shown with color-coded indicators.
+
+## Issue files
+
+### `issues.json`
+
+The single source of truth for all implementation tasks:
+
+```json
+{
+  "project_name": "User Authentication",
+  "project_id": "001",
+  "total_estimated_hours": 24,
+  "total_issues": 4,
+  "generated_at": "2026-02-20T11:00:00Z",
+  "issues": [
+    {
+      "issue_id": "ENG-001",
+      "title": "User can sign in with Google",
+      "status": "pending",
+      "estimated_hours": 6,
+      "dependencies": [],
+      "description": "Complete Google OAuth sign-in flow",
+      "screens_affected": ["screen-001"],
+      "key_decisions": ["Using NextAuth.js with Google provider"],
+      "acceptance_criteria": [
+        {
+          "id": "ac_001",
+          "description": "Given user on login page, when clicks Google button, then redirects to consent"
+        }
+      ],
+      "technical_details": "Configure NextAuth with Google OAuth provider, create API route for callback",
+      "testing_strategy": {
+        "automated_tests": "Integration test for OAuth callback flow",
+        "manual_verification": "1. Visit localhost:3000/login\n2. Click 'Sign in with Google'\n3. Grant permissions\n4. Should redirect to dashboard"
+      },
+      "human_in_the_loop": [
+        "Verify OAuth flow works with real Google account",
+        "Check error handling for denied permissions",
+        "Verify session persists across page refreshes"
+      ]
+    }
+  ],
+  "definition_of_done": [
+    "Code complete and tested",
+    "Acceptance criteria verified",
+    "Human-in-the-loop verification passed"
+  ]
+}
+```
+
+**Issue statuses:** `pending` → `in-review` → `approved`
+
+Each issue is a [vertical slice](/docs/concepts/vertical-slices) — a complete, testable piece of user-facing functionality that spans all technical layers.
+
+### `linear_sync.json`
+
+Created when you push a project to Linear. Tracks the mapping between SpecWright and Linear:
+
+```json
+{
+  "syncedAt": "2026-02-20T12:00:00Z",
+  "linearProjectId": "proj-uuid",
+  "linearProjectUrl": "https://linear.app/team/project/...",
+  "linearTeamId": "team-uuid",
+  "linearTeamName": "Engineering",
+  "issueIdMap": {
+    "ENG-001": "LIN-123",
+    "ENG-002": "LIN-124"
+  },
+  "documentIdMap": {
+    "prd.md": "doc-uuid-1",
+    "design_brief.md": "doc-uuid-2",
+    "technical_specification.md": "doc-uuid-3"
+  },
+  "externalLinks": [
+    { "resource": "Screen Designs", "url": "http://localhost:5174/..." },
+    { "resource": "Technology Choices", "url": "http://localhost:5174/..." }
+  ]
+}
+```
 
 ## Version control
 
@@ -79,13 +423,22 @@ git commit -m "feat: add user authentication specification"
 
 This lets you review specs in pull requests, track changes over time, and maintain a clear history of what was specified before implementation began.
 
-import { Callout } from 'nextra/components'
-
 <Callout type="info">
 The `specwright/` directory is designed to live alongside your source code. Committing specs to your repo means the specification is always tied to the codebase it describes.
 </Callout>
+
+## Atomic writes
+
+SpecWright uses a temp file + rename pattern for all status and state files. This prevents corruption if the process is interrupted mid-write:
+
+1. Write to `project_status.json.tmp`
+2. Atomic rename to `project_status.json`
+3. Clean up temp file on error
+
+You should never see `.tmp` files — if you do, a write was interrupted and you can safely delete them.
 
 ## What's next?
 
 - [The Specification Workflow](/docs/workflow) — Understand how each file is generated
 - [CLI Commands](/docs/reference/cli) — Run the workflow from the command line
+- [Settings Reference](/docs/reference/settings) — All configuration options

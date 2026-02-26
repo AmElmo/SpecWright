@@ -1,6 +1,8 @@
 # CLI Commands
 
-SpecWright provides a command-line interface for running the specification workflow, managing projects, and launching the Web UI.
+SpecWright's command-line interface for creating specifications, managing issues, and launching the Web UI.
+
+import { Callout } from 'nextra/components'
 
 ## Installation
 
@@ -8,88 +10,179 @@ SpecWright provides a command-line interface for running the specification workf
 npm install -g specwright
 ```
 
-## Commands
+Requires Node.js 18+ and npm 9+.
 
-### `specwright`
+## Interactive menu
 
-Launches the interactive CLI menu. From here you can select any available action: scope new work, generate specifications, view projects, or launch the Web UI.
+Running `specwright` with no arguments shows the interactive menu:
 
-```bash
-specwright
 ```
+🚀 WHAT DO YOU WANT TO DO?
+
+✨  new       - Create new feature (design + tasks)
+🚀  ship      - Work on and ship tasks
+👁️   view     - Browse all projects and issues
+📜  playbook  - Manage project standards
+```
+
+Use arrow keys to select, Enter to confirm.
+
+If SpecWright is not initialized in the current directory, you'll see a welcome screen with options to launch the Web UI for onboarding, learn more, or exit.
+
+## Commands
 
 ### `specwright init`
 
-Initializes SpecWright in your project directory. Creates the `specwright/` folder with agent prompts, templates, and the outputs directory.
+Initialize SpecWright in your project. Creates the `specwright/` directory with:
+
+- `agents/` — AI agent system prompts (Product Manager, Designer, Engineer, Breakdown)
+- `templates/` — Specification templates for output files
+- `outputs/projects/` — Where generated specifications live
+- `outputs/issues/` — Issue output directory
+- `.cursor/commands/` — Custom Cursor commands (created at project root)
 
 ```bash
 cd /path/to/your/project
 specwright init
 ```
 
-Run this once per project. Safe to re-run — it restores any missing default files without overwriting existing outputs.
+After creating files, SpecWright asks if you want to generate a [Playbook](/docs/guides/playbooks) immediately.
+
+Safe to re-run — restores missing default files without overwriting existing outputs or customized agent prompts.
 
 ### `specwright new`
 
-Scope a new project or feature. Opens the Web UI where you describe what you want to build and the AI classifies it (see [Smart Scoping](/docs/workflow/scoping)).
+Create a new project or feature. Opens the Web UI at `/create-project` where you can:
+
+- **AI-assisted mode** — Describe what you want to build; the AI classifies it via [Smart Scoping](/docs/workflow/scoping) and generates the project request
+- **Manual mode** — Enter a project name and description directly
 
 ```bash
 specwright new
 ```
 
-### `specwright spec`
-
-Run the full specification workflow in the CLI. Guides you through all four phases interactively: PM → Designer → Engineer → Issue Breakdown.
-
-```bash
-specwright spec
-```
-
-### `specwright view`
-
-Launch the Web UI dashboard to browse projects, review specifications, and manage issues.
-
-```bash
-specwright view
-```
-
 ### `specwright ship`
 
-Ship an issue to your AI coding tool from the command line.
+Open the issues board in the Web UI. From here you can review issues, change statuses, and ship tasks to your AI coding tool.
 
 ```bash
 specwright ship
 ```
 
+### `specwright view`
+
+Open the Web UI dashboard to browse all projects, review specifications, and manage issues.
+
+```bash
+specwright view
+```
+
 ### `specwright playbook`
 
-Generate a Playbook from your codebase (see [Playbooks](/docs/guides/playbooks)).
+Open the Playbook manager in the Web UI. From there you can generate, view, update, or audit your project standards.
 
 ```bash
 specwright playbook
+specwright playbook --update   # Open with update mode
+specwright playbook --audit    # Open with audit mode
 ```
 
-## Options
+### `specwright approve`
 
-| Option | Description |
-|--------|-------------|
-| `--ui` | Launch the Web UI directly (shortcut for `specwright view`) |
-| `--version` | Display the installed version |
-| `--help` | Show help information |
+Approve completed issues from the command line. Three modes:
+
+**Interactive (no arguments)** — Multi-select from all in-review issues:
+
+```bash
+specwright approve
+```
+
+Shows all in-review issues across all projects. Use Space to select, Enter to confirm.
+
+**Specific issues** — Approve one or more issues by ID:
+
+```bash
+specwright approve ENG-001
+specwright approve ENG-001 ENG-002 ENG-003
+```
+
+Validates that each issue exists and is in "in-review" status before approving.
+
+**All at once** — Approve every in-review issue:
+
+```bash
+specwright approve --all
+```
+
+Lists all in-review issues grouped by project and asks for confirmation (defaults to "no" for safety).
+
+### `specwright finalize-scope`
+
+Create project folders from a scoping plan. Used after an AI tool generates `outputs/scoping_plan.json`:
+
+```bash
+specwright finalize-scope
+```
+
+If the scoping plan is a "project" type, prompts you for:
+
+- **Question depth** — light (3-5 questions per agent), standard (5-8), or thorough (8-12)
+- **Document length** — brief (600-900 words), standard (1,500-2,100), or comprehensive (3,600-4,500)
+
+These settings control how many questions each AI agent asks and how detailed the generated documents are. See [Settings Reference](/docs/reference/settings) for details.
+
+### `specwright break`
+
+Open the specification page for issue breakdown. If you have one project, opens it directly. If multiple, opens the dashboard.
+
+```bash
+specwright break
+```
+
+<Callout type="info">
+This command is a shortcut to the Issue Breakdown phase. The full specification workflow happens in the Web UI.
+</Callout>
+
+### `specwright spec`
+
+Legacy command — opens the specification page for a project. Use `specwright new` for new projects or `specwright view` for existing ones.
+
+```bash
+specwright spec           # Opens dashboard
+specwright spec PROJECT-1 # Opens specific project
+```
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `--version`, `-v` | Print the installed version and exit |
+| `--help`, `-h` | Show usage information |
+| `--trace`, `-t` | Enable function-level tracing (entry/exit logs for every function call). Works with any command. |
+
+The `--trace` flag provides extremely detailed output showing every function call. Useful for debugging SpecWright itself, not for normal usage.
 
 ## Environment variables
 
-| Variable | Description |
-|----------|-------------|
-| `SPECWRIGHT_DEBUG` | Set to `true` to enable debug logging |
-| `SPECWRIGHT_TRACE` | Set to `true` to enable verbose trace-level logging |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SPECWRIGHT_DEBUG` | `false` | Enable debug-level logging. When `false`, only `logger.print()` output is visible. When `true`, all log levels (`debug`, `info`, `warn`, `error`, `success`) are shown. |
+| `SPECWRIGHT_TRACE` | `false` | Enable function call tracing. Same as the `--trace` flag. Shows entry/exit for all function calls with a magenta banner. |
+
+## Web server behavior
+
+Most commands (`new`, `ship`, `view`, `playbook`, `break`, `spec`) launch a web server on **port 5174** and open your browser. The server:
+
+- Checks if a server is already running on the port (via `/api/projects` health check)
+- Reuses an existing server if found — multiple commands can share the same server
+- Stays alive until you press Ctrl+C
+- Opens the browser to the appropriate page for the command
 
 ## Development mode
 
-When working on SpecWright itself, use the dev command:
+The `specwright-dev` binary runs with `SPECWRIGHT_DEBUG=true` enabled by default, pointing to the local development build:
 
 ```bash
-specwright-dev [options]
+specwright-dev new
+specwright-dev --trace ship
 ```
-
-This runs with debug logging enabled and points to the local development build.

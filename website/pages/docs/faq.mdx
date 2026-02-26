@@ -8,15 +8,15 @@ No. SpecWright works with whatever AI coding tool you already have installed —
 
 **What AI coding tools does SpecWright support?**
 
-SpecWright works with Cursor, Claude Code, GitHub Copilot, Codex, Gemini CLI, and Windsurf. You select your preferred tool during onboarding, and can change it anytime in Settings.
+SpecWright works with Cursor, Claude Code, GitHub Copilot, Codex, Gemini CLI, and Windsurf. Cursor, Claude Code, Codex, and Gemini support headless execution (direct CLI integration with real-time streaming). GitHub Copilot and Windsurf use keyboard automation. You select your preferred tool during onboarding, and can change it anytime in [Settings](/docs/reference/settings).
 
 **Can I use SpecWright without the Web UI?**
 
-Yes. SpecWright has both a CLI and a Web UI. The CLI can run the full specification workflow interactively in your terminal with `specwright spec`. The Web UI provides a visual dashboard with `specwright --ui`. Both produce the same output files.
+Yes. SpecWright has both a CLI and a Web UI. Most commands (like `specwright new`, `specwright ship`, `specwright view`) launch the Web UI for the visual workflow, but `specwright approve` works entirely in the terminal. The `specwright init` and `specwright finalize-scope` commands are also CLI-only. See [CLI Commands](/docs/reference/cli) for all available commands.
 
 **What does "Specification-Driven Development" mean?**
 
-SDD is a methodology where you create a structured specification before writing any code. Instead of jumping straight from an idea to implementation, SpecWright walks you through requirements, design, architecture, and task breakdown — so you (and your AI coding tool) know exactly what to build.
+SDD is a methodology where you create a structured specification before writing any code. Instead of jumping straight from an idea to implementation, SpecWright walks you through requirements, design, architecture, and task breakdown — so you (and your AI coding tool) know exactly what to build. See [Specification-Driven Development](/docs/concepts/specification-driven-development) for the full explanation.
 
 ## The Workflow
 

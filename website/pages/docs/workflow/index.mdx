@@ -20,13 +20,13 @@ Each phase builds on the previous one. The Product Manager's PRD informs the Des
 
 Every phase (except Scoping) follows the same pattern:
 
-1. **Questions** — The AI agent generates a set of focused questions about your project. These aren't generic questions — they're tailored based on your project description and outputs from previous phases.
-2. **Your answers** — You answer each question. The AI provides suggested answer options, but you can write your own response.
-3. **Generation** — The agent takes your answers and generates structured specification documents.
-4. **Review** — You review the output in the Web UI or in the generated files. You can refine or regenerate if needed.
+1. **Questions** — The AI agent generates focused questions tailored to your project. Each agent references your project description, your existing codebase, and outputs from previous phases to avoid generic or duplicate questions. The number of questions depends on your [question depth](/docs/reference/settings) setting (light: 2-3, standard: 3-4, thorough: 4-6 per agent).
+2. **Your answers** — You answer each question. The AI provides 2-3 suggested options, but you can write your own response. Your selection is recorded alongside the alternatives you rejected — both feed into the specification.
+3. **Generation** — The agent generates structured specification documents, with real-time streaming progress visible in the Web UI.
+4. **Review** — You review the output and can: approve (move to next phase), edit inline (Ctrl+Enter to save), or refine with AI (provide feedback text and reference images).
 
 <Callout type="info">
-The question-and-answer approach ensures that specifications are grounded in your actual requirements — not generic templates. The AI asks what it needs to know, and you provide the context only you have.
+The question-and-answer approach ensures that specifications are grounded in your actual requirements — not generic templates. Each agent also analyzes your codebase, so questions and outputs reflect what you already have, not assumptions.
 </Callout>
 
 ## What you get at the end

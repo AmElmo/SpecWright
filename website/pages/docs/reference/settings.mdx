@@ -1,0 +1,100 @@
+# Settings Reference
+
+All configuration options available in SpecWright, accessible from the Settings page in the Web UI or stored in `specwright/outputs/settings.json`.
+
+import { Callout } from 'nextra/components'
+
+## AI tool selection
+
+Choose which AI coding tool receives your issues when you click "Ship." This affects how prompts are delivered and which execution method is used.
+
+| Tool | Type | Headless support |
+|------|------|-----------------|
+| **Cursor** | Standalone IDE | Yes — runs prompts via CLI without manual paste |
+| **Claude Code** | CLI / VS Code extension | Yes — headless CLI execution with session resumption |
+| **Codex CLI** | Headless CLI | Yes — CLI-only, no IDE window |
+| **Gemini CLI** | Headless CLI | Yes — CLI-only, no IDE window |
+| **GitHub Copilot** | VS Code extension | No — uses keyboard automation (opens chat, pastes prompt) |
+| **Windsurf** | Standalone IDE | No — uses keyboard automation |
+
+**Headless mode** means SpecWright runs the AI tool's CLI directly, streams progress in real time, and captures results automatically. This is faster and more reliable than keyboard automation.
+
+**Keyboard automation** is the fallback for tools without headless support. SpecWright copies the prompt to your clipboard, activates the tool's window, opens a new chat, and pastes. You may need the tool already running.
+
+Set during onboarding or change anytime in Settings.
+
+## Project settings
+
+These settings are configured per-project, either during `specwright finalize-scope` or in the project settings panel.
+
+### Question depth
+
+Controls how many questions each AI agent asks during the specification workflow.
+
+| Level | Questions per agent | Total across 3 agents | Best for |
+|-------|--------------------|-----------------------|----------|
+| **Light** | 2-3 | 5-8 | Small features, quick specs |
+| **Standard** | 3-4 | 8-12 | Most projects (default) |
+| **Thorough** | 4-6 | 12-18 | Complex features, high-stakes projects |
+
+More questions mean more context for the AI agents, which produces more detailed and accurate specifications. But it also means more time answering.
+
+### Document length
+
+Controls the target word count for generated specification documents (PRD, design brief, technical spec).
+
+| Level | Word count | Reading time | Best for |
+|-------|-----------|-------------|----------|
+| **Brief** | 600-900 words | 3-5 min | Simple features, lightweight specs |
+| **Standard** | 1,500-2,100 words | 7-10 min | Most projects (default) |
+| **Comprehensive** | 3,600-4,500 words | 15-20 min | Complex systems, detailed architecture |
+
+### Project icon
+
+Each project can have an emoji icon displayed on the dashboard and in project views. Set from the project detail page.
+
+## Git workflow
+
+Configure how SpecWright handles git branching when shipping issues to AI tools. The shipped prompt includes git instructions based on your selection.
+
+| Strategy | Behavior |
+|----------|----------|
+| **None** | No git instructions in shipped prompts |
+| **Branch per issue** | Prompt instructs the AI tool to create a branch for each issue (e.g., `feat/ENG-001-google-signin`) |
+| **Branch per project** | Prompt instructs the AI tool to use one branch for the entire project |
+
+## Cost estimation
+
+SpecWright tracks token usage per project to estimate AI generation costs. Token counts are computed using the `gpt-3-encoder` tokenizer.
+
+**Input tokens** are counted when prompts are generated. **Output tokens** are calculated by scanning all generated files (questions, documents, issues) and cached with file modification time checking — recalculated automatically when files change.
+
+| Tier | Description |
+|------|-------------|
+| **Budget** | Budget models (e.g., Claude Haiku) |
+| **Standard** | Standard models (e.g., Claude Sonnet) |
+| **Premium** | Premium models (e.g., Claude Opus) |
+
+Cost estimates appear in the project sidebar during the specification workflow.
+
+## Linear integration
+
+Connect SpecWright to your Linear workspace to sync projects and issues. See the full setup guide at [Linear Integration](/docs/guides/linear-integration).
+
+| Setting | Description |
+|---------|-------------|
+| **API key** | Your Linear personal API key. Stored in `settings.json`. |
+| **Default team** | The Linear team to sync projects and issues to. |
+
+## Where settings are stored
+
+- **Global settings** (AI tool, git, cost, Linear): `specwright/outputs/settings.json`
+- **Project settings** (question depth, document length, icon): `specwright/outputs/projects/{projectId}/project_status.json` → `settings` field
+
+Settings files are written atomically to prevent corruption.
+
+## What's next?
+
+- [CLI Commands](/docs/reference/cli) — Command-line options and flags
+- [Output Files](/docs/reference/output-files) — Full file format reference
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — How AI tool selection affects shipping

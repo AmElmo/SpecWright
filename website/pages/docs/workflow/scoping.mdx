@@ -1,45 +1,62 @@
 # Smart Scoping
 
-Not everything needs a full specification. Before generating any documents, SpecWright analyzes your request to determine the right level of effort.
+Before generating a full specification, SpecWright analyzes your request to determine the right level of effort. Not every piece of work needs a spec — sometimes you should just start coding.
 
-## How it works
+import { Callout } from 'nextra/components'
 
-When you describe what you want to build, the AI Scoping agent classifies your request into one of three categories:
+## How scoping works
 
-| Classification | What it means | Example |
-|---------------|---------------|---------|
-| **Work Directly** | Too small for a spec — just implement it | "Fix the login button color" |
-| **Project** | Needs a full specification | "Add Google Sign-in to the app" |
-| **Multi-Project** | Large enough to split into multiple projects | "Build a complete e-commerce platform" |
+When you create a new project (via `specwright new` or the Web UI), you describe what you want to build in plain language. SpecWright's AI classifier reads your description and places it into one of three categories:
 
-## Work Directly
+### Work Directly
 
-If your request is a small change — a bug fix, a UI tweak, a minor feature — SpecWright tells you to skip the spec and start coding. This prevents over-engineering simple tasks.
+The request is small enough to implement without a specification. Bug fixes, config changes, single-component tweaks, copy updates.
 
-Examples of "Work Directly" requests:
-- "Change the validation message on the login form"
-- "Add a loading spinner to the dashboard"
-- "Fix the broken link in the footer"
+**Examples:**
+- "Fix the login button color to match the design system"
+- "Add a loading spinner to the search results page"
+- "Update the footer copyright year"
 
-## Project
+**What happens:** SpecWright tells you to skip the spec and just start coding. If you're using a headless AI tool, it can generate a prompt to implement the change directly.
 
-If your request involves meaningful new functionality, SpecWright creates a project and guides you through the four specification phases (PM → Designer → Engineer → Breakdown).
+### Project
 
-Examples of "Project" requests:
-- "Build user authentication with OAuth"
-- "Create a real-time notification system"
-- "Add a video upload feature with processing"
+The request needs a full specification. It involves multiple screens, an API, data storage, or touches enough of the system that you'd regret winging it.
 
-## Multi-Project
+**Examples:**
+- "Add Google Sign-in with session management"
+- "Build a task management board with drag-and-drop"
+- "Create an admin dashboard for managing users"
 
-If your request is large and spans multiple distinct capabilities, SpecWright breaks it into separate projects. Each project gets its own specification flow, but they're organized together as related work.
+**What happens:** SpecWright creates a project folder and starts the specification workflow — [PM](/docs/workflow/product-manager) → [Designer](/docs/workflow/designer) → [Engineer](/docs/workflow/engineer) → [Issue Breakdown](/docs/workflow/issue-breakdown).
 
-For example, "Build a project management tool" might be split into:
-- **Project 1:** User authentication and team management
-- **Project 2:** Project boards with drag-and-drop
-- **Project 3:** Real-time collaboration
+### Multi-Project
 
-Each project is then specced independently through the full workflow.
+The request is large enough to split into multiple independent projects, each getting its own full spec.
+
+**Examples:**
+- "Build an e-commerce platform with product catalog, shopping cart, checkout, and order management"
+- "Create a SaaS application with authentication, billing, team management, and a dashboard"
+
+**What happens:** SpecWright splits the work into separate projects (e.g., "Product Catalog", "Shopping Cart", "Checkout"), each running its own specification workflow independently.
+
+## Creation modes
+
+The Web UI offers two ways to create a project:
+
+**AI-assisted mode (default)** — Describe what you want to build, and the AI classifier determines the scope. If it's a project, SpecWright generates the project request automatically and starts the specification workflow.
+
+**Manual mode** — Enter a project name and description directly. Skips the scoping classification and creates a project immediately. Useful when you already know the scope.
+
+## Project settings at scoping time
+
+When a request is classified as a project, you configure two settings that affect the entire specification workflow:
+
+- **Question depth** — How many questions each agent asks: light (2-3), standard (3-4), or thorough (4-6). See [Settings Reference](/docs/reference/settings).
+- **Document length** — Target word count for generated documents: brief (600-900), standard (1,500-2,100), or comprehensive (3,600-4,500).
+
+These can also be set from the CLI via `specwright finalize-scope`.
+
 ## What's next?
 
 Once scoping is complete:

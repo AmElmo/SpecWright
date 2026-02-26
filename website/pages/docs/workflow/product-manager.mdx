@@ -1,49 +1,116 @@
 # Product Manager Phase
 
-The PM phase defines **what** to build. The AI Product Manager agent asks you strategic questions about your project, then generates a Product Requirements Document (PRD) with job stories and acceptance criteria.
+The PM agent gathers your requirements and produces a Product Requirements Document (PRD) with job stories and acceptance criteria. This is the foundation that all subsequent phases build on.
 
-## What the PM agent asks
+import { Callout } from 'nextra/components'
 
-The PM agent generates 5–8 focused questions tailored to your project. These typically cover:
+## What the PM agent does
 
-- **Purpose and context** — What problem does this solve? Who is it for?
-- **Users and scope** — Who are the primary users? What's in scope vs. out of scope?
-- **Key requirements** — What must the feature do? What are the core behaviors?
-- **Business logic** — What rules govern the feature? What edge cases matter?
-- **Data and integrations** — What data does it need? Does it connect to external systems?
-- **Constraints** — Are there performance, security, or compatibility requirements?
+The PM agent acts as a senior Product Manager. It follows a discovery framework:
 
-For each question, the AI suggests answer options based on common patterns. You can pick a suggested answer or write your own.
-## What you get
+1. **Examine context** — Analyzes your project description and (if available) your existing codebase to understand the starting point
+2. **Ask strategic questions** — Generates focused questions based on what it needs to know
+3. **Synthesize your answers** — Identifies patterns, priorities, and gaps in your responses
+4. **Define requirements** — Produces a structured PRD
+5. **Create job stories** — Writes user-centered scenarios with testable acceptance criteria
+6. **Document NoGos** — Explicitly records what is *not* being built
 
-After you answer the questions, the PM agent generates:
+## The questions
 
-### PRD (Product Requirements Document)
+The PM agent generates questions covering six categories:
 
-A structured Markdown document containing:
-- **Problem statement** — What problem this project solves
-- **Solution overview** — High-level approach
-- **Job stories** — Requirements in "When [situation], I want to [action], so I can [outcome]" format
-- **Core functionality** — The must-have features
-- **Secondary functionality** — Nice-to-have features
-- **NoGos** — What is explicitly **not** being built (prevents scope creep)
+- **Purpose & Context** — Why is this needed? What problem does it solve?
+- **Users & Scope** — Who will use this? How many users? What segments?
+- **Key Requirements** — What are the most important functional requirements?
+- **Business Logic** — What are the core rules and workflows?
+- **Data & Integration** — What data is involved? What systems does it connect to?
+- **Constraints** — Business timelines, technical limitations, user accessibility needs?
 
-### Acceptance criteria
+The number of questions depends on your [question depth](/docs/reference/settings) setting:
 
-Testable criteria in "Given / When / Then" format:
+| Depth | Questions |
+|-------|-----------|
+| Light | 2-3 |
+| Standard | 3-4 |
+| Thorough | 4-6 |
 
-> **Given** a user is on the login page
-> **When** they enter valid credentials and click "Sign In"
-> **Then** they are redirected to the dashboard and see a welcome message
+Each question comes with 2-3 suggested answer options. You can pick one or write your own response.
 
-![Acceptance criteria view in SpecWright](/screenshots/acceptance_criteria.png)
+### How your answers are tracked
 
-## Why it matters
+When you answer a question, SpecWright records not just your choice but also what you decided against:
 
-The PRD is the foundation for every subsequent phase. The Designer uses it to know what screens to design. The Engineer uses it to make architecture decisions. The Issue Breakdown uses it to define what "done" looks like for each task.
+```json
+{
+  "question": "What authentication methods should be supported?",
+  "decision": "Google OAuth only",
+  "rejected_alternatives": [
+    "Google + email/password",
+    "Full SSO (Google, GitHub, Microsoft)"
+  ]
+}
+```
 
-Without a clear PRD, specifications drift, scope creeps, and AI coding tools generate code that doesn't match what you actually need.
+This matters because downstream phases and the PRD's NoGos section use your rejected alternatives to document scope exclusions. If you chose "Google OAuth only," the PRD will explicitly note that email/password and multi-provider SSO were considered and rejected.
+
+## Outputs
+
+### PRD (`prd.md`)
+
+A Markdown document with these sections:
+
+1. **Executive Summary** — Project name, problem statement, solution overview
+2. **Job Stories** — Requirements in the format: "When [situation], I want [action], so [outcome]." Job stories focus on context and motivation rather than user roles, producing more specific requirements than traditional user stories.
+3. **Project Requirements** — Business and functional requirements derived from your answers
+4. **Functional Requirements** — Detailed system capabilities and behaviors
+5. **NoGos** — What is *not* being built and why. Includes:
+   - Strategic rejections (options you explicitly decided against in your answers)
+   - Scope exclusions (features users might expect but won't get)
+   - Future considerations (deferred capabilities)
+
+The document length depends on your [document length](/docs/reference/settings) setting (brief: 600-900 words, standard: 1,500-2,100, comprehensive: 3,600-4,500).
+
+### Acceptance criteria (`acceptance_criteria.json`)
+
+Testable criteria linked to each job story, in Given/When/Then format:
+
+```json
+{
+  "job_stories": [
+    {
+      "job_story_id": "JS-001",
+      "title": "Quick authentication",
+      "situation": "When I need to access the app quickly",
+      "motivation": "I want to sign in with Google",
+      "outcome": "So that I can start using the app immediately",
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "given": "Given I am on the login page",
+          "when": "When I click 'Sign in with Google'",
+          "then": "Then I am redirected to the Google consent screen"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Every requirement is traceable to a business or user need. Every job story has comprehensive acceptance criteria. Edge cases and error scenarios are covered.
+
+## Review and refinement
+
+After generation, you review the PRD in the Web UI. You can:
+
+- **Approve** — Mark the document as complete and move to the Designer phase
+- **Edit inline** — Modify the Markdown directly in the browser (Ctrl+Enter to save)
+- **Refine with AI** — Provide text feedback (and optionally upload reference images) to have the AI revise specific parts
+
+<Callout type="info">
+You can also edit the generated files directly in your editor. All outputs are plain Markdown and JSON at `specwright/outputs/projects/{projectId}/documents/`. The Web UI reflects changes on the next page load.
+</Callout>
 
 ## What's next?
 
-- [Designer Phase](/docs/workflow/designer) — UX specifications and screen designs
+- [Designer Phase](/docs/workflow/designer) — UX specifications built from the PRD
+- [Output Files](/docs/reference/output-files) — Full file format reference for PRD and acceptance criteria

@@ -1,76 +1,170 @@
 # Using the Web UI
 
-SpecWright includes a built-in web dashboard for managing projects, reviewing specifications, and shipping issues to AI coding tools. This guide walks you through the main screens.
+SpecWright's web dashboard is where you create projects, walk through the specification workflow, review documents, manage issues, and ship to AI tools. This guide covers every screen.
+
+import { Callout } from 'nextra/components'
 
 ## Launching the Web UI
 
 ```bash
-specwright --ui
+specwright view    # Opens dashboard
+specwright new     # Opens project creation
+specwright ship    # Opens issues board
 ```
 
-This starts the SpecWright server and opens the dashboard in your browser at `http://localhost:1337`.
+The server runs on **port 5174**. If it's already running from another command, SpecWright reuses the existing server.
 
-import { Callout } from 'nextra/components'
+## Dashboard
 
-<Callout type="info">
-You can also access the Web UI by running `specwright view` or selecting **View** from the CLI menu.
-</Callout>
+The dashboard shows all your projects with their status and progress.
 
-## The dashboard
+**Sidebar** (resizable — drag the right edge):
+- SpecWright logo and repository name
+- "New Project" button
+- Navigation: Projects, Issues, Playbook
+- Settings (bottom)
 
-The dashboard is your home screen. It shows all your projects with their current status — which phases are complete, how many issues have been generated, and what's ready to ship.
+Sidebar width is saved in your browser and persists across sessions.
 
-![Project dashboard showing all projects and their status](/screenshots/project_page.png)
+**Project list:**
+- Responsive grid of project cards
+- Each card shows: project name, description, phase progress, issue count
+- Status filter dropdown at the top: All Projects, Backlog, PM Complete, UX in Progress, Engineer in Progress, Ready to Break, Ready to Ship, Implementing, Completed
+- Click any project to open its detail view
 
-Each project card shows:
-- **Project name** and a short description
-- **Phase progress** — Which specification phases have been completed
-- **Issue count** — How many implementation tasks have been generated
+**Empty state:** Shows "No projects yet" with buttons to create a project or generate an example project. The example project loads demo fixtures so you can explore the UI.
 
-Click a project to open its detail view.
+## Create project
 
-## Project detail view
+Two modes for starting a new project:
 
-Inside a project, you can navigate between the different specification outputs:
+**AI-assisted mode (default)** — Describe what you want to build in the text area. The AI classifier determines the scope ([Smart Scoping](/docs/workflow/scoping)), generates the project request, and starts the specification workflow.
 
-- **Overview** — Project description and scoping result
-- **PRD** — The Product Requirements Document with job stories
-- **Screens** — Screen inventory and wireframe definitions
-- **Tech Spec** — Architecture document and technology choices
-- **Issues** — All implementation tasks with their status
+**Manual mode** — Enter a project name and description directly. Creates the project without scoping and drops you into the dashboard.
 
-Each section shows the generated Markdown or structured data rendered in a readable format. You can review, refine, and regenerate any section.
+## Specification workflow
 
-## Answering questions
+The specification page guides you through three agent phases: PM → Designer → Engineer.
 
-During the specification workflow, each phase presents you with a set of AI-generated questions. The question form shows:
+Each phase follows the same pattern:
 
-- The question text
-- Suggested answer options (click to select)
-- A text field for custom answers
-You work through each question, providing the context the AI needs to generate your specification documents.
+1. **Question answering** — The AI agent generates focused questions. For each question, you see the question text, suggested answer options (click to select), and a text field for custom answers.
 
-## The issues board
+2. **Document generation** — After answering, the AI generates specification documents. A streaming progress log shows real-time updates during generation.
 
-Once all phases are complete and issues are generated, the issues board shows every implementation task:
+3. **Document review** — You review the generated output with three options:
+   - **Approve** — Mark the document as complete and move to the next phase
+   - **Edit inline** — Click the edit button to modify Markdown directly in the browser. Ctrl+Enter saves, Esc cancels.
+   - **Refine with AI** — Open the refinement panel where you can type feedback and optionally upload up to 5 reference images (mockups, screenshots, design inspiration). The AI revises the document based on your feedback, with streaming progress.
 
-![Issues board with implementation tasks](/screenshots/issues_page.png)
+The left sidebar shows all documents for the project: Request, PRD, Design Brief, Screens, Tech Spec, Technology Choices, Acceptance Criteria. Completion indicators show which documents are approved.
 
-From here you can:
-- Review individual issues and their acceptance criteria
-- Ship issues directly to your AI coding tool (see [Ship to AI Tools](/docs/guides/ship-to-ai-tools))
-- Track which issues have been implemented
+**Technology choices** have a special review flow — instead of editing Markdown, you review each decision category in a tab-based interface, select your preferred option per category, and approve once all selections are made.
+
+A cost estimate widget in the sidebar shows estimated token usage and hours.
+
+## Issue breakdown
+
+After all three agent phases are complete, you trigger issue breakdown. Choose a detail level:
+
+- **One-shot** — Fewer, larger issues
+- **Few** — Basic breakdown
+- **Moderate** — Recommended for most projects
+- **Detailed** — Many smaller issues
+
+During generation, a streaming log shows progress in real time. After generation, a preview shows all issues with titles, statuses, and estimated hours. Click "Confirm Issues" to finalize.
+
+## Project detail
+
+The project detail page is the main workspace for a project after specification is complete.
+
+**Routes:**
+- `/project/:id/issues` — Issues board (default view)
+- `/project/:id/docs` — Document browser
+- `/project/:id/docs/:docType` — Specific document (PRD, Design Brief, Tech Spec, etc.)
+
+**Issues view** — A Kanban board with four columns: Blocked, Ready, In Review, Completed. Drag-and-drop issues between columns to change status. Click any issue to open its detail modal. Search and filter are available.
+
+**Documents view** — Tabs for each document type. Markdown documents render with a reading time estimate. Screens render as visual wireframes. Technology choices render in the selection interface.
+
+## Issues board
+
+The global issues board (`/issues`) shows issues across all projects.
+
+- **Project filter** — Dropdown to filter by project or show all
+- **View toggle** — Switch between Board (Kanban) and List (table) views
+- **Board view** — Four columns (Blocked, Ready, In Review, Completed) with drag-and-drop
+- **List view** — Table with sortable columns
+
+Each issue card shows: title, estimated hours, status badge, dependency count.
+
+## Issue modal
+
+Click any issue to open a detail modal with:
+
+- Issue ID and title
+- Project name badge
+- Status dropdown (change status directly)
+- Description
+- Acceptance criteria (editable list)
+- Technical details and key decisions
+- Testing strategy (automated + manual verification steps)
+- Dependencies (if any)
+- Screens affected
+- **Ship** button — Send this issue to your AI tool (opens the Ship Modal)
+
+## Ship modal
+
+When you click "Ship," a modal opens that:
+
+1. Generates the full implementation prompt
+2. Sends it to your selected AI tool (or copies to clipboard)
+3. Shows streaming progress logs with status indicators
+4. Displays success/failure state
+
+You can override the AI tool for a single ship action via a dropdown.
+
+For tools with headless support (Cursor, Claude Code, Codex, Gemini), the prompt runs directly via CLI with real-time streaming. For others (Windsurf, GitHub Copilot), SpecWright uses keyboard automation.
 
 ## Settings
 
-Access Settings from the sidebar to configure:
+The Settings page has these sections:
 
-- **AI Tool** — Choose your preferred AI coding tool (Cursor, Claude Code, GitHub Copilot, etc.)
-- **Linear Integration** — Connect to your Linear workspace
-- **Git Strategy** — Configure branch creation for issues
-- **Agent Customization** — Adjust AI agent behavior
+- **AI Tool** — Select your preferred tool. Shows headless availability status for each tool.
+- **Git Workflow** — Choose branch strategy: none, branch per issue, or branch per project.
+- **Cost Estimation** — Enable/disable cost tracking and select the model tier (budget, standard, premium).
+- **Linear** — Connect your Linear workspace with an API key and select a default team.
+
+See [Settings Reference](/docs/reference/settings) for full details on each option.
+
+## Playbook
+
+The Playbook page lets you manage project standards:
+
+- **Generate** — Analyze your codebase and produce a `PLAYBOOK.md`
+- **View** — Read the current playbook (rendered Markdown with version info)
+- **Update** — Regenerate the playbook to sync with codebase changes
+- **Audit** — Check specifications for consistency with playbook standards
+- **Edit** — Modify the playbook Markdown inline
+
+## Onboarding
+
+First-time users see an onboarding wizard with steps:
+
+1. **Tool selection** — Pick your AI coding tool
+2. **Projects & Issues** — Quick intro to the workflow
+3. **AI Squad** — Meet the three agents
+4. **Magic** — How specs are generated
+5. **Initialize** — Complete setup
+
+Progress dots at the top let you navigate between steps. After completion, you're redirected to a success screen.
+
+## Real-time updates
+
+The Web UI uses WebSocket connections for live updates. When an AI agent is generating documents or when files change, the UI updates automatically — no manual refresh needed. Active generation indicators appear in the header when any AI process is running.
 
 ## What's next?
 
-- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues to your AI coding tool
-- [The Specification Workflow](/docs/workflow) — Understand each phase in detail
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — How shipping works in detail
+- [The Specification Workflow](/docs/workflow) — Understand each phase
+- [Settings Reference](/docs/reference/settings) — All configuration options

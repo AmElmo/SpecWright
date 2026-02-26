@@ -1,37 +1,6 @@
 # Customizing AI Agents
 
-SpecWright's AI agents (Product Manager, Designer, Engineer) are driven by prompt templates stored in your project's `specwright/agents/` directory. You can customize these prompts to change how the agents ask questions and generate specifications.
-
-## Agent prompt structure
-
-Each agent has several prompt files:
-
-```
-specwright/agents/
-├── product_manager/
-│   ├── system_prompt.md         # Agent identity and role
-│   ├── questioning_prompt.md    # How to generate questions
-│   └── analysis_prompt.md       # How to generate the PRD
-├── ux_designer/
-│   ├── system_prompt.md
-│   ├── questioning_prompt.md
-│   └── analysis_prompt.md
-├── engineer/
-│   ├── system_prompt.md
-│   ├── questioning_prompt.md
-│   ├── choice_selection_prompt.md  # Technology selection logic
-│   └── analysis_prompt.md
-└── breakdown/
-    ├── system_prompt.md
-    └── issue_breakdown_prompt.md
-```
-
-## What you can customize
-
-- **System prompts** — Change the agent's persona, expertise areas, or focus
-- **Questioning prompts** — Adjust what kinds of questions the agent asks
-- **Analysis prompts** — Modify how the agent generates specification documents
-- **Templates** — Edit output templates in `specwright/templates/` to change document structure
+SpecWright's AI agents are driven by prompt templates stored in your project's `specwright/agents/` directory. You can customize these prompts to change how agents ask questions, generate documents, and structure their output.
 
 import { Callout } from 'nextra/components'
 
@@ -39,21 +8,93 @@ import { Callout } from 'nextra/components'
 Editing agent prompts is advanced customization. The default prompts work well for most projects. Only modify them if you have specific requirements the defaults don't cover.
 </Callout>
 
+## Agent prompt structure
+
+Each agent has specialized prompt files that control different behaviors:
+
+```
+specwright/agents/
+├── product_manager/
+│   ├── system_prompt.md         # Agent persona and role definition
+│   ├── questioning_prompt.md    # How to generate strategic questions
+│   └── analysis_prompt.md       # How to generate the PRD and acceptance criteria
+├── ux_designer/
+│   ├── system_prompt.md         # Designer persona and design principles
+│   ├── questioning_prompt.md    # How to generate UX-focused questions
+│   └── analysis_prompt.md       # How to generate design brief and screens.json
+├── engineer/
+│   ├── system_prompt.md         # Engineer persona and architecture expertise
+│   ├── questioning_prompt.md    # How to generate constraint questions
+│   ├── choice_selection_prompt.md  # Technology evaluation and selection logic
+│   └── analysis_prompt.md       # How to generate tech spec and technology_choices.json
+└── breakdown/
+    ├── system_prompt.md         # Tech Lead persona and vertical slicing principles
+    └── issue_breakdown_prompt.md # How to create implementation tasks
+```
+
+### What each prompt type does
+
+**System prompts** define the agent's identity — its role, expertise, years of experience, and core principles. The PM agent defaults to a "Senior Product Manager with 10+ years experience." The Engineer defaults to "15+ years." These shape the agent's perspective on everything it generates.
+
+**Questioning prompts** control how questions are generated. They specify what categories to cover, how many questions to ask, and how to structure answer options. They also tell the agent to reference previous phase outputs to avoid duplicate questions.
+
+**Analysis prompts** control document generation. They define what sections to include, output format (Markdown vs JSON), quality standards, and length constraints. They also specify what context to read (project request, answered questions, previous documents).
+
+**Templates** in `specwright/templates/` define the JSON structure for output files like `issues.json`, `screens.json`, and `technology_choices.json`. The AI pre-creates these templates, then fills them in.
+
+## What you can customize
+
+### Agent personas
+
+Change who the agent pretends to be. For example, making the PM agent focus on B2B enterprise software:
+
+```markdown
+# In product_manager/system_prompt.md
+You are a Senior Enterprise Product Manager specializing in B2B SaaS platforms
+with expertise in compliance, security, and multi-tenant architectures...
+```
+
+### Question focus
+
+Adjust what kinds of questions each agent asks. For a healthcare project, you might add compliance-focused question categories to the PM's questioning prompt.
+
+### Output structure
+
+Modify analysis prompts to change what sections appear in generated documents. Add sections, remove irrelevant ones, or change the expected format.
+
+### Breakdown behavior
+
+The breakdown agent's `issue_breakdown_prompt.md` controls how issues are structured — vertical slice definitions, complexity scoring, testing philosophy. You could adjust the complexity thresholds or change how dependencies are assigned.
+
 ## Example: adding industry context
 
-If you're building for a specific industry (healthcare, fintech, etc.), you can add domain context to the system prompts. For example, adding compliance requirements to the PM agent's system prompt ensures the PRD includes regulatory considerations.
+If you're building for a regulated industry, add domain context to the system prompts:
+
+```markdown
+# In product_manager/system_prompt.md (append to existing)
+
+## Industry Context
+This project operates in the healthcare sector. All specifications must account for:
+- HIPAA compliance requirements
+- PHI (Protected Health Information) handling
+- Audit logging for data access
+- BAA (Business Associate Agreement) implications
+```
+
+This ensures every document generated by the PM agent considers healthcare regulations.
 
 ## Resetting to defaults
 
-If your customizations cause issues, you can regenerate the default prompts by running:
+If your customizations cause issues, restore the original prompts:
 
 ```bash
 specwright init
 ```
 
-This restores the original agent prompts without affecting your existing outputs.
+This copies the default agent prompts back to `specwright/agents/` without affecting your existing outputs in `specwright/outputs/`.
 
 ## What's next?
 
-- [Playbooks](/docs/guides/playbooks) — Let SpecWright learn your project conventions automatically
-- [The Specification Workflow](/docs/workflow) — Understand how agents work at each phase
+- [Playbooks](/docs/guides/playbooks) — Automatic codebase-aware context (no manual customization needed)
+- [The Specification Workflow](/docs/workflow) — How agents work at each phase
+- [Output Files](/docs/reference/output-files) — File formats that agents produce
