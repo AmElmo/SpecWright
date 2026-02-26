@@ -1,0 +1,56 @@
+# Specification-Driven Development
+
+Specification-Driven Development (SDD) is the methodology behind SpecWright. The idea is simple: describe what you want to build, generate a structured specification, then implement from the spec — not from a vague idea.
+
+## The problem SDD solves
+
+Most software projects start the same way: someone has an idea, writes a brief description, and developers start coding. Somewhere between the idea and the code, requirements get lost. Edge cases are discovered mid-sprint. Architecture decisions are made on the fly. Features ship incomplete because nobody wrote down what "complete" looks like.
+
+This problem gets worse with AI coding tools. Tools like Cursor, Claude Code, and Copilot are powerful — but they're only as good as the context you give them. A vague prompt produces vague code. A detailed, structured specification produces focused, correct implementation.
+
+## How SDD works
+
+SDD adds a structured thinking step between "I have an idea" and "Let's start coding":
+
+1. **Describe** — You state what you want to build in plain language
+2. **Specify** — AI agents ask you targeted questions and generate structured documents: requirements, screen designs, architecture, and implementation tasks
+3. **Implement** — You (or your AI coding tool) build from the spec, with clear acceptance criteria and technical context for every task
+
+The specification isn't a formality. It's the artifact that prevents the problems listed above. When a developer picks up an issue, they know exactly what to build, how it should behave, what screens it touches, and what technology to use.
+
+## Why AI agents ask you questions
+
+SpecWright doesn't generate specs from your description alone. Each AI agent — Product Manager, Designer, Engineer — asks 5-8 focused questions before producing output. This matters for two reasons:
+
+**You have context the AI doesn't.** You know your users, your business constraints, your technical environment, and your preferences. The questions extract this context so the specification reflects reality, not assumptions.
+
+**Questions force clarity.** When you're asked "What happens when a user tries to access a project they don't own?", you have to decide. That decision happens now, in the spec — not later, in a code review, when changing it costs more.
+
+## How SDD relates to existing methodologies
+
+SDD draws from established practices:
+
+- **Jobs-to-be-Done** — SpecWright uses job stories ("When [situation], I want [action], so [outcome]") instead of user stories. Job stories focus on the context and motivation behind a feature, which produces more specific requirements.
+- **Shape Up** — The scoping phase determines whether work is small enough to just do, or large enough to need a full spec. This mirrors Shape Up's concept of shaping work before building it.
+- **Vertical Slicing** — Issues are broken down as [vertical slices](/docs/concepts/vertical-slices) — self-contained pieces that deliver user-visible value through all layers of the stack.
+
+## When SDD is (and isn't) useful
+
+**SDD works well for:**
+- New features with multiple moving parts (UI, API, database, integrations)
+- Projects where multiple people need to understand the plan
+- Work that will be handed to AI coding tools — structured specs produce dramatically better AI output
+- Teams that want to version-control their decisions alongside their code
+
+**SDD is overkill for:**
+- Bug fixes and one-line changes
+- Simple configuration tweaks
+- Work where the implementation is obvious
+
+SpecWright handles this distinction automatically through [Smart Scoping](/docs/workflow/scoping). If your request is too small for a full spec, it tells you to just start coding.
+
+## Learn more
+
+- [The Specification Workflow](/docs/workflow) — How the five phases work in practice
+- [Vertical Slices](/docs/concepts/vertical-slices) — Why SpecWright structures tasks this way
+- [Getting Started](/docs/getting-started) — Try SDD on your own project

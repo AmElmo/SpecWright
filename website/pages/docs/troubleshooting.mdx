@@ -1,0 +1,139 @@
+# Troubleshooting
+
+Common issues and how to fix them.
+
+import { Callout } from 'nextra/components'
+
+## Installation
+
+**`npx specwright` fails with "command not found" or a module error**
+
+Make sure you're running Node.js 18 or later:
+
+```bash
+node --version
+```
+
+If the version is below 18, upgrade Node.js. If you're using `nvm`:
+
+```bash
+nvm install 18
+nvm use 18
+```
+
+Then try again:
+
+```bash
+npx specwright@latest
+```
+
+**`npm install -g specwright` fails with permission errors**
+
+On macOS and Linux, global installs sometimes need elevated permissions. Either fix your npm prefix:
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+```
+
+Then add `~/.npm-global/bin` to your PATH. Or use `npx specwright` instead of installing globally.
+
+## Web UI
+
+**Web UI doesn't open in the browser**
+
+SpecWright runs its web server on port 5174. If the browser doesn't open automatically:
+
+1. Check the terminal output for the URL — it should say something like `Server running at http://localhost:5174`
+2. Open that URL manually in your browser
+3. If the port is taken, check for other processes using it:
+
+```bash
+lsof -i :5174
+```
+
+**Web UI shows a blank page or loading spinner that never resolves**
+
+Try a hard refresh (`Cmd+Shift+R` on macOS, `Ctrl+Shift+R` on Windows/Linux) to clear cached assets. If that doesn't help, stop SpecWright and restart:
+
+```bash
+specwright --ui
+```
+
+## Specification Generation
+
+**An AI agent phase is stuck or producing errors**
+
+If a phase fails during generation:
+
+1. Check that SpecWright can reach the AI service — make sure you're connected to the internet
+2. Try regenerating the phase from the Web UI by clicking the regenerate button
+3. If the error persists, enable debug logging to see more detail:
+
+```bash
+SPECWRIGHT_DEBUG=true specwright --ui
+```
+
+**Phase output seems wrong or incomplete**
+
+The quality of generated specs depends heavily on your answers to the agent's questions. If output doesn't match your expectations:
+
+1. Review your answers — vague or short answers produce vague specs
+2. Revisit the phase and provide more detailed answers
+3. Regenerate the phase output
+
+<Callout type="info">
+You can also edit the generated files directly. All outputs are plain Markdown and JSON in `specwright/outputs/`. The Web UI will reflect your changes on the next page load.
+</Callout>
+
+## File & Project Issues
+
+**"Project not found" when opening a project**
+
+This usually means the project's output files were moved or deleted. Check that the project directory still exists:
+
+```bash
+ls specwright/outputs/projects/
+```
+
+If you moved or renamed project directories, SpecWright won't find them. The project directory names must match the format `001-project-name/`.
+
+**Spec files are empty or corrupted**
+
+SpecWright uses atomic writes (temp file + rename) to prevent corruption. If a file is empty, the generation likely failed mid-write. Regenerate the affected phase from the Web UI.
+
+## Linear Integration
+
+**"Failed to connect" when setting up Linear**
+
+1. Verify your Linear API key is correct in Settings
+2. Make sure the API key has the right scopes — SpecWright needs read/write access to issues and projects
+3. Check that your network allows connections to `api.linear.app`
+
+**Issues don't appear in Linear after pushing**
+
+After pushing, give Linear a few seconds to process. If issues still don't appear:
+
+1. Check the terminal output for error messages
+2. Verify you selected the correct Linear team and project in Settings
+3. Try pushing a single issue to isolate the problem
+
+## Debug Mode
+
+For any issue not covered above, enable debug logging for detailed output:
+
+```bash
+SPECWRIGHT_DEBUG=true specwright --ui
+```
+
+For even more detail (including trace-level logs):
+
+```bash
+SPECWRIGHT_TRACE=true specwright --ui
+```
+
+The debug output will show API calls, file operations, and agent interactions — which helps narrow down where things go wrong.
+
+---
+
+Still stuck? [Open an issue on GitHub](https://github.com/amelmo/specwright/issues) with the error message and debug output.

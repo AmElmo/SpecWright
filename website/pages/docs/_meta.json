@@ -3,6 +3,9 @@
   "getting-started": "Getting Started",
   "workflow": "The Specification Workflow",
   "guides": "Guides",
+  "concepts": "Concepts",
   "reference": "Reference",
-  "faq": "FAQ"
+  "troubleshooting": "Troubleshooting",
+  "faq": "FAQ",
+  "changelog": "Changelog"
 }
