@@ -1,44 +1,103 @@
 # Engineer Phase
 
-The Engineer phase defines **how to build it**. The AI Engineer agent reviews the PRD and design brief, asks technical questions, then produces architecture documents and technology choices.
+The Engineer agent designs the technical architecture and selects technologies based on the PRD and design specifications. It produces a technical specification and a structured set of technology decisions.
 
-## What the Engineer agent asks
+import { Callout } from 'nextra/components'
 
-The Engineer agent generates questions focused on technical constraints and decisions. These typically cover:
+## What the Engineer agent does
 
-- **Technology preferences** — Do you have an existing tech stack? Any requirements?
-- **Architecture patterns** — Monolith or microservices? Server-rendered or SPA?
-- **Data storage** — What kind of database? Any caching needs?
-- **Authentication** — How should users authenticate? OAuth, JWT, sessions?
-- **Third-party services** — Any external APIs or services to integrate with?
-- **Performance and scale** — Expected traffic? Real-time requirements?
+The Engineer agent acts as a senior engineer with architecture experience. It reads all previous outputs (PRD, acceptance criteria, design brief, screens), then:
 
-## What you get
+1. **Scans the codebase** — A high-level scan (not deep analysis) to understand existing tech stack, frameworks, and patterns
+2. **Asks constraint questions** — Focused on non-technical constraints that affect architecture
+3. **Designs architecture** — System components, data models, API design, security
+4. **Evaluates technologies** — For each decision category, presents options with trade-offs
+5. **Produces recommendations** — Marks recommended options with rationale
 
-### Technical specification
+## The questions
+
+The Engineer agent asks 2-4 questions focused on constraints, not implementation details:
+
+- **Performance** — Expected traffic, latency requirements, concurrent users?
+- **Security** — Compliance requirements, data sensitivity, auth patterns?
+- **Cost** — Infrastructure budget, managed services vs self-hosted?
+- **Scale** — Growth expectations, data volume, geographic distribution?
+- **Reliability** — Uptime requirements, failover needs, backup strategy?
+
+Like the Designer phase, questions reference your previous answers to avoid repetition.
+
+## Outputs
+
+### Technical specification (`technical_specification.md`)
 
 A Markdown document covering:
 
-- **Architecture overview** — How the system is structured
-- **API design** — Key endpoints, data contracts
-- **Data model** — Database schema, relationships
-- **Implementation approach** — Build order, key technical decisions
-- **Security considerations** — Authentication, authorization, data protection
+- **Architecture overview** — System components and how they interact
+- **Data models** — Entity relationships, storage approach
+- **API design** — Endpoints, request/response formats, authentication
+- **Security architecture** — Auth flow, data protection, threat mitigation
+- **Performance considerations** — Caching strategy, query optimization
+- **Deployment strategy** — Infrastructure, CI/CD, environments
+- **Monitoring** — Logging, metrics, alerting approach
 
-### Technology choices
+### Technology choices (`technology_choices.json`)
 
-A structured file listing every technology selected, with:
+Structured technology decisions where each category presents multiple options:
 
-- **What** — The technology or library
-- **Why** — Rationale for choosing it
-- **Trade-offs** — What alternatives were considered and why they were rejected
+```json
+{
+  "technology_decisions": [
+    {
+      "category": "Database",
+      "decision_needed": true,
+      "options": [
+        {
+          "name": "PostgreSQL",
+          "description": "Relational database with JSON support",
+          "version": "14+",
+          "recommended": true,
+          "recommendation_reason": "Best fit for relational data with ACID guarantees",
+          "pros": ["ACID compliance", "Rich JSON support", "Proven at scale"],
+          "cons": ["Operational overhead vs managed options"],
+          "trade_offs": ["Higher memory usage", "Schema migrations required"],
+          "maturity": "stable",
+          "implementation_complexity": "medium",
+          "documentation_url": "https://www.postgresql.org/docs/",
+          "github_url": "https://github.com/postgres/postgres"
+        }
+      ]
+    }
+  ]
+}
+```
 
-![Technology choices with rationale in SpecWright](/screenshots/technology_choices.png)
+### Technology choices viewer
 
-## Why it matters
+In the Web UI, technology decisions are displayed in a tab-based interface. For each decision category:
 
-Technology decisions made upfront, with documented rationale, prevent mid-project pivots. When the Issue Breakdown phase creates implementation tasks, it uses the tech spec to scope work accurately — including the right frameworks, libraries, and patterns in each task.
+- All options are shown with their pros, cons, and trade-offs
+- The **recommended** option is highlighted
+- **Maturity level** is color-coded: stable (green), emerging (blue), beta (amber)
+- **Implementation complexity** is color-coded: low (green), medium (amber), high (red)
+- Documentation and GitHub links are provided where available
+- A dropdown lets you select your preferred option
+
+You must make a selection for each category before the technology choices can be approved. Progress tracking shows how many decisions you've made out of the total.
+
+The Engineer agent evaluates options across: scalability, performance, reliability, security, maintainability, cost, complexity, team fit, time to market, and vendor lock-in risk.
+
+## Review and refinement
+
+After generation, you review the technical spec and technology choices in the Web UI:
+
+- **Technical specification** — Edit inline, refine with AI feedback and reference images, or approve
+- **Technology choices** — Review each category, select your preferred option, then approve once all selections are made
+
+<Callout type="info">
+You don't have to accept the AI's recommendation. The technology choices UI lets you select any option in each category. Your selections are what the Issue Breakdown phase uses when creating implementation tasks.
+</Callout>
 
 ## What's next?
 
-- [Issue Breakdown](/docs/workflow/issue-breakdown) — Turn specs into implementation tasks
+- [Issue Breakdown](/docs/workflow/issue-breakdown) — Implementation tasks built from all three specs
+- [Output Files](/docs/reference/output-files) — Full file format for technology_choices.json

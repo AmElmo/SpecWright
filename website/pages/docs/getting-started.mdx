@@ -41,47 +41,80 @@ cd /path/to/your/project
 specwright init
 ```
 
-This creates the `specwright/` folder with templates, agent prompts, and an outputs directory. All your specifications will live here.
+This creates the `specwright/` folder with:
+- `agents/` — AI agent prompts (PM, Designer, Engineer, Breakdown)
+- `templates/` — Output format templates
+- `outputs/` — Where generated specifications live
+
+It also creates `.cursor/commands/` at your project root with custom Cursor commands.
+
+After creating files, SpecWright asks if you want to generate a [Playbook](/docs/guides/playbooks) — a set of standards from your existing codebase.
 
 ### Launch the Web UI
 
 ```bash
-specwright --ui
+specwright view
 ```
 
-This opens the SpecWright dashboard in your browser. You'll see the onboarding screen on your first run, which walks you through selecting your preferred AI coding tool.
+This starts the server on port 5174 and opens the dashboard. On your first run, you'll see the onboarding screen, which walks you through:
+1. Selecting your preferred AI coding tool (Cursor, Claude Code, Codex, Gemini CLI, GitHub Copilot, or Windsurf)
+2. A quick intro to the workflow and AI squad
+3. Completing initialization
+
 ### Create a new project
 
-Click **New Project** and describe what you want to build in plain language. For example:
+Click **New Project**. You have two options:
+
+**AI-assisted mode (default)** — Describe what you want to build in plain language:
 
 > "Build a task management app with user authentication, project boards, and real-time collaboration"
 
-SpecWright's AI will analyze your request and determine if it needs a full specification or is small enough to implement directly. This is called [Smart Scoping](/docs/workflow/scoping).
+SpecWright classifies your request via [Smart Scoping](/docs/workflow/scoping) — it determines if this needs a full spec, is small enough to implement directly, or should be split into multiple projects.
+
+**Manual mode** — Enter a project name and description directly if you already know the scope.
 
 ### Walk through the specification phases
 
 If your request needs a full spec, SpecWright guides you through four phases — each powered by a specialized AI agent:
 
 1. **Product Manager** — Asks questions about requirements, then generates a PRD with job stories and acceptance criteria
-2. **Designer** — Asks about UX needs, then produces screen definitions and user flows
-3. **Engineer** — Asks about technical constraints, then creates architecture docs and technology choices
-4. **Issue Breakdown** — Analyzes all specs and breaks the work into implementation tasks
+2. **Designer** — Asks about UX needs, then produces screen definitions, wireframes, and user flows
+3. **Engineer** — Asks about technical constraints, then creates architecture docs and technology choices for you to select from
+4. **Issue Breakdown** — Analyzes all specs and breaks the work into vertical-slice implementation tasks
 
-At each phase, you answer a set of focused questions. The AI uses your answers to generate structured specification documents.
+At each phase, you answer focused questions (the number depends on your [question depth](/docs/reference/settings) setting). The AI uses your answers to generate structured specification documents. You review each document — approve it, edit inline, or refine with AI feedback.
 
-### Review your outputs
+### Ship to your AI tool
 
-Once all phases are complete, you'll have a full set of specifications in your `specwright/outputs/` directory:
-
-- A PRD with job stories and acceptance criteria
-- Screen designs and user flows
-- Technical architecture and technology choices
-- Implementation tasks ready for your AI coding tool
+Once issues are generated, click **Ship** on any issue. SpecWright sends a prompt to your AI coding tool with the full specification context — requirements, design decisions, architecture, acceptance criteria, and testing strategy. See [Ship to AI Tools](/docs/guides/ship-to-ai-tools).
 
 </Steps>
+
+## Your outputs
+
+After completing the workflow, your `specwright/outputs/` directory contains:
+
+```
+specwright/outputs/projects/001-your-project/
+├── project_request.md            # Your original description
+├── project_status.json           # Phase tracking
+├── questions/                    # Agent questions & your answers
+├── documents/
+│   ├── prd.md                    # Product Requirements Document
+│   ├── acceptance_criteria.json  # Testable criteria (Given/When/Then)
+│   ├── design_brief.md           # UX specification
+│   ├── screens.json              # Screen inventory with components
+│   ├── technical_specification.md # Architecture document
+│   └── technology_choices.json   # Tech decisions with trade-offs
+└── issues/
+    └── issues.json               # Implementation tasks
+```
+
+All files are plain Markdown and JSON — commit them to Git alongside your source code.
 
 ## What's next?
 
 - [The Specification Workflow](/docs/workflow) — Understand each phase in detail
-- [Using the Web UI](/docs/guides/web-ui) — Navigate the dashboard
+- [Using the Web UI](/docs/guides/web-ui) — Navigate every screen in the dashboard
 - [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send tasks directly to Cursor, Claude Code, or other tools
+- [Settings Reference](/docs/reference/settings) — Configure question depth, document length, and more

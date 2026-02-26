@@ -50,7 +50,8 @@ During the [Issue Breakdown](/docs/workflow/issue-breakdown) phase, the Breakdow
 
 - **Self-contained** — Each issue includes its own description, acceptance criteria, dependencies, and relevant specification context
 - **Sequenced** — Issues are ordered by dependency so you work through them in the right order
-- **Context-rich** — Each issue file (ENG-001.md, ENG-002.md, etc.) includes excerpts from the PRD, design brief, and tech spec relevant to that specific slice
+- **Complexity-scored** — Each issue gets a 1-10 score mapped to estimated hours. Issues scoring 7+ are split into subtasks organized by technical layer within the vertical slice (backend, frontend, database, testing).
+- **Tested by humans** — Every issue includes manual verification steps and human-in-the-loop checks, even when automated tests are skipped. The agent follows a critical-only testing philosophy: automated tests for payments, auth, and security; manual verification for everything else.
 
 ## Learn more
 

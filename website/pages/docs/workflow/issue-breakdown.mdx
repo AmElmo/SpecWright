@@ -1,41 +1,116 @@
 # Issue Breakdown
 
-The final phase takes everything from the previous three phases — PRD, design brief, and technical specification — and breaks it into implementation-ready tasks.
+The Breakdown agent converts your complete specification — PRD, design brief, technical spec — into implementation tasks structured as vertical slices. Each task is a self-contained piece of user-facing functionality ready to ship to an AI coding tool.
 
-## How it works
+import { Callout } from 'nextra/components'
 
-The AI Breakdown agent analyzes all your specification documents and produces a set of issues, each scoped as a **vertical slice** — a self-contained piece of work that delivers user-visible value.
+## How breakdown works
 
-Unlike horizontal slicing (build all the database first, then all the API, then all the UI), vertical slices cut through every layer. A single issue like "Build login screen with JWT authentication" includes the UI, the API endpoint, and the database changes — everything needed to make that feature work end-to-end.
+The Breakdown agent acts as a senior Tech Lead. It reads all previous specification documents and produces issues that are:
 
-## What you get
+- **Vertical slices** — Each issue spans all technical layers (UI, API, database) to deliver a complete user capability. See [Vertical Slices](/docs/concepts/vertical-slices).
+- **Sequenced by dependency** — Issues are ordered so each one builds on what came before
+- **Self-contained** — Each issue includes everything an AI coding tool needs: description, acceptance criteria, technical context, testing strategy
 
-Each issue includes:
+## Breakdown detail levels
 
-- **Title** — Clear, actionable description of the task
-- **Description** — Full context explaining what needs to be built
-- **Acceptance criteria** — What "done" looks like, inherited from the PRD
-- **Dependencies** — Which issues need to be completed first
-- **Specification context** — Relevant excerpts from the PRD, design brief, and tech spec
+Before generating issues, you choose a detail level that controls how finely the work is broken down:
 
-![Implementation tasks organized by vertical slice](/screenshots/issue_list_page.png)
+| Level | Description |
+|-------|-------------|
+| **One-shot** | Lightweight — fewer, larger issues for simple features |
+| **Few** | Basic breakdown — a handful of focused issues |
+| **Moderate** | Recommended — balanced granularity for most projects |
+| **Detailed** | Thorough — many smaller issues for complex features |
 
-## Issue format
+## Complexity scoring
 
-Each issue is saved as an individual Markdown file (e.g., `ENG-001.md`) with all the context an AI coding tool needs to implement it. The full list is also available in `issues.json` for programmatic access.
+Each issue receives a complexity score from 1-10, mapped to estimated hours:
+
+| Score | Difficulty | Estimated hours | Guidance |
+|-------|-----------|----------------|----------|
+| 1-2 | Trivial | 1-2h | Config changes, copy-paste, simple wiring |
+| 3-4 | Easy | 2-4h | Straightforward implementation |
+| 5-6 | Medium | 4-8h | Some unknowns, moderate scope |
+| 7-8 | Hard | 8-16h | Significant unknowns — consider splitting into subtasks |
+| 9-10 | Very hard | 16h+ | Must be broken into subtasks |
+
+Issues scoring 7+ are automatically split into subtasks organized by technical layer within the vertical slice:
 
 ```
-specwright/outputs/projects/001-your-project/issues/
-├── issues.json    # All issues in structured format
-├── ENG-001.md     # Login screen UI
-├── ENG-002.md     # JWT authentication API
-├── ENG-003.md     # Password reset flow
-└── ...
+VERTICAL SLICE: "User can sign in with Google"
+  ├─ Backend: OAuth provider integration
+  ├─ Frontend: Sign-in button and flow
+  ├─ Database: User profile storage
+  └─ Testing: OAuth integration tests
 ```
+
+## Issue structure
+
+Each issue in `issues.json` includes:
+
+- **Title and description** — What the user can do after this issue is complete
+- **Estimated hours** — Based on complexity scoring
+- **Dependencies** — Other issue IDs that must be completed first
+- **Screens affected** — IDs from `screens.json` that this issue touches
+- **Key decisions** — Architecture and technology decisions relevant to this issue
+- **Acceptance criteria** — Specific, testable criteria inherited from the PRD
+- **Technical details** — Implementation guidance from the tech spec
+- **Testing strategy** — Both automated tests and manual verification steps
+- **Human-in-the-loop verification** — Specific steps for a person to verify the implementation
+
+## Testing philosophy
+
+The Breakdown agent follows a critical-only testing approach:
+
+**Write automated tests for critical logic:**
+- Payment processing
+- Authentication and authorization
+- Security operations
+- Critical user data operations
+- Business-critical workflows
+
+**Skip automated tests for non-critical code:**
+- UI components and styling
+- Simple CRUD on non-critical data
+- Form validation (non-security)
+- Display logic
+
+**Every issue includes manual verification steps** — specific localhost testing instructions that a person follows to verify the implementation works correctly:
+
+```json
+{
+  "testing_strategy": {
+    "automated_tests": "Integration test for OAuth callback flow",
+    "manual_verification": "1. Visit localhost:3000/login\n2. Click 'Sign in with Google'\n3. Grant permissions\n4. Should redirect to dashboard"
+  },
+  "human_in_the_loop": [
+    "Verify OAuth flow works with a real Google account",
+    "Check error handling when user denies permissions",
+    "Verify session persists across page refreshes"
+  ]
+}
+```
+
+## Codebase awareness
+
+If you've initialized SpecWright in an existing project, the Breakdown agent analyzes your codebase when creating issues. It accounts for:
+
+- Existing components that can be reused (from `screens.json` component marking)
+- Current file structure and naming patterns
+- Installed dependencies and frameworks
+- Existing API patterns and data models
+
+## Review and confirmation
+
+After issues are generated, you see a preview with the issue count, titles, statuses, and estimated hours. Click "Confirm Issues" to finalize and open the issues board where you can:
+
+- Review each issue's full details
+- Change issue status via drag-and-drop
+- Ship any issue to your AI coding tool
 
 ## What's next?
 
-Once issues are generated, you're ready to start building:
-
-- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues directly to Cursor, Claude Code, or your preferred AI coding tool
-- [Linear Integration](/docs/guides/linear-integration) — Sync issues to your Linear workspace
+- [Ship to AI Tools](/docs/guides/ship-to-ai-tools) — Send issues to Cursor, Claude Code, and more
+- [Vertical Slices](/docs/concepts/vertical-slices) — Why this task structure works
+- [Output Files](/docs/reference/output-files) — Full `issues.json` format reference

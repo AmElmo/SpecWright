@@ -1,44 +1,107 @@
 # Designer Phase
 
-The Designer phase defines **how it looks and feels**. The AI Designer agent uses the PRD from the previous phase to ask UX-focused questions, then generates screen definitions, wireframes, and user flows.
+The UX Designer agent creates screen specifications, component inventories, and user flows based on the PRD. It designs the user-facing experience before any architecture decisions are made.
 
-## What the Designer agent asks
+import { Callout } from 'nextra/components'
 
-The Designer agent generates questions about the user experience, informed by the PRD. These typically cover:
+## What the Designer agent does
 
-- **Layout and navigation** — How should users move through the feature?
-- **Key interactions** — What happens when users click, submit, or navigate?
-- **Visual hierarchy** — What information is most important on each screen?
-- **Edge cases** — What does the empty state look like? What about errors?
-- **Responsiveness** — Does this need to work on mobile, tablet, or just desktop?
+The Designer agent acts as a senior UX/UI designer. It reads the PRD and your PM answers, then:
 
-## What you get
+1. **Audits the current state** — If you have an existing codebase, identifies current screens, components, and design patterns
+2. **Identifies screen requirements** — Determines what screens need creating, modifying, or removing based on the PRD
+3. **Defines information hierarchy** — Prioritizes content and functionality per screen
+4. **Creates wireframe specifications** — Defines layouts and component placement
+5. **Gathers visual inspiration** — Notes design patterns and references
 
-### Design brief
+## The questions
 
-A Markdown document describing the overall UX approach — navigation patterns, interaction models, and design constraints.
+The Designer agent asks 2-4 questions focused on UX concerns that the PM phase didn't cover:
 
-### Screen inventory
+- **Layout & navigation** — How should users move through the feature?
+- **Interactions** — What behaviors do components need (drag-drop, modals, real-time)?
+- **Visual hierarchy** — What should draw attention first on each screen?
+- **Edge cases** — Empty states, error states, loading states?
+- **Responsiveness** — Mobile-first? Desktop-focused? Both?
 
-A structured JSON file listing every screen your feature needs. Each screen includes:
+Questions are intentionally different from PM questions — the agent references your PM answers to avoid asking about requirements that are already resolved.
 
-- **Screen name** and purpose
-- **Components** — What UI elements appear on the screen
-- **Behavior** — What happens on user interaction
-- **Data displayed** — What information the user sees
+## Outputs
 
-![Screen definitions in SpecWright](/screenshots/screens_page.png)
+### Design brief (`design_brief.md`)
 
-### User flows
+A Markdown document covering:
 
-Descriptions of how users navigate through the feature. For example, a sign-up flow might be: Landing Page → Sign-up Form → Email Verification → Dashboard.
+- Design approach and UX philosophy for this feature
+- User flow descriptions (how users navigate through the feature)
+- Screen-by-screen descriptions with layout notes
+- Component reuse guidance (which existing components to leverage)
+- Responsive behavior patterns
+- Edge state handling (empty, error, loading, no-permission)
 
-## Why it matters
+### Screen inventory (`screens.json`)
 
-Screen definitions give the Engineer concrete UI requirements to build against. They also give the Issue Breakdown phase enough detail to scope individual implementation tasks ("Build the login screen" vs. "Build the settings modal").
+A structured inventory of every UI screen the feature requires:
 
-Without design specs, AI coding tools tend to make arbitrary UI decisions that don't match your product vision.
+```json
+{
+  "screens": [
+    {
+      "id": "screen-001",
+      "name": "Login Screen",
+      "description": "User authentication entry point",
+      "components": [
+        {
+          "id": "component-001",
+          "name": "Google OAuth Button",
+          "type": "create",
+          "description": "Sign in with Google button with OAuth flow"
+        },
+        {
+          "id": "component-002",
+          "name": "AppHeader",
+          "type": "reuse",
+          "description": "Existing app header component"
+        }
+      ],
+      "interactions": [
+        "Click 'Sign in with Google' → redirect to consent",
+        "Successful auth → redirect to dashboard",
+        "Failed auth → show error message with retry"
+      ]
+    }
+  ]
+}
+```
+
+### Component marking
+
+Each component is marked as one of:
+
+- **`create`** — A new component that needs to be built. This creates implementation work during Issue Breakdown.
+- **`reuse`** — An existing component from your codebase. The agent identified it during codebase analysis. No implementation work needed.
+
+This distinction feeds directly into the [Issue Breakdown](/docs/workflow/issue-breakdown) phase — issues only include work for components marked `create`.
+
+### Screen categories
+
+The Designer agent organizes screens into standard categories: authentication (login, signup), onboarding (welcome, setup), dashboards, content/list views, detail/form views, navigation (menus, tabs), feedback (success, error, empty states), and modals/overlays.
+
+### Wireframe rendering
+
+In the Web UI, `screens.json` is rendered as a visual wireframe. The renderer supports layout elements (stacks, grids, cards), content elements (text, buttons, inputs, images), and interactive elements (forms, modals, tabs). The wireframe uses a gray-toned aesthetic to focus on structure rather than visual design.
+
+You can switch between screens using a dropdown selector. Each screen displays its components, interactions, and user flow steps.
+
+## Review and refinement
+
+After generation, you review the design brief and screen inventory in the Web UI. You can:
+
+- **Approve** — Mark the design as complete and move to the Engineer phase
+- **Edit inline** — Modify the design brief Markdown directly
+- **Refine with AI** — Provide feedback text and upload reference images (up to 5) to guide revisions. Useful for showing mockups, screenshots of existing UI, or design inspiration.
 
 ## What's next?
 
-- [Engineer Phase](/docs/workflow/engineer) — Technical architecture and technology choices
+- [Engineer Phase](/docs/workflow/engineer) — Architecture and technology decisions built from the design
+- [Output Files](/docs/reference/output-files) — Full file format for screens.json and design_brief.md

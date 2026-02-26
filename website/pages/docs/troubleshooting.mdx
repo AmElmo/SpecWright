@@ -38,101 +38,164 @@ npm config set prefix '~/.npm-global'
 
 Then add `~/.npm-global/bin` to your PATH. Or use `npx specwright` instead of installing globally.
 
+## "No SpecWright folder detected"
+
+You'll see this when running any command before initialization. SpecWright needs a `specwright/` directory in your project:
+
+```bash
+cd /path/to/your/project
+specwright init
+```
+
+Or select "Launch Web UI for guided onboarding" from the welcome screen to run `specwright init` through the Web UI.
+
 ## Web UI
 
 **Web UI doesn't open in the browser**
 
 SpecWright runs its web server on port 5174. If the browser doesn't open automatically:
 
-1. Check the terminal output for the URL — it should say something like `Server running at http://localhost:5174`
+1. Check the terminal output for the URL — it should say `Server running at http://localhost:5174`
 2. Open that URL manually in your browser
-3. If the port is taken, check for other processes using it:
+3. If the port is in use by another process:
 
 ```bash
 lsof -i :5174
 ```
 
-**Web UI shows a blank page or loading spinner that never resolves**
+Kill the conflicting process, or wait — if another `specwright` command is already running, it's using that server. Multiple commands share the same server instance.
 
-Try a hard refresh (`Cmd+Shift+R` on macOS, `Ctrl+Shift+R` on Windows/Linux) to clear cached assets. If that doesn't help, stop SpecWright and restart:
+**Web UI shows a blank page or loading spinner**
 
-```bash
-specwright --ui
-```
-
-## Specification Generation
-
-**An AI agent phase is stuck or producing errors**
-
-If a phase fails during generation:
-
-1. Check that SpecWright can reach the AI service — make sure you're connected to the internet
-2. Try regenerating the phase from the Web UI by clicking the regenerate button
-3. If the error persists, enable debug logging to see more detail:
+Try a hard refresh (`Cmd+Shift+R` on macOS, `Ctrl+Shift+R` on Windows/Linux) to clear cached assets. If that doesn't help, restart:
 
 ```bash
-SPECWRIGHT_DEBUG=true specwright --ui
+# Stop with Ctrl+C, then:
+specwright view
 ```
+
+**Real-time updates not appearing**
+
+The Web UI uses WebSocket connections for live updates. If documents or issues aren't updating in real time:
+
+1. Check your browser's developer console for WebSocket errors
+2. The WebSocket auto-reconnects up to 5 times with a 2-second delay between attempts
+3. Refresh the page to establish a fresh connection
+
+## Specification generation
+
+**"No projects found" when running a command**
+
+This means the `specwright/outputs/projects/` directory is empty. Create a project first:
+
+```bash
+specwright new
+```
+
+**A phase is stuck in "ai-working" state**
+
+Headless AI tool executions have a 5-minute timeout. If a phase exceeds this:
+
+1. Check that your AI tool (Cursor, Claude Code, etc.) is installed and accessible from the command line
+2. For headless tools, verify they're available:
+   - Claude Code: `claude --version`
+   - Codex: `codex --version`
+   - Gemini: `gemini --version`
+3. Check the Settings page — the headless status indicator shows which tools are detected
+4. Cancel the stuck generation from the Web UI and retry
 
 **Phase output seems wrong or incomplete**
 
-The quality of generated specs depends heavily on your answers to the agent's questions. If output doesn't match your expectations:
+The quality of generated specs depends on your answers to the agent's questions. If output doesn't match expectations:
 
 1. Review your answers — vague or short answers produce vague specs
-2. Revisit the phase and provide more detailed answers
-3. Regenerate the phase output
+2. Try the "Refine with AI" option: open the document, click the refinement panel, type specific feedback about what's wrong, and optionally upload reference images
+3. Or edit the generated files directly — all outputs are plain Markdown and JSON in `specwright/outputs/`
 
-<Callout type="info">
-You can also edit the generated files directly. All outputs are plain Markdown and JSON in `specwright/outputs/`. The Web UI will reflect your changes on the next page load.
-</Callout>
+**Documents show as "placeholder" and won't advance the phase**
 
-## File & Project Issues
+SpecWright detects placeholder content in generated files. If a document file exists but contains only template structure without real content, the system won't mark the phase as complete. Regenerate the phase to get actual content.
 
-**"Project not found" when opening a project**
+## File & project issues
 
-This usually means the project's output files were moved or deleted. Check that the project directory still exists:
+**Project directory naming**
+
+Project directories must follow the format `{3-digit}-{slug}/` (e.g., `001-user-authentication/`). If you rename or move directories manually, SpecWright won't find them.
 
 ```bash
 ls specwright/outputs/projects/
 ```
 
-If you moved or renamed project directories, SpecWright won't find them. The project directory names must match the format `001-project-name/`.
+**`.tmp` files in the outputs directory**
 
-**Spec files are empty or corrupted**
+SpecWright uses atomic writes — it writes to a `.tmp` file first, then renames it. If you see `.tmp` files, a write was interrupted. You can safely delete them:
 
-SpecWright uses atomic writes (temp file + rename) to prevent corruption. If a file is empty, the generation likely failed mid-write. Regenerate the affected phase from the Web UI.
+```bash
+rm specwright/outputs/projects/*/project_status.json.tmp
+```
 
-## Linear Integration
+**Spec files are empty**
+
+If a file exists but is empty, the generation failed mid-write. The atomic write pattern should prevent this, but if it happens, regenerate the affected phase from the Web UI.
+
+## Headless AI tools
+
+**"Command not found" when shipping to an AI tool**
+
+SpecWright needs the AI tool's CLI accessible from your terminal. Check:
+
+- **Claude Code**: `claude --version`
+- **Codex**: `codex --version`
+- **Gemini**: `gemini --version`
+- **Cursor**: Cursor's headless mode runs via its built-in CLI
+
+For tools without headless support (Windsurf, GitHub Copilot), SpecWright falls back to keyboard automation — the tool must already be running.
+
+**Keyboard automation not working (Windsurf, GitHub Copilot)**
+
+The keyboard automation fallback copies the prompt to your clipboard, activates the tool's window, and pastes. If this fails:
+
+1. Make sure the AI tool window is open and not minimized
+2. On macOS, grant accessibility permissions to your terminal app (System Settings → Privacy & Security → Accessibility)
+3. Try shipping again — the automation needs the tool's window to be activatable
+
+## Linear integration
 
 **"Failed to connect" when setting up Linear**
 
 1. Verify your Linear API key is correct in Settings
-2. Make sure the API key has the right scopes — SpecWright needs read/write access to issues and projects
+2. Make sure the API key has the right scopes — SpecWright needs read/write access to issues, projects, and documents
 3. Check that your network allows connections to `api.linear.app`
 
-**Issues don't appear in Linear after pushing**
+**Issues don't appear in Linear after syncing**
 
-After pushing, give Linear a few seconds to process. If issues still don't appear:
+After syncing, give Linear a few seconds to process. If issues still don't appear:
 
 1. Check the terminal output for error messages
-2. Verify you selected the correct Linear team and project in Settings
-3. Try pushing a single issue to isolate the problem
+2. Verify you selected the correct Linear team in Settings
+3. Check `specwright/outputs/projects/{projectId}/linear_sync.json` — this file tracks the sync state and issue ID mappings
 
-## Debug Mode
+## Debug mode
 
-For any issue not covered above, enable debug logging for detailed output:
-
-```bash
-SPECWRIGHT_DEBUG=true specwright --ui
-```
-
-For even more detail (including trace-level logs):
+For any issue not covered above, enable debug logging:
 
 ```bash
-SPECWRIGHT_TRACE=true specwright --ui
+SPECWRIGHT_DEBUG=true specwright view
 ```
 
-The debug output will show API calls, file operations, and agent interactions — which helps narrow down where things go wrong.
+For function-level tracing (extremely verbose — shows entry/exit for every function call):
+
+```bash
+specwright --trace view
+```
+
+Or set the environment variable:
+
+```bash
+SPECWRIGHT_TRACE=true specwright view
+```
+
+The debug output shows file operations, phase transitions, WebSocket events, and AI tool interactions.
 
 ---
 

@@ -20,11 +20,11 @@ The specification isn't a formality. It's the artifact that prevents the problem
 
 ## Why AI agents ask you questions
 
-SpecWright doesn't generate specs from your description alone. Each AI agent — Product Manager, Designer, Engineer — asks 5-8 focused questions before producing output. This matters for two reasons:
+SpecWright doesn't generate specs from your description alone. Each AI agent — Product Manager, Designer, Engineer — asks focused questions before producing output. You control the depth: light (2-3 questions per agent), standard (3-4), or thorough (4-6). This matters for two reasons:
 
-**You have context the AI doesn't.** You know your users, your business constraints, your technical environment, and your preferences. The questions extract this context so the specification reflects reality, not assumptions.
+**You have context the AI doesn't.** You know your users, your business constraints, your technical environment, and your preferences. The questions extract this context so the specification reflects reality, not assumptions. Each agent also analyzes your existing codebase — so questions are grounded in what you already have, not generic templates.
 
-**Questions force clarity.** When you're asked "What happens when a user tries to access a project they don't own?", you have to decide. That decision happens now, in the spec — not later, in a code review, when changing it costs more.
+**Questions force clarity.** When you're asked "What authentication methods should be supported?", you have to decide. That decision is recorded along with the alternatives you rejected — and both feed into the specification. Your rejected alternatives become documented NoGos (scope exclusions), preventing scope creep later. The decision happens now, in the spec — not later, in a code review, when changing it costs more.
 
 ## How SDD relates to existing methodologies
 
